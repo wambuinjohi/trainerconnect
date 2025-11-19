@@ -2,10 +2,13 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import Header from '@/components/Header'
 
 const About: React.FC = () => (
-  <div className="min-h-screen bg-background p-6">
-    <div className="container max-w-3xl mx-auto">
+  <div className="min-h-screen bg-background">
+    <Header />
+    <div className="p-6">
+      <div className="container max-w-3xl mx-auto">
       <h1 className="text-3xl font-bold mb-2">About TrainerCoachConnect</h1>
       <p className="text-muted-foreground mb-4">TrainerCoachConnect helps people find qualified fitness trainers nearby, book sessions, and manage payments. We focus on trust, convenience, and local discovery.</p>
 
@@ -49,6 +52,7 @@ const About: React.FC = () => (
           <Button variant="outline">Back to Home</Button>
         </Link>
       </div>
+    </div>
     </div>
   </div>
 )
