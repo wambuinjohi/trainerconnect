@@ -31,7 +31,7 @@ const PasswordReset: React.FC = () => {
         throw new Error('Please enter your email address')
       }
 
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
