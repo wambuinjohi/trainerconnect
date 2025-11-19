@@ -541,8 +541,10 @@ switch ($action) {
         ";
 
         if ($conn->query($sql)) {
+            logEvent('migration_success', ['table' => 'users']);
             respond("success", "Migration successful: users table created or already exists.");
         } else {
+            logEvent('migration_failed', ['table' => 'users', 'error' => $conn->error]);
             respond("error", "Migration failed: " . $conn->error);
         }
 
@@ -562,8 +564,10 @@ switch ($action) {
         ";
 
         if ($conn->query($resetTokensTable)) {
+            logEvent('migration_success', ['table' => 'password_reset_tokens']);
             respond("success", "Migration successful: users and password_reset_tokens tables created or already exist.");
         } else {
+            logEvent('migration_failed', ['table' => 'password_reset_tokens', 'error' => $conn->error]);
             respond("error", "Migration failed: " . $conn->error);
         }
         break;
