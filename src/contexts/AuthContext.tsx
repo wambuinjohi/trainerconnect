@@ -102,7 +102,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       // Auto-login with admin account if no user is logged in
-      const autoLoginEnabled = localStorage.getItem('auto_login_enabled') !== 'false';
+      // Set to 'false' by default until server is properly configured
+      const autoLoginEnabled = localStorage.getItem('auto_login_enabled') === 'true';
       if (autoLoginEnabled && !storedUser) {
         try {
           await performLogin('admin@skatryk.co.ke', 'Pass1234', (user, userProfileType, token) => {
