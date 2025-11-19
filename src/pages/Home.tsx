@@ -16,14 +16,7 @@ import {
   Award
 } from 'lucide-react'
 
-const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => (
-  <Link to={to} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-    {children}
-  </Link>
-)
-
 const Home: React.FC = () => {
-  const [open, setOpen] = React.useState(false)
 
   const features = [
     {
