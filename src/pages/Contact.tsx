@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import Header from '@/components/Header'
 
 const Contact: React.FC = () => {
   const [name, setName] = useState('')
@@ -18,8 +19,10 @@ const Contact: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="container max-w-2xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="p-6">
+        <div className="container max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">Contact Us</h1>
         <p className="text-muted-foreground mb-4">Send us a message and we'll get back to you as soon as possible.</p>
 
@@ -53,6 +56,7 @@ const Contact: React.FC = () => {
         </Card>
 
         <div className="mt-6 text-sm text-muted-foreground">Or email us directly at <a className="text-primary" href="mailto:support@trainercoachconnect.com">support@trainercoachconnect.com</a></div>
+      </div>
       </div>
     </div>
   )
