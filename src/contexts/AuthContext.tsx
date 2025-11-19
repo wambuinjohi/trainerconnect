@@ -104,48 +104,71 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userTypeParam: string, profile?: Record<string, any>) => {
-    try {
-      const payload: any = {
-        action: 'signup',
-        email,
-        password,
-        user_type: userTypeParam,
-        ...profile,
-      };
+    const maxRetries = 3;
+    const retryDelay = 1000;
 
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        credentials: 'include',
-      });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const payload: any = {
+          action: 'signup',
+          email,
+          password,
+          user_type: userTypeParam,
+          ...profile,
+        };
 
-      const result = await response.json();
-      if (result.status === 'error') {
-        throw new Error(result.message || 'Signup failed');
+        const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          credentials: 'include',
+        });
+
+        const contentType = response.headers.get('content-type');
+        const isHtml = contentType?.includes('text/html');
+
+        if (isHtml) {
+          const errorText = await response.text();
+          console.error(`Signup attempt ${attempt}: Server returned HTML instead of JSON`);
+          console.error('Response:', errorText.substring(0, 500));
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+        }
+
+        const result = await response.json();
+        if (result.status === 'error') {
+          throw new Error(result.message || 'Signup failed');
+        }
+
+        const userData = result.data;
+        const sessionData = userData?.session || userData;
+        const user_id = userData?.user?.id;
+        const access_token = userData?.session?.access_token || sessionData?.access_token;
+
+        if (!user_id || !access_token) {
+          throw new Error('Invalid response from server');
+        }
+
+        const user = { id: user_id, email };
+        setUser(user);
+        setUserType(userTypeParam as 'client' | 'trainer' | 'admin');
+
+        localStorage.setItem('app-user', JSON.stringify(user));
+        localStorage.setItem('app-user-type', userTypeParam);
+        localStorage.setItem('auth_token', access_token);
+        return;
+      } catch (error) {
+        if (attempt === maxRetries) {
+          localStorage.removeItem('app-user');
+          localStorage.removeItem('app-user-type');
+          localStorage.removeItem('auth_token');
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
-
-      const userData = result.data;
-      const sessionData = userData?.session || userData;
-      const user_id = userData?.user?.id;
-      const access_token = userData?.session?.access_token || sessionData?.access_token;
-
-      if (!user_id || !access_token) {
-        throw new Error('Invalid response from server');
-      }
-
-      const user = { id: user_id, email };
-      setUser(user);
-      setUserType(userTypeParam as 'client' | 'trainer' | 'admin');
-
-      localStorage.setItem('app-user', JSON.stringify(user));
-      localStorage.setItem('app-user-type', userTypeParam);
-      localStorage.setItem('auth_token', access_token);
-    } catch (error) {
-      localStorage.removeItem('app-user');
-      localStorage.removeItem('app-user-type');
-      localStorage.removeItem('auth_token');
-      throw error;
     }
   };
 
