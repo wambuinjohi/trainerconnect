@@ -71,41 +71,44 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <AuthProvider>
-            <AutoSetupWrapper>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/" element={<AppContent />} />
-                  <Route
-                    path="/signin"
-                    element={
-                      <AuthForm onSuccess={() => (window.location.href = "/")} />
-                    }
-                  />
-                  <Route
-                    path="/signup"
-                    element={
-                      <AuthForm
-                        initialTab="signup"
-                        onSuccess={() => (window.location.href = "/")}
-                      />
-                    }
-                  />
-                  <Route path="/setup" element={<AdminSetup />} />
-                  <Route path="/api-test" element={<ApiTest />} />
-                  <Route path="/explore" element={<Explore />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/contact" element={<Contact />} />
-                  <Route path="/privacy" element={<Privacy />} />
-                  <Route path="/terms" element={<Terms />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/clear-cache" element={<ClearCache />} />
-                  <Route path="/upload-demo" element={<UploadDemo />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </AutoSetupWrapper>
-          </AuthProvider>
+          <ApiConfigProvider>
+            <AuthProvider>
+              <AutoSetupWrapper>
+                <ConnectionStatusDialog />
+                <BrowserRouter>
+                  <Routes>
+                    <Route path="/" element={<AppContent />} />
+                    <Route
+                      path="/signin"
+                      element={
+                        <AuthForm onSuccess={() => (window.location.href = "/")} />
+                      }
+                    />
+                    <Route
+                      path="/signup"
+                      element={
+                        <AuthForm
+                          initialTab="signup"
+                          onSuccess={() => (window.location.href = "/")}
+                        />
+                      }
+                    />
+                    <Route path="/setup" element={<AdminSetup />} />
+                    <Route path="/api-test" element={<ApiTest />} />
+                    <Route path="/explore" element={<Explore />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/contact" element={<Contact />} />
+                    <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/terms" element={<Terms />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/clear-cache" element={<ClearCache />} />
+                    <Route path="/upload-demo" element={<UploadDemo />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </AutoSetupWrapper>
+            </AuthProvider>
+          </ApiConfigProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
