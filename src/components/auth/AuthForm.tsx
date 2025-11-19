@@ -11,6 +11,7 @@ import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
 import { clearAppCache } from '@/lib/clearCache'
+import { Link } from 'react-router-dom'
 
 interface AuthFormProps {
   onSuccess?: () => void
