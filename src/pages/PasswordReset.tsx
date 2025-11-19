@@ -91,7 +91,7 @@ const PasswordReset: React.FC = () => {
         throw new Error('Invalid reset link. Please request a new password reset.')
       }
 
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
