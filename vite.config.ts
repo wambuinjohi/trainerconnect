@@ -568,16 +568,23 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'radix-ui': [
-            '@radix-ui/react-tooltip',
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-select',
-            '@radix-ui/react-tabs',
-          ],
+        manualChunks: (id) => {
+          // Keep React and React-DOM in main bundle
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return undefined; // Keep in main bundle
+          }
+          // Group Radix UI components
+          if (id.includes('@radix-ui')) {
+            return 'radix-ui';
+          }
+          // Group tanstack/react-query
+          if (id.includes('tanstack')) {
+            return 'tanstack';
+          }
+          // Group other vendors
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         },
       },
     },
