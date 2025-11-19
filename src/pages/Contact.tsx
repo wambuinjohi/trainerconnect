@@ -56,7 +56,7 @@ const Contact: React.FC = () => {
         </Card>
 
         <div className="mt-6 text-sm text-muted-foreground">Or email us directly at <a className="text-primary" href="mailto:support@trainercoachconnect.com">support@trainercoachconnect.com</a></div>
-        </div>
+      </div>
       </div>
     </div>
   )
