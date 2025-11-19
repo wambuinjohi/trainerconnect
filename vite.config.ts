@@ -129,7 +129,7 @@ function databaseApiPlugin() {
               const testUsers = [
                 {
                   email: "admin@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Admin",
                   last_name: "User",
                   user_type: "admin",
@@ -137,7 +137,7 @@ function databaseApiPlugin() {
                 },
                 {
                   email: "trainer@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Trainer",
                   last_name: "User",
                   user_type: "trainer",
@@ -145,7 +145,7 @@ function databaseApiPlugin() {
                 },
                 {
                   email: "client@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Client",
                   last_name: "User",
                   user_type: "client",
@@ -215,6 +215,136 @@ function databaseApiPlugin() {
               }
             } catch (err: any) {
               respond("error", `Seeding failed: ${err.message}`, null, 500);
+            } finally {
+              if (connection) await connection.end();
+            }
+            return;
+          }
+
+          // Handle login action
+          if (action === "login") {
+            let connection: any = null;
+            try {
+              connection = await mysql.createConnection(dbConfig);
+              const email = input.email || "";
+              const password = input.password || "";
+
+              if (!email || !password) {
+                respond("error", "Email and password are required.", null, 400);
+                return;
+              }
+
+              // Query user by email
+              const [userRows]: any = await connection.execute(
+                "SELECT u.id, u.email, u.password_hash, up.user_type FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.email = ? LIMIT 1",
+                [email]
+              );
+
+              if (userRows.length === 0) {
+                respond("error", "Invalid email or password.", null, 401);
+                return;
+              }
+
+              const user = userRows[0];
+              const crypto = require("crypto");
+              const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+
+              // Verify password
+              if (user.password_hash !== passwordHash) {
+                respond("error", "Invalid email or password.", null, 401);
+                return;
+              }
+
+              // Generate session token (simple approach for development)
+              const sessionToken = crypto.randomBytes(32).toString("hex");
+
+              const responseData = {
+                user: {
+                  id: user.id,
+                  email: user.email,
+                },
+                session: {
+                  user: { id: user.id },
+                  access_token: sessionToken,
+                },
+                profile: {
+                  user_type: user.user_type || "client",
+                },
+              };
+
+              respond("success", "Login successful.", responseData);
+            } catch (err: any) {
+              respond("error", `Login failed: ${err.message}`, null, 500);
+            } finally {
+              if (connection) await connection.end();
+            }
+            return;
+          }
+
+          // Handle signup action
+          if (action === "signup") {
+            let connection: any = null;
+            try {
+              connection = await mysql.createConnection(dbConfig);
+              const email = input.email || "";
+              const password = input.password || "";
+              const userType = input.user_type || "client";
+
+              if (!email || !password) {
+                respond("error", "Email and password are required.", null, 400);
+                return;
+              }
+
+              // Check if user already exists
+              const [existingRows]: any = await connection.execute(
+                "SELECT id FROM users WHERE email = ?",
+                [email]
+              );
+
+              if (existingRows.length > 0) {
+                respond("error", "User with this email already exists.", null, 400);
+                return;
+              }
+
+              const crypto = require("crypto");
+              const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const profileId = `profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+
+              // Insert user
+              await connection.execute(
+                `INSERT INTO users (id, email, password_hash, status, email_verified, phone_verified, currency, kyc_status, created_at)
+                 VALUES (?, ?, ?, 'active', 0, 0, 'KES', 'pending', NOW())`,
+                [userId, email, passwordHash]
+              );
+
+              // Insert profile
+              await connection.execute(
+                `INSERT INTO user_profiles (id, user_id, user_type, created_at)
+                 VALUES (?, ?, ?, NOW())`,
+                [profileId, userId, userType]
+              );
+
+              // Generate session token
+              const sessionToken = crypto.randomBytes(32).toString("hex");
+
+              const responseData = {
+                user: {
+                  id: userId,
+                  email: email,
+                },
+                session: {
+                  user: { id: userId },
+                  access_token: sessionToken,
+                },
+                profile: {
+                  user_type: userType,
+                },
+              };
+
+              respond("success", "Signup successful.", responseData);
+            } catch (err: any) {
+              respond("error", `Signup failed: ${err.message}`, null, 500);
             } finally {
               if (connection) await connection.end();
             }
@@ -428,17 +558,35 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      // Force all React imports to resolve to the same instance
-      'react': path.resolve(__dirname, './node_modules/react'),
-      'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
     },
     dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
-    esbuildOptions: {
-      // Ensure React is treated as a single instance during build
-      plugins: [],
+    exclude: [],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          // Keep React and React-DOM in main bundle
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return undefined; // Keep in main bundle
+          }
+          // Group Radix UI components
+          if (id.includes('@radix-ui')) {
+            return 'radix-ui';
+          }
+          // Group tanstack/react-query
+          if (id.includes('tanstack')) {
+            return 'tanstack';
+          }
+          // Group other vendors
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
+      },
     },
   },
 }));
