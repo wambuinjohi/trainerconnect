@@ -96,7 +96,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       });
 
       // Upload files
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         body: formData
       });

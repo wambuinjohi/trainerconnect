@@ -31,7 +31,9 @@ const PasswordReset: React.FC = () => {
         throw new Error('Please enter your email address')
       }
 
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
+      const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -91,7 +93,9 @@ const PasswordReset: React.FC = () => {
         throw new Error('Invalid reset link. Please request a new password reset.')
       }
 
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
+      const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

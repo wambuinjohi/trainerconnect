@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
+import { useNavigate } from 'react-router-dom'
 import {
   Users,
   DollarSign,
@@ -22,7 +23,8 @@ import {
   Plus,
   Trash2,
   Save,
-  Pencil
+  Pencil,
+  Key
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
@@ -125,6 +127,7 @@ const initialStats = {
 
 export const AdminDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
   const [settings, setSettings] = useState<PlatformSettings>(defaultSettings)
   const [saving, setSaving] = useState(false)
@@ -512,8 +515,10 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
+        const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
+        const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
         // Load users with profiles from MySQL API
-        const usersResponse = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        const usersResponse = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get_users' })
@@ -1169,7 +1174,28 @@ export const AdminDashboard: React.FC = () => {
   const renderSettings = () => (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">System Settings</h1>
-      
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Admin Tools</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              onClick={() => navigate('/admin/reset-passwords')}
+              variant="outline"
+              className="justify-start border-border h-auto py-4"
+            >
+              <Key className="h-5 w-5 mr-3" />
+              <div className="text-left">
+                <p className="font-semibold text-foreground">Reset All Passwords</p>
+                <p className="text-xs text-muted-foreground">Reset test user passwords to a new value</p>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-foreground">Platform Settings</CardTitle>
