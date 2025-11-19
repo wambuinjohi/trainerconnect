@@ -42,10 +42,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     const maxRetries = 3;
     const retryDelay = 1000;
+    const apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? '/api.php'
+      : 'https://trainer.skatryk.co.ke/api.php';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'login', email, password }),
