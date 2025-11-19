@@ -1172,7 +1172,28 @@ export const AdminDashboard: React.FC = () => {
   const renderSettings = () => (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">System Settings</h1>
-      
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">Admin Tools</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              onClick={() => navigate('/admin/reset-passwords')}
+              variant="outline"
+              className="justify-start border-border h-auto py-4"
+            >
+              <Key className="h-5 w-5 mr-3" />
+              <div className="text-left">
+                <p className="font-semibold text-foreground">Reset All Passwords</p>
+                <p className="text-xs text-muted-foreground">Reset test user passwords to a new value</p>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-foreground">Platform Settings</CardTitle>
