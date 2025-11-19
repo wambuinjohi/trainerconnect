@@ -330,6 +330,7 @@ switch ($action) {
 
     // HEALTH CHECK ACTION
     case 'health_check':
+        logEvent('health_check', ['status' => 'success']);
         respond("success", "API is healthy and responding correctly.");
         break;
 
