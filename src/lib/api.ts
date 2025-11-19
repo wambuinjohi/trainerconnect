@@ -1,4 +1,19 @@
-export const API_URL = 'https://trainer.skatryk.co.ke/api.php'
+const DEFAULT_API_URL = 'https://trainer.skatryk.co.ke/api.php'
+
+export function getApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('api_url') || DEFAULT_API_URL
+  }
+  return DEFAULT_API_URL
+}
+
+export function setApiUrl(url: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('api_url', url)
+  }
+}
+
+export const API_URL = DEFAULT_API_URL
 
 export type ApiResponse<T = any> = {
   status: 'success' | 'error'
@@ -9,7 +24,8 @@ export type ApiResponse<T = any> = {
 
 export async function apiRequest<T = any>(action: string, payload: Record<string, any> = {}, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> || {}) }
-  const res = await fetch(API_URL, {
+  const apiUrl = getApiUrl()
+  const res = await fetch(apiUrl, {
     method: 'POST',
     headers,
     body: JSON.stringify({ action, ...payload }),
