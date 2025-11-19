@@ -637,6 +637,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mode === 'development' && databaseApiPlugin(),
+    mode === 'development' && adminApiPlugin(),
+    mode === 'development' && paymentsApiPlugin(),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),
   resolve: {
