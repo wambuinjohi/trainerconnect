@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const performSignIn = async (email: string, password: string) => {
     const maxRetries = 3;
     const retryDelay = 1000;
     const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
@@ -122,6 +122,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+
+  const signIn = performSignIn;
 
   const signUp = async (email: string, password: string, userTypeParam: string, profile?: Record<string, any>) => {
     const maxRetries = 3;
