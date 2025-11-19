@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
+import Header from '@/components/Header'
 
 // Trainer card component
 const TrainerRow: React.FC<{ t: any }> = ({ t }) => (
