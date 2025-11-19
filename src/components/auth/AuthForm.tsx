@@ -1,0 +1,249 @@
+import React, { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useAuth } from '@/contexts/AuthContext'
+import { Loader2, User, Dumbbell } from 'lucide-react'
+import AuthLogo from '@/components/auth/AuthLogo'
+import ThemeToggle from '@/components/ui/ThemeToggle'
+import { toast } from '@/hooks/use-toast'
+import { clearAppCache } from '@/lib/clearCache'
+
+interface AuthFormProps {
+  onSuccess?: () => void
+  initialTab?: 'signin' | 'signup'
+}
+
+export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'signin' }) => {
+  const { signIn, signUp } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirmPassword: '',
+    userType: 'client' as 'client' | 'trainer',
+    fullName: '',
+    phone: '',
+    locationLabel: '',
+    locationLat: null as number | null,
+    locationLng: null as number | null,
+  })
+  const [dbDiag, setDbDiag] = useState<string | null>(null)
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+    try {
+      await signIn(formData.email.trim().toLowerCase(), formData.password)
+      onSuccess?.()
+    } catch (err) {
+      console.error('Sign in error:', err)
+      setError('Sign in failed. Please check your credentials.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const sanitizePhone = (input: string) => {
+    if (!input) return ''
+    let p = String(input).trim().replace(/[^0-9]/g, '')
+    if (p.startsWith('0')) p = '254' + p.replace(/^0+/, '')
+    return p
+  }
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (formData.password !== formData.confirmPassword) {
+      toast({ title: 'Passwords do not match', description: 'Please ensure your passwords match', variant: 'destructive' })
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const sanitizedPhone = sanitizePhone(formData.phone)
+      await signUp(formData.email.trim().toLowerCase(), formData.password, formData.userType, {
+        full_name: formData.fullName.trim(),
+        phone_number: sanitizedPhone,
+        location: formData.locationLabel.trim() || undefined,
+        location_label: formData.locationLabel.trim() || undefined,
+        location_lat: formData.locationLat ?? undefined,
+        location_lng: formData.locationLng ?? undefined,
+      })
+      onSuccess?.()
+    } catch (error) {
+      console.error('Sign up error:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Fallback for DB check (removed Supabase)
+  const handleSyncConnection = async () => {
+    setIsSyncing(true)
+    setDbDiag(null)
+    toast({ title: 'Database check skipped', description: 'Supabase references removed, using local fallback.' })
+    try {
+      const { cleared } = await clearAppCache()
+      toast({ title: 'Cache cleared', description: cleared.join(', ') })
+      setTimeout(() => { try { window.location.reload() } catch {} }, 300)
+    } catch (e:any) {
+      console.error('Clear cache failed:', e)
+    }
+    setIsSyncing(false)
+  }
+
+  const handleClearCacheOnly = async () => {
+    try {
+      const { cleared } = await clearAppCache()
+      toast({ title: 'Cache cleared', description: cleared.join(', ') })
+    } catch (e: any) {
+      toast({ title: 'Cache error', description: e?.message || 'Failed to clear cache.' })
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <Card className="w-full max-w-md border-border shadow-card">
+        <CardHeader className="text-center">
+          <div className="relative mb-6 flex justify-center">
+            <AuthLogo />
+            <ThemeToggle />
+          </div>
+          <CardTitle className="text-2xl font-bold text-foreground">Welcome</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Connect with the best trainers in your area
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Tabs defaultValue={initialTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="signin">
+              <form onSubmit={handleSignIn} className="space-y-4">
+                {error && (
+                  <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3">
+                    <p className="text-sm text-destructive mb-2">{error}</p>
+                    <a href="/api-test" className="text-xs text-primary hover:underline">
+                      Having connection issues? Test API →
+                    </a>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="signin-email">Email</Label>
+                  <Input id="signin-email" type="email" placeholder="Enter your email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signin-password">Password</Label>
+                  <Input id="signin-password" type="password" placeholder="Enter your password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Button type="submit" className="w-full border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10 disabled:bg-transparent" disabled={isLoading}>
+                    {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}
+                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="outline" className="border-trainer-primary text-trainer-primary hover:bg-trainer-primary/10" onClick={handleSyncConnection} disabled={isSyncing}>
+                      {isSyncing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Check & Clear…</> : 'Check DB & Clear Cache'}
+                    </Button>
+                    <Button type="button" variant="secondary" className="border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10" onClick={handleClearCacheOnly}>
+                      Empty Cache
+                    </Button>
+                  </div>
+                  {dbDiag && <pre className="mt-2 p-2 bg-muted/10 rounded text-sm max-h-40 overflow-auto">{dbDiag}</pre>}
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="signup">
+              <form onSubmit={handleSignUp} className="space-y-4">
+                {/* Signup form fields remain unchanged */}
+                {/* User Type */}
+                <div className="space-y-2">
+                  <Label htmlFor="user-type">I am a</Label>
+                  <Select value={formData.userType} onValueChange={(value: 'client' | 'trainer') => handleInputChange('userType', value)}>
+                    <SelectTrigger className="bg-input border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="client"><div className="flex items-center gap-2"><User className="h-4 w-4" />Client - Looking for trainers</div></SelectItem>
+                      <SelectItem value="trainer"><div className="flex items-center gap-2"><Dumbbell className="h-4 w-4" />Trainer - Offering services</div></SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="full-name">Full name</Label>
+                  <Input id="full-name" type="text" placeholder="Enter your full name" value={formData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone</Label>
+                  <Input id="phone" type="tel" placeholder="e.g. 0712345678 or +254712345678" value={formData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-email">Email</Label>
+                  <Input id="signup-email" type="email" placeholder="Enter your email" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-location">Your locality</Label>
+                  <div className="flex gap-2">
+                    <Input id="signup-location" type="text" placeholder="e.g. Nairobi, Parklands" value={formData.locationLabel} onChange={(e) => handleInputChange('locationLabel', e.target.value)} className="bg-input border-border" />
+                    <Button type="button" variant="outline" onClick={() => {
+                      if (!navigator.geolocation) {
+                        toast({ title: 'Location not supported', description: 'Your browser does not support geolocation' })
+                        return
+                      }
+                      const t = window.setTimeout(() => toast({ title: 'Location timeout', description: 'Could not get GPS in time' }), 5000)
+                      navigator.geolocation.getCurrentPosition((pos) => {
+                        window.clearTimeout(t)
+                        setFormData(prev => ({ ...prev, locationLat: pos.coords.latitude, locationLng: pos.coords.longitude, locationLabel: prev.locationLabel || 'My location' }))
+                        toast({ title: 'Location captured' })
+                      }, () => {
+                        window.clearTimeout(t)
+                        toast({ title: 'Location error', description: 'Unable to fetch GPS position', variant: 'destructive' })
+                      }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 })
+                    }}>Use GPS</Button>
+                  </div>
+                  {(formData.locationLat != null && formData.locationLng != null) && (
+                    <div className="text-xs text-muted-foreground">{formData.locationLat.toFixed(4)}, {formData.locationLng.toFixed(4)}</div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password">Password</Label>
+                  <Input id="signup-password" type="password" placeholder="Create a password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
+                  <Input id="confirm-password" type="password" placeholder="Confirm your password" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} required className="bg-input border-border" />
+                </div>
+
+                <Button type="submit" className="w-full border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10 disabled:bg-transparent" disabled={isLoading}>
+                  {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating account...</> : 'Create Account'}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

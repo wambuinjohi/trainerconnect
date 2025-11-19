@@ -1,0 +1,6 @@
+{
+  "appId": "co.skatryk.trainer",
+  "appName": "Skatryk Trainer",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

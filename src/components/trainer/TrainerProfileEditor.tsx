@@ -1,0 +1,296 @@
+import React, { useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from '@/hooks/use-toast'
+import { MediaUploadSection } from './MediaUploadSection'
+
+interface TrainerProfile {
+  user_id?: string
+  user_type?: string
+  name?: string
+  disciplines?: string[] | string
+  certifications?: string[] | string
+  hourly_rate?: number
+  hourly_rate_by_radius?: Array<{ radius_km: number; rate: number }>
+  service_radius?: number
+  availability?: any
+  payout_details?: any
+  profile_image?: string
+  bio?: string
+}
+
+export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+  const { user } = useAuth()
+  const userId = user?.id
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
+  const [name, setName] = useState('')
+
+  useEffect(() => {
+    if (!userId) return
+    setLoading(true)
+    // Simulate loading profile data - replace with your data source
+    try {
+      // Load from localStorage or other source as fallback
+      const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+      if (savedProfile) {
+        const data = JSON.parse(savedProfile)
+        setProfile(data)
+        setName(String(data.name || ''))
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile', error)
+      toast({ title: 'Error', description: 'Failed to load profile', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
+
+  const save = async () => {
+    if (!userId) {
+      toast({ title: 'Not signed in', description: 'Please sign in to edit your profile', variant: 'destructive' })
+      return
+    }
+    setLoading(true)
+    try {
+      // Disciplines & certifications normalization
+      const disciplines = Array.isArray(profile.disciplines)
+        ? profile.disciplines
+        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
+
+      const certifications = Array.isArray(profile.certifications)
+        ? profile.certifications
+        : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
+
+      // Hourly rate validation
+      const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
+      const hourlyRateNum = hourlyRateRaw === '' ? 0 : Number(hourlyRateRaw)
+      if (!Number.isFinite(hourlyRateNum) || hourlyRateNum < 0) {
+        toast({ title: 'Invalid hourly rate', description: 'Enter a non-negative number for hourly rate.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
+      // Service radius validation
+      const serviceRadiusRaw = profile.service_radius == null ? '' : profile.service_radius
+      const serviceRadiusNum = serviceRadiusRaw === '' ? null : Number(serviceRadiusRaw)
+      if (serviceRadiusNum !== null && (!Number.isFinite(serviceRadiusNum) || serviceRadiusNum < 0)) {
+        toast({ title: 'Invalid service radius', description: 'Enter a non-negative number for service radius.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
+      // Hourly rate by radius - sanitize and sort
+      const rawTiers = Array.isArray(profile.hourly_rate_by_radius) ? profile.hourly_rate_by_radius : []
+      const cleanedTiers: Array<{ radius_km: number; rate: number }> = []
+      for (let i = 0; i < rawTiers.length; i += 1) {
+        const item: any = rawTiers[i]
+        if (!item) continue
+        const r = Number(item.radius_km ?? item.radius ?? item.radius_km)
+        const rate = Number(item.rate ?? item.rate_per_hour ?? item.price ?? item.rate)
+        if (!Number.isFinite(r) || r < 0 || !Number.isFinite(rate) || rate < 0) {
+          toast({ title: 'Invalid travel tier', description: 'Each tier must have non-negative numeric radius and rate.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+        cleanedTiers.push({ radius_km: r, rate })
+      }
+      cleanedTiers.sort((a,b)=>a.radius_km - b.radius_km)
+
+      // Payout details - if string, attempt parse
+      let payoutDetails: any = profile.payout_details ?? null
+      if (typeof payoutDetails === 'string' && payoutDetails.trim() !== '') {
+        try {
+          payoutDetails = JSON.parse(payoutDetails)
+        } catch (e) {
+          toast({ title: 'Invalid payout JSON', description: 'Payout details must be valid JSON.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+      }
+
+      // Availability - if string, attempt parse
+      let availabilityVal: any = profile.availability ?? null
+      if (typeof availabilityVal === 'string' && availabilityVal.trim() !== '') {
+        try {
+          availabilityVal = JSON.parse(availabilityVal)
+        } catch (e) {
+          toast({ title: 'Invalid availability JSON', description: 'Availability must be valid JSON.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+      }
+
+      const profileData: TrainerProfile = {
+        user_id: userId,
+        user_type: 'trainer',
+        name: name || null,
+        disciplines,
+        certifications,
+        hourly_rate: hourlyRateNum,
+        hourly_rate_by_radius: cleanedTiers.length ? cleanedTiers : null,
+        service_radius: serviceRadiusNum,
+        availability: availabilityVal ?? null,
+        payout_details: payoutDetails ?? null,
+        profile_image: profile.profile_image || null,
+        bio: profile.bio || null,
+      }
+
+      // Save to localStorage as fallback - replace with your preferred storage
+      localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
+      
+      toast({ title: 'Saved', description: 'Profile updated successfully.' })
+      onClose?.()
+    } catch (err) {
+      console.error('Save profile error', err)
+      toast({ title: 'Error', description: (err as any)?.message || 'Failed to save profile', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Edit Trainer Profile</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <Label htmlFor="name">Full name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+          </div>
+
+          <div>
+            <Label htmlFor="profile-image">Profile Image URL</Label>
+            <Input id="profile-image" value={profile.profile_image || ''} onChange={(e) => handleChange('profile_image', e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div>
+            <Label htmlFor="bio">Bio</Label>
+            <textarea id="bio" value={profile.bio || ''} onChange={(e) => handleChange('bio', e.target.value)} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
+          </div>
+
+          <div>
+            <Label htmlFor="disciplines">Disciplines (comma separated)</Label>
+            <Input id="disciplines" value={(profile.disciplines && Array.isArray(profile.disciplines)) ? (profile.disciplines as string[]).join(', ') : (profile.disciplines as any) || ''} onChange={(e) => handleChange('disciplines', e.target.value)} />
+          </div>
+
+          <div>
+            <Label htmlFor="certifications">Certifications (comma separated)</Label>
+            <Input id="certifications" value={(profile.certifications && Array.isArray(profile.certifications)) ? (profile.certifications as string[]).join(', ') : (profile.certifications as any) || ''} onChange={(e) => handleChange('certifications', e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="hourly_rate">Default Hourly Rate</Label>
+              <Input id="hourly_rate" type="number" value={profile.hourly_rate ?? ''} onChange={(e) => handleChange('hourly_rate', Number(e.target.value))} />
+            </div>
+            <div>
+              <Label htmlFor="service_radius">Service Radius (km)</Label>
+              <Input id="service_radius" type="number" value={profile.service_radius ?? ''} onChange={(e) => handleChange('service_radius', Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Pricing by Service Radius</Label>
+            <div className="text-xs text-muted-foreground">Set tiered rates based on client distance (km). The first tier that is greater than or equal to the client's distance is used.</div>
+            <div className="space-y-2">
+              {(Array.isArray(profile.hourly_rate_by_radius) ? profile.hourly_rate_by_radius : []).map((row: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-5 gap-2 items-end">
+                  <div className="col-span-2">
+                    <Label>Max distance (km)</Label>
+                    <Input type="number" value={row.radius_km ?? ''} onChange={(e)=>{
+                      const v = Number(e.target.value)
+                      const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                      arr[idx] = { ...arr[idx], radius_km: isFinite(v) ? v : undefined }
+                      handleChange('hourly_rate_by_radius', arr)
+                    }} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Rate (Ksh/hour)</Label>
+                    <Input type="number" value={row.rate ?? ''} onChange={(e)=>{
+                      const v = Number(e.target.value)
+                      const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                      arr[idx] = { ...arr[idx], rate: isFinite(v) ? v : undefined }
+                      handleChange('hourly_rate_by_radius', arr)
+                    }} />
+                  </div>
+                  <Button variant="outline" onClick={()=>{
+                    const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                    arr.splice(idx,1)
+                    handleChange('hourly_rate_by_radius', arr)
+                  }}>Remove</Button>
+                </div>
+              ))}
+            </div>
+            <div>
+              <Button variant="ghost" onClick={()=>{
+                const base = Number(profile.hourly_rate)
+                const defaultRate = Number.isFinite(base) && base > 0 ? base : 30
+                const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[]), { radius_km: 5, rate: defaultRate }]
+                handleChange('hourly_rate_by_radius', arr)
+              }}>Add tier</Button>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="payout_details">Payout Details (JSON)</Label>
+            <textarea id="payout_details" value={profile.payout_details ? JSON.stringify(profile.payout_details) : ''} onChange={(e) => {
+              try {
+                const parsed = e.target.value ? JSON.parse(e.target.value) : null
+                handleChange('payout_details', parsed)
+              } catch {
+                // keep raw string until valid
+                handleChange('payout_details', e.target.value)
+              }
+            }} className="w-full p-2 border border-border rounded-md bg-input" rows={3} />
+            <p className="text-xs text-muted-foreground">You can provide bank_account/mobile_money and payout preferences. Example: <code>{"{\"payout_type\":\"weekly\",\"bank_account\":\"000111222\"}"}</code></p>
+          </div>
+
+          <div>
+            <Label htmlFor="availability">Availability (JSON)</Label>
+            <textarea id="availability" value={profile.availability ? JSON.stringify(profile.availability) : ''} onChange={(e) => {
+              try {
+                const parsed = e.target.value ? JSON.parse(e.target.value) : null
+                handleChange('availability', parsed)
+              } catch {
+                handleChange('availability', e.target.value)
+              }
+            }} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
+            <p className="text-xs text-muted-foreground">Provide a simple JSON schedule, e.g. <code>{"{\"monday\":[\"09:00-12:00\",\"14:00-18:00\"]}"}</code></p>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => onClose?.()} disabled={loading}>Cancel</Button>
+            <Button onClick={save} disabled={loading}>{loading ? 'Saving...' : 'Save Profile'}</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export const TrainerProfileWithMedia: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-6 p-4">
+      <TrainerProfileEditor onClose={onClose} />
+      <MediaUploadSection
+        title="Upload Your Media"
+        description="Add photos, videos, and certifications to showcase your expertise"
+        uploadType="all"
+        onFilesUploaded={(files) => {
+          toast({
+            title: 'Success',
+            description: `${files.length} file(s) uploaded successfully`
+          })
+        }}
+      />
+    </div>
+  )
+}

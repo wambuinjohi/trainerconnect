@@ -1,0 +1,291 @@
+import React, { useState, useEffect } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Search,
+  MapPin,
+  Star,
+  Calendar,
+  MessageCircle,
+  Gift,
+  Home,
+  Compass,
+  Clock,
+  User,
+  Plus,
+  ChevronRight
+} from 'lucide-react'
+import { TrainerDetails } from './TrainerDetails'
+import { ClientProfileEditor } from './ClientProfileEditor'
+import { PaymentMethods } from './PaymentMethods'
+import { NotificationsCenter } from './NotificationsCenter'
+import { ReportIssue } from './ReportIssue'
+import { FiltersModal } from './FiltersModal'
+import { ReviewModal } from './ReviewModal'
+import { NextSessionModal } from './NextSessionModal'
+import { LocationSelector } from './LocationSelector'
+import { toast } from '@/hooks/use-toast'
+
+const mockUser = { id: '1', email: 'client@example.com' }
+
+const mockCategories = [
+  { id: 'c1', name: 'Yoga', icon: '🧘' },
+  { id: 'c2', name: 'Strength', icon: '🏋️' },
+  { id: 'c3', name: 'Cardio', icon: '🏃' },
+]
+
+const mockTrainers = [
+  { 
+    id: 't1', 
+    name: 'Alice', 
+    discipline: 'Yoga', 
+    disciplines: ['Yoga'], 
+    rating: 4.8, 
+    reviews: 12, 
+    hourlyRate: 50, 
+    distance: '2 km', 
+    distanceKm: 2,
+    service_radius: 5,
+    available: true,
+    image: '👩'
+  },
+  { 
+    id: 't2', 
+    name: 'Bob', 
+    discipline: 'Strength', 
+    disciplines: ['Strength'], 
+    rating: 4.5, 
+    reviews: 8, 
+    hourlyRate: 60, 
+    distance: '5 km', 
+    distanceKm: 5,
+    service_radius: 10,
+    available: false,
+    image: '👨'
+  }
+]
+
+const mockBookings = [
+  { id: 'b1', session_date: '2025-11-12', session_time: '10:00', total_sessions: 1, status: 'completed', total_amount: 50 },
+  { id: 'b2', session_date: '2025-11-13', session_time: '14:00', total_sessions: 3, status: 'upcoming', total_amount: 180 }
+]
+
+export const ClientDashboard: React.FC = () => {
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeTab, setActiveTab] = useState('home')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<any>({})
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [selectedTrainer, setSelectedTrainer] = useState<any | null>(null)
+  const [showEditProfile, setShowEditProfile] = useState(false)
+  const [showPaymentMethods, setShowPaymentMethods] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showHelpSupport, setShowHelpSupport] = useState(false)
+  const [unreadMessagesClient, setUnreadMessagesClient] = useState(0)
+  const [unreadNotificationsClient, setUnreadNotificationsClient] = useState(0)
+  const [dbCategories, setDbCategories] = useState<any[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [referralSavings, setReferralSavings] = useState(0)
+  const [referralCode, setReferralCode] = useState('REF123')
+  const [referralCount, setReferralCount] = useState(0)
+  const [trainers, setTrainers] = useState<any[]>([])
+  const [bookings, setBookings] = useState<any[]>([])
+  const [reviewsByBooking, setReviewsByBooking] = useState<Record<string, any>>({})
+  const [reviewBooking, setReviewBooking] = useState<any | null>(null)
+  const [nextSessionBooking, setNextSessionBooking] = useState<any | null>(null)
+
+  const modalOpen = Boolean(selectedTrainer || showEditProfile || showPaymentMethods || showNotifications || showHelpSupport || showFilters || reviewBooking || nextSessionBooking)
+
+  useEffect(() => {
+    setDbCategories(mockCategories)
+    setCategoriesLoading(false)
+    setTrainers(mockTrainers)
+    setBookings(mockBookings)
+  }, [])
+
+  const applyFilters = (list: any[]) => {
+    return list.filter(t => {
+      if (selectedCategory) {
+        const ds = Array.isArray(t.disciplines) ? t.disciplines : [t.discipline]
+        const match = ds.some((d: string) => String(d || '').toLowerCase() === String(selectedCategory).toLowerCase())
+        if (!match) return false
+      }
+      if (filters.minRating && (t.rating || 0) < filters.minRating) return false
+      if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
+      if (filters.onlyAvailable && !t.available) return false
+      if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
+      if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.discipline || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+      return true
+    })
+  }
+
+  const requestLocation = () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Location not supported' })
+      return
+    }
+    navigator.geolocation.getCurrentPosition((pos) => {
+      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      toast({ title: 'Location set' })
+    }, (err) => {
+      toast({ title: 'Location error' })
+    })
+  }
+
+  const inviteFriends = () => {
+    try { navigator.clipboard.writeText(referralCode) } catch {}
+    toast({ title: 'Referral code', description: `Share this code: ${referralCode}` })
+  }
+
+  const openTrainer = (trainer: any) => setSelectedTrainer(trainer)
+  const closeTrainer = () => setSelectedTrainer(null)
+  const handleCategorySelect = (category: string) => { setSelectedCategory(category); setActiveTab('explore') }
+
+  // -------------------- Render Functions --------------------
+  const renderHomeContent = () => (
+    <div className="space-y-6">
+      <div className="text-center py-6">
+        <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
+        <p className="text-muted-foreground">Connect with certified professionals in your area</p>
+      </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
+        <Input
+          placeholder="Search for services..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-12 rounded-full bg-input border-border text-foreground placeholder:text-muted-foreground"
+        />
+      </div>
+
+      <LocationSelector />
+
+      {!userLocation && (
+        <Card className="bg-card border-border">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">Find trainers near you</h3>
+              <p className="text-sm text-muted-foreground">We use your location only to sort trainers by distance.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={requestLocation}>Enable GPS</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="bg-gradient-primary border-0 text-white">
+        <CardContent className="p-6 flex justify-between items-center">
+          <div>
+            <div className="flex items-center gap-2 mb-2"><Gift className="h-5 w-5" /><span className="font-semibold">Referral Rewards</span></div>
+            <p className="text-sm opacity-90 mb-3">Invite friends and get 10% off your next 5 bookings!</p>
+            <Button variant="secondary" size="sm" className="bg-white text-trainer-accent hover:bg-gray-100" onClick={inviteFriends}>Invite Friends</Button>
+          </div>
+          <div className="text-right">
+            <div className="text-2xl font-bold">Ksh {referralSavings}</div>
+            <div className="text-sm opacity-90">Saved so far</div>
+            <div className="text-xs opacity-90">Code: {referralCode}</div>
+            <div className="text-xs opacity-90">Referrals: {referralCount}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold text-foreground">Browse Categories</h2>
+        <div className="grid grid-cols-1 gap-4">
+          {categoriesLoading ? (
+            <>
+              <Skeleton className="h-20 w-full rounded-xl bg-muted/40" />
+              <Skeleton className="h-20 w-full rounded-xl bg-muted/40" />
+              <Skeleton className="h-20 w-full rounded-xl bg-muted/40" />
+            </>
+          ) : dbCategories.length === 0 ? (
+            <div className="text-center text-sm text-muted-foreground">No categories available.</div>
+          ) : (
+            dbCategories.map((category) => (
+              <Card key={category.id} className="bg-trainer-card border-transparent rounded-xl shadow-card hover:shadow-glow cursor-pointer group" onClick={() => handleCategorySelect(category.name)}>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center text-xl text-white shadow-glow">{category.icon}</div>
+                    <div>
+                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{category.name}</h3>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderExploreContent = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">Nearby Trainers</h1>
+        <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}><MapPin className="h-4 w-4 mr-2" />Filter</Button>
+      </div>
+
+      <div className="space-y-4">
+        {applyFilters(trainers).map((trainer) => (
+          <Card key={trainer.id} className="bg-card border-border">
+            <CardContent className="p-4 flex items-start gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-2xl">{trainer.image}</div>
+              <div className="flex-1">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="font-semibold text-foreground">{trainer.name}</h3>
+                    <p className="text-sm text-muted-foreground">{trainer.discipline}</p>
+                  </div>
+                  <Badge variant={trainer.available ? "default" : "secondary"}>{trainer.available ? 'Available' : 'Busy'}</Badge>
+                </div>
+                <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{trainer.rating} ({trainer.reviews})</div>
+                  <div className="flex items-center gap-1"><MapPin className="h-4 w-4" />{trainer.distance}</div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground">Ksh {trainer.hourlyRate}/hour</span>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => openTrainer(trainer)}><MessageCircle className="h-4 w-4" /></Button>
+                    <Button size="sm" className="bg-gradient-primary text-white" onClick={() => openTrainer(trainer)}>Book Now</Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+
+  // -------------------- Other renderContent functions (Schedule, Profile) can also be simplified similarly --------------------
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 overflow-auto pb-20 container max-w-md mx-auto p-4">
+        {activeTab === 'home' && renderHomeContent()}
+        {activeTab === 'explore' && renderExploreContent()}
+      </div>
+
+      {selectedTrainer && <TrainerDetails trainer={selectedTrainer} onClose={closeTrainer} />}
+      {showEditProfile && <ClientProfileEditor onClose={() => setShowEditProfile(false)} />}
+      {showPaymentMethods && <PaymentMethods onClose={() => setShowPaymentMethods(false)} />}
+      {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
+      {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
+      {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
+
+      {!modalOpen && (
+        <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
+          <div className="container max-w-md mx-auto flex justify-around py-2">
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className={activeTab === 'home' ? 'text-primary' : 'text-muted-foreground'}><Home className="h-5 w-5" /><span className="text-xs">Home</span></Button>
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('explore')} className={activeTab === 'explore' ? 'text-primary' : 'text-muted-foreground'}><Compass className="h-5 w-5" /><span className="text-xs">Explore</span></Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

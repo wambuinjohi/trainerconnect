@@ -1,0 +1,153 @@
+import React, { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Star, MapPin, MessageCircle, Calendar } from 'lucide-react'
+import { apiRequest, withAuth } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from '@/hooks/use-toast'
+import { BookingForm } from './BookingForm'
+import { Chat } from './Chat'
+
+export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = ({ trainer, onClose }) => {
+  const { user } = useAuth()
+  const [profile, setProfile] = useState<any>(null)
+  const [showBooking, setShowBooking] = useState(false)
+  const [showChat, setShowChat] = useState(false)
+
+  useEffect(() => {
+    // try to fetch real profile by trainer id
+    const fetchProfile = async () => {
+      try {
+        const data = await apiRequest('profile_get', { user_id: trainer.id }, { headers: withAuth() })
+        if (data) setProfile(data)
+      } catch (err) {
+        // ignore
+      }
+    }
+    fetchProfile()
+  }, [trainer.id])
+
+  const openBooking = () => setShowBooking(true)
+  const openChat = () => setShowChat(true)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full h-full sm:h-auto sm:max-w-2xl sm:max-h-[90vh]">
+        <Card className="h-full sm:h-auto rounded-none sm:rounded-lg">
+          {/* Mobile close button top-left */}
+          <button aria-label="Close" className="absolute top-3 left-3 z-60 sm:hidden bg-white/90 p-2 rounded-full shadow" onClick={onClose}>
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-foreground" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 011.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/></svg>
+          </button>
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle>{trainer.name}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 max-h-[80vh] overflow-auto">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl overflow-hidden">
+                  {profile?.profile_image ? <img src={profile.profile_image} alt="Profile" className="w-full h-full object-cover" /> : trainer.image}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Star className="h-4 w-4 text-yellow-400" />
+                    <span className="font-semibold">{trainer.rating} ({trainer.reviews} reviews)</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{trainer.distance}</span>
+                  </div>
+                </div>
+                <div className="ml-auto text-right">
+                  <div className="font-semibold">Ksh {trainer.hourlyRate}/hour</div>
+                  <Badge variant={trainer.available ? 'default' : 'secondary'}>{trainer.available ? 'Available' : 'Busy'}</Badge>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold mb-2">About</h4>
+                <p className="text-sm text-muted-foreground">{profile?.bio || 'Experienced trainer in ' + trainer.discipline + '.'}</p>
+              </div>
+
+              {(Array.isArray(profile?.disciplines) && profile.disciplines.length > 0) && (
+                <div>
+                  <h4 className="font-semibold mb-2">Disciplines</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.disciplines.map((d:any,i:number)=>(
+                      <Badge key={i}>{d}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 className="font-semibold mb-2">Pricing</h4>
+                {Array.isArray(profile?.hourly_rate_by_radius) && profile.hourly_rate_by_radius.length > 0 ? (
+                  <div className="text-sm text-muted-foreground">
+                    {profile.hourly_rate_by_radius.map((tier:any, i:number) => (
+                      <div key={i} className="flex justify-between">
+                        <span>Within {tier.radius_km} km</span>
+                        <span className="font-semibold">Ksh {Number(tier.rate)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Ksh {trainer.hourlyRate}/hour</div>
+                )}
+              </div>
+
+              {profile?.availability && (
+                <div>
+                  <h4 className="font-semibold mb-2">Availability</h4>
+                  <div className="grid grid-cols-1 gap-1 text-sm">
+                    {Object.entries(profile.availability as any).map(([day, slots]: any) => (
+                      <div key={day} className="flex justify-between">
+                        <span className="text-muted-foreground capitalize">{day}</span>
+                        <span className="text-foreground">{Array.isArray(slots) && slots.length ? slots.join(', ') : '—'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="hidden sm:flex flex-col gap-1">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={openChat}><MessageCircle className="h-4 w-4 mr-2" />Chat</Button>
+                  <Button onClick={openBooking} className="bg-gradient-primary text-white"><Calendar className="h-4 w-4 mr-2" />Book Now</Button>
+                  <Button variant="ghost" onClick={onClose}>Close</Button>
+                </div>
+                <div className="text-xs text-muted-foreground">Chatting in-app keeps your contact details private and helps us protect you from fraud.</div>
+              </div>
+
+              {/* Mobile sticky footer actions (hidden while booking/chat open) */}
+              {!showBooking && !showChat && (
+                <div className="sm:hidden fixed bottom-0 left-0 right-0 z-60 bg-card border-t border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" className="flex-1" onClick={openChat}><MessageCircle className="h-4 w-4 mr-2" />Chat</Button>
+                    <Button className="flex-1 bg-gradient-primary text-white" onClick={openBooking}><Calendar className="h-4 w-4 mr-2" />Book Now</Button>
+                  </div>
+                  <div className="mt-2 flex justify-center">
+                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                  </div>
+                </div>
+              )}
+
+              {showBooking && (
+                <div className="mt-2 max-h-[60vh] overflow-auto">
+                  <BookingForm trainer={trainer} onDone={() => { setShowBooking(false); toast({ title: 'Booked', description: 'Booking request sent.' }); onClose(); }} />
+                </div>
+              )}
+
+              {showChat && (
+                <div className="mt-2">
+                  <Chat trainer={trainer} onClose={() => setShowChat(false)} />
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}

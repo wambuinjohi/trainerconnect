@@ -1,0 +1,10 @@
+{
+  "applicationId": "com.trainercoachconnect.app",
+  "name": "TrainerCoachConnect",
+  "shortName": "Trainer",
+  "launcherName": "Trainer",
+  "host": "trainercoachconnect.com",
+  "manifestUrl": "https://trainercoachconnect.com/manifest.webmanifest",
+  "display": "standalone",
+  "orientation": "portrait"
+}
