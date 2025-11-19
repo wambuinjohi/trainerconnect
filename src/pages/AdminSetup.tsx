@@ -18,7 +18,7 @@ export default function AdminSetup() {
   const runMigration = async () => {
     setLoading(true);
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'migrate' }),
