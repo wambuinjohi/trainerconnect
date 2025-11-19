@@ -22,18 +22,29 @@ export function ConnectionStatusDialog() {
 
   const handleUpdateUrl = async () => {
     if (editUrl.trim()) {
-      setApiUrl(editUrl);
-      setShowUrlEdit(false);
-      setIsTesting(true);
-      const connected = await testConnection();
-      setIsTesting(false);
+      try {
+        setApiUrl(editUrl);
+        setShowUrlEdit(false);
+        setIsTesting(true);
+        const connected = await testConnection();
+        setIsTesting(false);
+      } catch (error) {
+        console.error('Failed to update API URL:', error);
+        setIsTesting(false);
+      }
     }
   };
 
   const handleRetry = async () => {
-    setIsTesting(true);
-    await testConnection();
-    setIsTesting(false);
+    try {
+      setIsTesting(true);
+      await testConnection();
+    } catch (error) {
+      // Error is already handled in ApiConfigContext
+      console.error('Connection test failed:', error);
+    } finally {
+      setIsTesting(false);
+    }
   };
 
   const handleClose = () => {
