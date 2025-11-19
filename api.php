@@ -738,6 +738,35 @@ switch ($action) {
         }
         break;
 
+    // RESET PASSWORDS: Reset all test user passwords
+    case 'reset_passwords':
+        $newPassword = 'Pass1234';
+        $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+
+        $testEmails = ['admin@skatryk.co.ke', 'trainer@skatryk.co.ke', 'client@skatryk.co.ke'];
+        $updated = 0;
+        $errors = [];
+
+        foreach ($testEmails as $email) {
+            $stmt = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
+            $stmt->bind_param("ss", $passwordHash, $email);
+
+            if ($stmt->execute()) {
+                $updated++;
+                error_log("Password reset for: " . $email);
+            } else {
+                $errors[] = "{$email}: " . $stmt->error;
+            }
+            $stmt->close();
+        }
+
+        if (!empty($errors)) {
+            respond("success", "Password reset complete: $updated users updated. Errors: " . implode("; ", $errors), ["updated" => $updated, "errors" => $errors]);
+        } else {
+            respond("success", "Password reset complete: $updated users updated to 'Pass1234'.", ["updated" => $updated]);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.");
