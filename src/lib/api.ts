@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = '/api.php'
+const DEFAULT_API_URL = 'https://trainer.skatryk.co.ke/api.php'
 
 export function getApiUrl(): string {
   if (typeof window !== 'undefined') {

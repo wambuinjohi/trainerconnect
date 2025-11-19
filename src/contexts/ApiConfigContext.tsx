@@ -12,7 +12,7 @@ interface ApiConfigContextType {
 
 const ApiConfigContext = createContext<ApiConfigContextType | undefined>(undefined);
 
-const DEFAULT_API_URL = '/api.php';
+const DEFAULT_API_URL = 'https://trainer.skatryk.co.ke/api.php';
 
 export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
   const [apiUrl, setApiUrlState] = useState<string>(DEFAULT_API_URL);
@@ -41,6 +41,7 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'health_check' }),
         credentials: 'include',
+        signal: AbortSignal.timeout(5000), // 5 second timeout
       });
 
       if (response.ok) {

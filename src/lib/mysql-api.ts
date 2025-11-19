@@ -3,7 +3,7 @@
  * Provides a Supabase-like interface for the local MySQL API
  */
 
-const API_URL = '/api.php';
+const API_URL = 'https://trainer.skatryk.co.ke/api.php';
 const API_TIMEOUT = 30000; // 30 seconds
 
 // Session storage
