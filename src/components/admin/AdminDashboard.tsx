@@ -127,6 +127,7 @@ const initialStats = {
 
 export const AdminDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
   const [settings, setSettings] = useState<PlatformSettings>(defaultSettings)
   const [saving, setSaving] = useState(false)
