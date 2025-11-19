@@ -66,29 +66,32 @@ const Explore: React.FC = () => {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="container max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Explore Trainers</h1>
-        <p className="text-sm text-muted-foreground mb-4">
-          Browse trainers nearby, view profiles, and book sessions. Sign in to see more details and to make bookings.
-        </p>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="p-4">
+        <div className="container max-w-3xl mx-auto">
+          <h1 className="text-2xl font-bold mb-2">Explore Trainers</h1>
+          <p className="text-sm text-muted-foreground mb-4">
+            Browse trainers nearby, view profiles, and book sessions. Sign in to see more details and to make bookings.
+          </p>
 
-        {loading ? (
-          <div className="text-center text-muted-foreground">Loading trainers…</div>
-        ) : (
-          <div>
-            {trainers.length === 0 ? (
-              <Card><CardContent>No trainers found. Try again later.</CardContent></Card>
-            ) : (
-              trainers.map((t:any) => <TrainerRow key={t.id || Math.random()} t={t} />)
-            )}
+          {loading ? (
+            <div className="text-center text-muted-foreground">Loading trainers…</div>
+          ) : (
+            <div>
+              {trainers.length === 0 ? (
+                <Card><CardContent>No trainers found. Try again later.</CardContent></Card>
+              ) : (
+                trainers.map((t:any) => <TrainerRow key={t.id || Math.random()} t={t} />)
+              )}
+            </div>
+          )}
+
+          <div className="mt-4">
+            <Link to="/signin">
+              <Button>Sign in to book</Button>
+            </Link>
           </div>
-        )}
-
-        <div className="mt-4">
-          <Link to="/signin">
-            <Button>Sign in to book</Button>
-          </Link>
         </div>
       </div>
     </div>
