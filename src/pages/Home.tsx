@@ -1,9 +1,8 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import AuthLogo from '@/components/auth/AuthLogo'
-import ThemeToggle from '@/components/ui/ThemeToggle'
 import { Button } from '@/components/ui/button'
+import Header from '@/components/Header'
 import { 
   CheckCircle2, 
   MapPin, 
