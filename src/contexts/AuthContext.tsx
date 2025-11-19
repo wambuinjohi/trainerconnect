@@ -108,7 +108,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, userTypeParam: string, profile?: Record<string, any>) => {
     const maxRetries = 3;
     const retryDelay = 1000;
-    const apiUrl = '/api.php';
+    const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
+    const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
