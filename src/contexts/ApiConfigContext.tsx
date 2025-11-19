@@ -41,6 +41,7 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'health_check' }),
         credentials: 'include',
+        signal: AbortSignal.timeout(5000), // 5 second timeout
       });
 
       if (response.ok) {
