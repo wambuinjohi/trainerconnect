@@ -18,7 +18,7 @@ const Header: React.FC = () => {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-40 items-center justify-between">
           <div className="flex items-center gap-6 lg:gap-8">
-            <AuthLogo compact containerClassName="h-32 w-32" className="h-32" />
+            <AuthLogo compact containerClassName="h-48 w-48" className="h-48" />
             <nav className="hidden md:flex items-center gap-8">
               <NavLink to="/">Home</NavLink>
               <NavLink to="/explore">Explore</NavLink>
