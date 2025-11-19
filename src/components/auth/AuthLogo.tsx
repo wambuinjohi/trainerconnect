@@ -13,7 +13,7 @@ const AuthLogoComponent: React.FC<{ className?: string; containerClassName?: str
           <img
             src={logoSrc}
             alt={APP_LOGO_ALT}
-            className={`h-6 w-auto object-contain drop-shadow-none dark:brightness-110 ${className}`}
+            className={`h-10 w-auto object-contain drop-shadow-none dark:brightness-110 ${className}`}
             loading="eager"
           />
         </div>
