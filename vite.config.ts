@@ -551,9 +551,6 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
-    databaseApiPlugin(),
-    adminApiPlugin(),
-    paymentsApiPlugin(),
   ].filter(Boolean),
   resolve: {
     alias: {

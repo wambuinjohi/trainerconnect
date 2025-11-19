@@ -3,14 +3,27 @@
 // UNIVERSAL MYSQL API FOR REACT FRONTEND
 // ======================================
 
-// Include the database connection
-include('connection.php');
-
-// Allow cross-origin requests
+// Set headers before any output
+header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Content-Type: application/json; charset=utf-8");
+
+// Set error handler to prevent HTML error output
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
+    if (!headers_sent()) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "An error occurred. Please try again later."
+        ]);
+    }
+    exit;
+});
+
+// Include the database connection
+include('connection.php');
 
 // Handle preflight (OPTIONS) requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -293,6 +306,7 @@ switch ($action) {
     // LOGIN ACTION
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
+            error_log("Login attempt failed: Missing email or password");
             respond("error", "Missing email or password.");
         }
 
@@ -306,6 +320,7 @@ switch ($action) {
         $result = $stmt->get_result();
 
         if (!$result || $result->num_rows === 0) {
+            error_log("Login attempt failed: User not found for email: " . $email);
             respond("error", "Invalid email or password.");
         }
 
@@ -314,11 +329,13 @@ switch ($action) {
 
         // Verify password using password_verify
         if (!password_verify($password, $user['password_hash'])) {
+            error_log("Login attempt failed: Invalid password for email: " . $email);
             respond("error", "Invalid email or password.");
         }
 
         // Check user status
         if ($user['status'] !== 'active') {
+            error_log("Login attempt failed: User account is not active for email: " . $email . " (Status: " . $user['status'] . ")");
             respond("error", "User account is not active.");
         }
 
@@ -444,7 +461,7 @@ switch ($action) {
         ]);
         break;
 
-    // MIGRATE: Create users table
+    // MIGRATE: Create users and password_reset_tokens tables
     case 'migrate':
         $sql = "
         CREATE TABLE IF NOT EXISTS `users` (
@@ -474,6 +491,27 @@ switch ($action) {
 
         if ($conn->query($sql)) {
             respond("success", "Migration successful: users table created or already exists.");
+        } else {
+            respond("error", "Migration failed: " . $conn->error);
+        }
+
+        // Create password_reset_tokens table
+        $resetTokensTable = "
+        CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
+          `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          `user_id` VARCHAR(36) NOT NULL,
+          `token` VARCHAR(255) NOT NULL UNIQUE,
+          `expires_at` TIMESTAMP NOT NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          INDEX idx_user_id (user_id),
+          INDEX idx_token (token),
+          INDEX idx_expires_at (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+
+        if ($conn->query($resetTokensTable)) {
+            respond("success", "Migration successful: users and password_reset_tokens tables created or already exist.");
         } else {
             respond("error", "Migration failed: " . $conn->error);
         }
@@ -718,6 +756,145 @@ switch ($action) {
                 "seeded" => $seeded,
                 "skipped" => $skipped
             ]);
+        }
+        break;
+
+    // REQUEST PASSWORD RESET: Send reset email
+    case 'request_password_reset':
+        if (!isset($input['email'])) {
+            respond("error", "Email is required.");
+        }
+
+        $email = $conn->real_escape_string($input['email']);
+
+        $stmt = $conn->prepare("SELECT id, email, first_name FROM users WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result || $result->num_rows === 0) {
+            error_log("Password reset requested for non-existent email: " . $email);
+            respond("success", "If an account exists with this email, you will receive a password reset link.");
+        }
+
+        $user = $result->fetch_assoc();
+        $stmt->close();
+
+        // Generate reset token
+        $resetToken = bin2hex(random_bytes(32));
+        $tokenExpiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        // Store reset token in a password_reset_tokens table
+        $stmt = $conn->prepare("INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt->bind_param("sss", $user['id'], $resetToken, $tokenExpiry);
+
+        if ($stmt->execute()) {
+            error_log("Password reset token generated for: " . $email);
+            $stmt->close();
+
+            // In production, send email here
+            // For now, just return success
+            respond("success", "Password reset link has been sent to your email.", [
+                "email" => $email,
+                "token" => $resetToken // In production, don't return token in response
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to generate reset link. Please try again.");
+        }
+        break;
+
+    // RESET PASSWORD WITH TOKEN: Complete password reset
+    case 'reset_password_with_token':
+        if (!isset($input['email']) || !isset($input['token']) || !isset($input['new_password'])) {
+            respond("error", "Email, token, and new password are required.");
+        }
+
+        $email = $conn->real_escape_string($input['email']);
+        $token = $conn->real_escape_string($input['token']);
+        $newPassword = $input['new_password'];
+
+        if (strlen($newPassword) < 8) {
+            respond("error", "Password must be at least 8 characters long.");
+        }
+
+        // Find user
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $userResult = $stmt->get_result();
+
+        if (!$userResult || $userResult->num_rows === 0) {
+            respond("error", "User not found.");
+        }
+
+        $user = $userResult->fetch_assoc();
+        $stmt->close();
+
+        // Verify token
+        $now = date('Y-m-d H:i:s');
+        $stmt = $conn->prepare("SELECT id FROM password_reset_tokens WHERE user_id = ? AND token = ? AND expires_at > ? LIMIT 1");
+        $stmt->bind_param("sss", $user['id'], $token, $now);
+        $stmt->execute();
+        $tokenResult = $stmt->get_result();
+
+        if (!$tokenResult || $tokenResult->num_rows === 0) {
+            error_log("Invalid or expired password reset token for: " . $email);
+            respond("error", "Reset link is invalid or has expired.");
+        }
+
+        $stmt->close();
+
+        // Hash new password
+        $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+
+        // Update password
+        $stmt = $conn->prepare("UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ss", $passwordHash, $user['id']);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to update password. Please try again.");
+        }
+
+        $stmt->close();
+
+        // Delete used token
+        $stmt = $conn->prepare("DELETE FROM password_reset_tokens WHERE user_id = ? AND token = ?");
+        $stmt->bind_param("ss", $user['id'], $token);
+        $stmt->execute();
+        $stmt->close();
+
+        error_log("Password reset successful for: " . $email);
+        respond("success", "Password has been reset successfully.");
+        break;
+
+    // RESET PASSWORDS: Reset all test user passwords
+    case 'reset_passwords':
+        $newPassword = 'Pass1234';
+        $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+
+        $testEmails = ['admin@skatryk.co.ke', 'trainer@skatryk.co.ke', 'client@skatryk.co.ke'];
+        $updated = 0;
+        $errors = [];
+
+        foreach ($testEmails as $email) {
+            $stmt = $conn->prepare("UPDATE users SET password_hash = ? WHERE email = ?");
+            $stmt->bind_param("ss", $passwordHash, $email);
+
+            if ($stmt->execute()) {
+                $updated++;
+                error_log("Password reset for: " . $email);
+            } else {
+                $errors[] = "{$email}: " . $stmt->error;
+            }
+            $stmt->close();
+        }
+
+        if (!empty($errors)) {
+            respond("success", "Password reset complete: $updated users updated. Errors: " . implode("; ", $errors), ["updated" => $updated, "errors" => $errors]);
+        } else {
+            respond("success", "Password reset complete: $updated users updated to 'Pass1234'.", ["updated" => $updated]);
         }
         break;
 

@@ -25,6 +25,7 @@ import Contact from "./pages/Contact";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import UploadDemo from "./pages/UploadDemo";
+import PasswordReset from "./pages/PasswordReset";
 
 const queryClient = new QueryClient();
 
@@ -93,6 +94,7 @@ const App = () => (
                         />
                       }
                     />
+                    <Route path="/password-reset" element={<PasswordReset />} />
                     <Route path="/setup" element={<AdminSetup />} />
                     <Route path="/api-test" element={<ApiTest />} />
                     <Route path="/explore" element={<Explore />} />

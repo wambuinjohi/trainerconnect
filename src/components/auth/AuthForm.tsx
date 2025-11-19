@@ -11,6 +11,7 @@ import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
 import { clearAppCache } from '@/lib/clearCache'
+import { Link } from 'react-router-dom'
 
 interface AuthFormProps {
   onSuccess?: () => void
@@ -148,7 +149,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Link to="/password-reset" className="text-xs text-trainer-primary hover:underline">
+                      Forgot?
+                    </Link>
+                  </div>
                   <Input id="signin-password" type="password" placeholder="Enter your password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required className="bg-input border-border" />
                 </div>
 
