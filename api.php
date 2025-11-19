@@ -3,14 +3,27 @@
 // UNIVERSAL MYSQL API FOR REACT FRONTEND
 // ======================================
 
-// Include the database connection
-include('connection.php');
-
-// Allow cross-origin requests
+// Set headers before any output
+header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
-header("Content-Type: application/json; charset=utf-8");
+
+// Set error handler to prevent HTML error output
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
+    if (!headers_sent()) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "An error occurred. Please try again later."
+        ]);
+    }
+    exit;
+});
+
+// Include the database connection
+include('connection.php');
 
 // Handle preflight (OPTIONS) requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
