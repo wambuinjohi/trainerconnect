@@ -871,7 +871,12 @@ switch ($action) {
 
     // RESET PASSWORDS: Reset all test user passwords
     case 'reset_passwords':
-        $newPassword = 'Pass1234';
+        $newPassword = isset($input['password']) ? $input['password'] : 'Test123';
+
+        if (strlen($newPassword) < 6) {
+            respond("error", "Password must be at least 6 characters long.");
+        }
+
         $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
 
         $testEmails = ['admin@skatryk.co.ke', 'trainer@skatryk.co.ke', 'client@skatryk.co.ke'];
@@ -894,7 +899,7 @@ switch ($action) {
         if (!empty($errors)) {
             respond("success", "Password reset complete: $updated users updated. Errors: " . implode("; ", $errors), ["updated" => $updated, "errors" => $errors]);
         } else {
-            respond("success", "Password reset complete: $updated users updated to 'Pass1234'.", ["updated" => $updated]);
+            respond("success", "Password reset complete: $updated users updated to '$newPassword'.", ["updated" => $updated]);
         }
         break;
 
