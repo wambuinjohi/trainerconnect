@@ -351,6 +351,92 @@ function databaseApiPlugin() {
             return;
           }
 
+          // Handle get_users action
+          if (action === "get_users") {
+            let connection: any = null;
+            try {
+              connection = await mysql.createConnection(dbConfig);
+
+              const [rows]: any = await connection.execute(`
+                SELECT
+                  u.id, u.email, u.phone, u.first_name, u.last_name, u.status,
+                  u.created_at, u.updated_at,
+                  up.user_id, up.user_type, up.full_name, up.phone_number, up.bio,
+                  up.profile_image, up.hourly_rate, up.rating, up.total_reviews,
+                  up.is_approved
+                FROM users u
+                LEFT JOIN user_profiles up ON u.id = up.user_id
+                ORDER BY u.created_at DESC
+              `);
+
+              respond("success", "Users fetched successfully.", rows);
+            } catch (err: any) {
+              respond("error", `Failed to fetch users: ${err.message}`, null, 500);
+            } finally {
+              if (connection) await connection.end();
+            }
+            return;
+          }
+
+          // Handle reset_passwords action
+          if (action === "reset_passwords") {
+            let connection: any = null;
+            try {
+              connection = await mysql.createConnection(dbConfig);
+              const newPassword = input.password || "Test123";
+
+              if (newPassword.length < 6) {
+                respond("error", "Password must be at least 6 characters long.", null, 400);
+                return;
+              }
+
+              const crypto = require("crypto");
+              const passwordHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+
+              const testEmails = [
+                "admin@skatryk.co.ke",
+                "trainer@skatryk.co.ke",
+                "client@skatryk.co.ke",
+              ];
+              let updated = 0;
+              const errors: string[] = [];
+
+              for (const email of testEmails) {
+                try {
+                  const result = await connection.execute(
+                    "UPDATE users SET password_hash = ? WHERE email = ?",
+                    [passwordHash, email]
+                  );
+                  const affectedRows = (result as any)[0]?.affectedRows || 0;
+                  if (affectedRows > 0) {
+                    updated++;
+                  }
+                } catch (err: any) {
+                  errors.push(`${email}: ${err.message}`);
+                }
+              }
+
+              if (errors.length > 0) {
+                respond(
+                  "success",
+                  `Password reset complete: ${updated} users updated. Errors: ${errors.join("; ")}`,
+                  { updated, errors }
+                );
+              } else {
+                respond(
+                  "success",
+                  `Password reset complete: ${updated} users updated to '${newPassword}'.`,
+                  { updated }
+                );
+              }
+            } catch (err: any) {
+              respond("error", `Password reset failed: ${err.message}`, null, 500);
+            } finally {
+              if (connection) await connection.end();
+            }
+            return;
+          }
+
           // Unknown action
           respond("error", `Invalid action '${action}'.`, null, 400);
         } catch (err: any) {
