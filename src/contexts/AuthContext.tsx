@@ -56,12 +56,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const isHtml = contentType?.includes('text/html');
 
         if (isHtml) {
-          console.warn(`Login attempt ${attempt}: Received HTML instead of JSON, retrying...`);
+          const errorText = await response.text();
+          console.error(`Login attempt ${attempt}: Server returned HTML instead of JSON`);
+          console.error('Response:', errorText.substring(0, 500));
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
           }
-          throw new Error('Server returned HTML instead of JSON. Please check API deployment.');
+          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
         }
 
         const result = await response.json();
