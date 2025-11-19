@@ -68,12 +68,9 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Test connection on mount
-  useEffect(() => {
-    if (initialized) {
-      testConnection();
-    }
-  }, [initialized]);
+  // Don't automatically test connection on mount to avoid blocking the app
+  // Users can test connection manually when needed via the UI
+  // The login/signup flow will verify the API is working
 
   return (
     <ApiConfigContext.Provider
