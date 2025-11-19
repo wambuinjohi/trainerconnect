@@ -161,16 +161,31 @@ export default function ResetPasswords() {
               </div>
             </div>
 
-            {/* Action Button */}
-            <Button
-              onClick={resetAllPasswords}
-              disabled={loading || !password.trim()}
-              className="w-full bg-gradient-primary text-white hover:opacity-90"
-              size="lg"
-            >
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {loading ? 'Resetting Passwords...' : 'Reset All Passwords'}
-            </Button>
+            {/* Action Buttons */}
+            <div className="space-y-3">
+              {!resetDone && (
+                <Button
+                  onClick={resetAllPasswords}
+                  disabled={loading || !password.trim()}
+                  className="w-full bg-gradient-primary text-white hover:opacity-90"
+                  size="lg"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {loading ? 'Resetting Passwords...' : 'Reset All Passwords'}
+                </Button>
+              )}
+
+              {resetDone && (
+                <Button
+                  onClick={() => navigate('/signin')}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  size="lg"
+                >
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                  Passwords Reset! Go to Login
+                </Button>
+              )}
+            </div>
 
             {/* Messages */}
             {messages.length > 0 && (
