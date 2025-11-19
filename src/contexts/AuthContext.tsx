@@ -23,20 +23,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('app-user');
-    const storedType = localStorage.getItem('app-user-type');
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedUser && storedType && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setUserType(storedType as 'client' | 'trainer' | 'admin');
-      } catch {
-        localStorage.removeItem('app-user');
-        localStorage.removeItem('app-user-type');
-        localStorage.removeItem('auth_token');
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('app-user');
+      const storedType = localStorage.getItem('app-user-type');
+      const storedToken = localStorage.getItem('auth_token');
+
+      if (storedUser && storedType && storedToken) {
+        try {
+          setUser(JSON.parse(storedUser));
+          setUserType(storedType as 'client' | 'trainer' | 'admin');
+          setLoading(false);
+          return;
+        } catch {
+          localStorage.removeItem('app-user');
+          localStorage.removeItem('app-user-type');
+          localStorage.removeItem('auth_token');
+        }
       }
-    }
-    setLoading(false);
+
+      // Auto-login with admin account if no user is logged in
+      const autoLoginEnabled = localStorage.getItem('auto_login_enabled') !== 'false';
+      if (autoLoginEnabled && !storedUser) {
+        try {
+          await signInInternal('admin@skatryk.co.ke', 'Pass1234');
+          console.log('Auto-login successful for admin@skatryk.co.ke');
+        } catch (error) {
+          console.log('Auto-login failed, proceeding to login page');
+        }
+      }
+
+      setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
   const signIn = async (email: string, password: string) => {
