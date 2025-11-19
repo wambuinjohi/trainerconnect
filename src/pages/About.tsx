@@ -53,7 +53,7 @@ const About: React.FC = () => (
           <Button variant="outline">Back to Home</Button>
         </Link>
       </div>
-    </div>
+      </div>
     </div>
   </div>
 )
