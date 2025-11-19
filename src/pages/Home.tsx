@@ -92,10 +92,10 @@ const Home: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+          <div className="flex h-28 items-center justify-between">
             <div className="flex items-center gap-6 lg:gap-8">
               <AuthLogo compact containerClassName="h-24 w-24" className="h-24" />
-              <nav className="hidden md:flex items-center gap-6">
+              <nav className="hidden md:flex items-center gap-8">
                 <NavLink to="/">Home</NavLink>
                 <NavLink to="/explore">Explore</NavLink>
                 <NavLink to="/about">About</NavLink>
@@ -103,18 +103,18 @@ const Home: React.FC = () => {
               </nav>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <ThemeToggle />
               <div className="md:hidden">
-                <button 
-                  aria-label="menu" 
-                  onClick={() => setOpen(v => !v)} 
-                  className="p-2 rounded-md hover:bg-accent transition-colors"
+                <button
+                  aria-label="menu"
+                  onClick={() => setOpen(v => !v)}
+                  className="p-2 rounded-md hover:bg-accent transition-colors text-base font-medium"
                 >
                   {open ? 'Close' : 'Menu'}
                 </button>
               </div>
-              <div className="hidden md:flex items-center gap-3">
+              <div className="hidden md:flex items-center gap-4">
                 <Link to="/signin">
                   <Button variant="ghost">Sign In</Button>
                 </Link>
