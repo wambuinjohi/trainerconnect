@@ -420,6 +420,7 @@ switch ($action) {
     // SIGNUP ACTION
     case 'signup':
         if (!isset($input['email']) || !isset($input['password'])) {
+            logEvent('signup_failed', ['reason' => 'missing_credentials']);
             respond("error", "Missing email or password.");
         }
 
@@ -431,6 +432,8 @@ switch ($action) {
         $country = isset($input['country']) ? $conn->real_escape_string($input['country']) : NULL;
         $userType = isset($input['user_type']) ? $conn->real_escape_string($input['user_type']) : 'client';
 
+        logEvent('signup_attempt', ['email' => $email, 'user_type' => $userType]);
+
         // Check if user exists using prepared statement
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
@@ -438,6 +441,7 @@ switch ($action) {
         $checkResult = $stmt->get_result();
         if ($checkResult->num_rows > 0) {
             $stmt->close();
+            logEvent('signup_failed', ['email' => $email, 'reason' => 'user_already_exists']);
             respond("error", "User already exists.");
         }
         $stmt->close();
