@@ -94,6 +94,7 @@ const App = () => (
                         />
                       }
                     />
+                    <Route path="/password-reset" element={<PasswordReset />} />
                     <Route path="/setup" element={<AdminSetup />} />
                     <Route path="/api-test" element={<ApiTest />} />
                     <Route path="/explore" element={<Explore />} />
