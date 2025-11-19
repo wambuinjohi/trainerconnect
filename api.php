@@ -738,6 +738,116 @@ switch ($action) {
         }
         break;
 
+    // REQUEST PASSWORD RESET: Send reset email
+    case 'request_password_reset':
+        if (!isset($input['email'])) {
+            respond("error", "Email is required.");
+        }
+
+        $email = $conn->real_escape_string($input['email']);
+
+        $stmt = $conn->prepare("SELECT id, email, first_name FROM users WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if (!$result || $result->num_rows === 0) {
+            error_log("Password reset requested for non-existent email: " . $email);
+            respond("success", "If an account exists with this email, you will receive a password reset link.");
+        }
+
+        $user = $result->fetch_assoc();
+        $stmt->close();
+
+        // Generate reset token
+        $resetToken = bin2hex(random_bytes(32));
+        $tokenExpiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+        // Store reset token in a password_reset_tokens table
+        $stmt = $conn->prepare("INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at) VALUES (?, ?, ?, NOW())");
+        $stmt->bind_param("sss", $user['id'], $resetToken, $tokenExpiry);
+
+        if ($stmt->execute()) {
+            error_log("Password reset token generated for: " . $email);
+            $stmt->close();
+
+            // In production, send email here
+            // For now, just return success
+            respond("success", "Password reset link has been sent to your email.", [
+                "email" => $email,
+                "token" => $resetToken // In production, don't return token in response
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to generate reset link. Please try again.");
+        }
+        break;
+
+    // RESET PASSWORD WITH TOKEN: Complete password reset
+    case 'reset_password_with_token':
+        if (!isset($input['email']) || !isset($input['token']) || !isset($input['new_password'])) {
+            respond("error", "Email, token, and new password are required.");
+        }
+
+        $email = $conn->real_escape_string($input['email']);
+        $token = $conn->real_escape_string($input['token']);
+        $newPassword = $input['new_password'];
+
+        if (strlen($newPassword) < 8) {
+            respond("error", "Password must be at least 8 characters long.");
+        }
+
+        // Find user
+        $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
+        $stmt->bind_param("s", $email);
+        $stmt->execute();
+        $userResult = $stmt->get_result();
+
+        if (!$userResult || $userResult->num_rows === 0) {
+            respond("error", "User not found.");
+        }
+
+        $user = $userResult->fetch_assoc();
+        $stmt->close();
+
+        // Verify token
+        $now = date('Y-m-d H:i:s');
+        $stmt = $conn->prepare("SELECT id FROM password_reset_tokens WHERE user_id = ? AND token = ? AND expires_at > ? LIMIT 1");
+        $stmt->bind_param("sss", $user['id'], $token, $now);
+        $stmt->execute();
+        $tokenResult = $stmt->get_result();
+
+        if (!$tokenResult || $tokenResult->num_rows === 0) {
+            error_log("Invalid or expired password reset token for: " . $email);
+            respond("error", "Reset link is invalid or has expired.");
+        }
+
+        $stmt->close();
+
+        // Hash new password
+        $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+
+        // Update password
+        $stmt = $conn->prepare("UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?");
+        $stmt->bind_param("ss", $passwordHash, $user['id']);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to update password. Please try again.");
+        }
+
+        $stmt->close();
+
+        // Delete used token
+        $stmt = $conn->prepare("DELETE FROM password_reset_tokens WHERE user_id = ? AND token = ?");
+        $stmt->bind_param("ss", $user['id'], $token);
+        $stmt->execute();
+        $stmt->close();
+
+        error_log("Password reset successful for: " . $email);
+        respond("success", "Password has been reset successfully.");
+        break;
+
     // RESET PASSWORDS: Reset all test user passwords
     case 'reset_passwords':
         $newPassword = 'Pass1234';
