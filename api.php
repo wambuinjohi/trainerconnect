@@ -461,7 +461,7 @@ switch ($action) {
         ]);
         break;
 
-    // MIGRATE: Create users table
+    // MIGRATE: Create users and password_reset_tokens tables
     case 'migrate':
         $sql = "
         CREATE TABLE IF NOT EXISTS `users` (
@@ -491,6 +491,27 @@ switch ($action) {
 
         if ($conn->query($sql)) {
             respond("success", "Migration successful: users table created or already exists.");
+        } else {
+            respond("error", "Migration failed: " . $conn->error);
+        }
+
+        // Create password_reset_tokens table
+        $resetTokensTable = "
+        CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
+          `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+          `user_id` VARCHAR(36) NOT NULL,
+          `token` VARCHAR(255) NOT NULL UNIQUE,
+          `expires_at` TIMESTAMP NOT NULL,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          INDEX idx_user_id (user_id),
+          INDEX idx_token (token),
+          INDEX idx_expires_at (expires_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+
+        if ($conn->query($resetTokensTable)) {
+            respond("success", "Migration successful: users and password_reset_tokens tables created or already exist.");
         } else {
             respond("error", "Migration failed: " . $conn->error);
         }
