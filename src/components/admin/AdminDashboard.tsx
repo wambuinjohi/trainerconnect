@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
+import { useNavigate } from 'react-router-dom'
 import {
   Users,
   DollarSign,
@@ -22,7 +23,8 @@ import {
   Plus,
   Trash2,
   Save,
-  Pencil
+  Pencil,
+  Key
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { Input } from '@/components/ui/input'
