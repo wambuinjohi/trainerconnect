@@ -489,6 +489,12 @@ switch ($action) {
             "exp" => time() + (7 * 24 * 60 * 60)
         ]));
 
+        logEvent('signup_success', [
+            'email' => $email,
+            'user_id' => $userId,
+            'user_type' => $userType
+        ]);
+
         respond("success", "Signup successful.", [
             "user" => [
                 "id" => $userId,
