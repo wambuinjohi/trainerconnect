@@ -293,6 +293,7 @@ switch ($action) {
     // LOGIN ACTION
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
+            error_log("Login attempt failed: Missing email or password");
             respond("error", "Missing email or password.");
         }
 
@@ -306,6 +307,7 @@ switch ($action) {
         $result = $stmt->get_result();
 
         if (!$result || $result->num_rows === 0) {
+            error_log("Login attempt failed: User not found for email: " . $email);
             respond("error", "Invalid email or password.");
         }
 
@@ -314,11 +316,13 @@ switch ($action) {
 
         // Verify password using password_verify
         if (!password_verify($password, $user['password_hash'])) {
+            error_log("Login attempt failed: Invalid password for email: " . $email);
             respond("error", "Invalid email or password.");
         }
 
         // Check user status
         if ($user['status'] !== 'active') {
+            error_log("Login attempt failed: User account is not active for email: " . $email . " (Status: " . $user['status'] . ")");
             respond("error", "User account is not active.");
         }
 
