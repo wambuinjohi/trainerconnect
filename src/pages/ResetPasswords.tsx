@@ -32,7 +32,7 @@ export default function ResetPasswords() {
     setLoading(true);
     setMessages([]);
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset_passwords', password }),
