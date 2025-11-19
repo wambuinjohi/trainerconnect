@@ -127,18 +127,20 @@ const Home: React.FC = () => {
           
           {/* Mobile Menu */}
           {open && (
-            <div className="md:hidden border-t border-border py-4">
-              <nav className="flex flex-col gap-4">
+            <div className="md:hidden border-t border-border py-6 px-2">
+              <nav className="flex flex-col gap-2">
                 <NavLink to="/">Home</NavLink>
                 <NavLink to="/explore">Explore</NavLink>
                 <NavLink to="/about">About</NavLink>
                 <NavLink to="/contact">Contact</NavLink>
-                <Link to="/signin">
-                  <Button variant="ghost" className="w-full justify-start">Sign In</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="w-full">Get Started</Button>
-                </Link>
+                <div className="border-t border-border pt-4 mt-2 space-y-2">
+                  <Link to="/signin" className="block">
+                    <Button variant="ghost" className="w-full justify-center">Sign In</Button>
+                  </Link>
+                  <Link to="/signup" className="block">
+                    <Button className="w-full">Get Started</Button>
+                  </Link>
+                </div>
               </nav>
             </div>
           )}
