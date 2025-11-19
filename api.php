@@ -574,6 +574,7 @@ switch ($action) {
 
     // SEED_USERS: Create test users
     case 'seed_users':
+        logEvent('seed_users_started');
         $testUsers = [
             [
                 'email' => 'admin@skatryk.co.ke',
