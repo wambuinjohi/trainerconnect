@@ -45,8 +45,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const autoLoginEnabled = localStorage.getItem('auto_login_enabled') !== 'false';
       if (autoLoginEnabled && !storedUser) {
         try {
-          await signInInternal('admin@skatryk.co.ke', 'Pass1234');
-          console.log('Auto-login successful for admin@skatryk.co.ke');
+          // Use performSignIn which is defined below
+          const maxRetries = 3;
+          const retryDelay = 1000;
+          const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
+
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'login', email: 'admin@skatryk.co.ke', password: 'Pass1234' }),
+                credentials: 'include',
+              });
+
+              const contentType = response.headers.get('content-type');
+              if (!contentType?.includes('text/html')) {
+                const result = await response.json();
+                if (result.status === 'success') {
+                  const userData = result.data;
+                  const user_id = userData?.user?.id;
+                  const access_token = userData?.session?.access_token;
+
+                  if (user_id && access_token) {
+                    const user = { id: user_id, email: 'admin@skatryk.co.ke' };
+                    const type = userData?.profile?.user_type || 'admin';
+
+                    setUser(user);
+                    setUserType(type as 'client' | 'trainer' | 'admin');
+                    localStorage.setItem('app-user', JSON.stringify(user));
+                    localStorage.setItem('app-user-type', type);
+                    localStorage.setItem('auth_token', access_token);
+                    console.log('Auto-login successful for admin@skatryk.co.ke');
+                    setLoading(false);
+                    return;
+                  }
+                }
+              }
+
+              if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+              }
+            } catch (error) {
+              if (attempt < maxRetries) {
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
+              }
+            }
+          }
+          console.log('Auto-login failed, proceeding to login page');
         } catch (error) {
           console.log('Auto-login failed, proceeding to login page');
         }
