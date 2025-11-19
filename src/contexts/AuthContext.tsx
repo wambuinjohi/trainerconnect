@@ -109,6 +109,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signUp = async (email: string, password: string, userTypeParam: string, profile?: Record<string, any>) => {
     const maxRetries = 3;
     const retryDelay = 1000;
+    const apiUrl = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? '/api.php'
+      : 'https://trainer.skatryk.co.ke/api.php';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -120,7 +123,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...profile,
         };
 
-        const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
