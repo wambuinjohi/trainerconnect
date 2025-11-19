@@ -94,7 +94,7 @@ const Home: React.FC = () => {
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-6 lg:gap-8">
-              <AuthLogo compact containerClassName="h-12 w-12" className="h-12" />
+              <AuthLogo compact containerClassName="h-16 w-16" className="h-16" />
               <nav className="hidden md:flex items-center gap-6">
                 <NavLink to="/">Home</NavLink>
                 <NavLink to="/explore">Explore</NavLink>
