@@ -19,6 +19,38 @@ export default function ResetPasswords() {
     setMessages(prev => [...prev, { type, text }]);
   };
 
+  useEffect(() => {
+    const autoReset = async () => {
+      setLoading(true);
+      setMessages([]);
+      try {
+        const response = await fetch('/api.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset_passwords', password: 'Test123' }),
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          addMessage('success', result.message);
+          setResetDone(true);
+          toast({ title: 'Success', description: result.message });
+        } else {
+          addMessage('error', result.message);
+          toast({ title: 'Error', description: result.message, variant: 'destructive' });
+        }
+      } catch (error: any) {
+        const msg = error.message || 'Password reset failed';
+        addMessage('error', msg);
+        toast({ title: 'Error', description: msg, variant: 'destructive' });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    autoReset();
+  }, []);
+
   const resetAllPasswords = async () => {
     if (!password.trim()) {
       toast({ title: 'Error', description: 'Password cannot be empty', variant: 'destructive' });
