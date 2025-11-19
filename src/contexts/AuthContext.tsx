@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     const maxRetries = 3;
     const retryDelay = 1000;
-    const apiUrl = '/api.php';
+    const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
