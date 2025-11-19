@@ -516,7 +516,7 @@ export const AdminDashboard: React.FC = () => {
     const loadAdmin = async () => {
       try {
         // Load users with profiles from MySQL API
-        const usersResponse = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        const usersResponse = await fetch('/api.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get_users' })
