@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...profile,
         };
 
-        const response = await fetch('/api.php', {
+        const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
