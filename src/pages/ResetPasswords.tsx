@@ -24,8 +24,7 @@ export default function ResetPasswords() {
       setLoading(true);
       setMessages([]);
       try {
-        const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
-        const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+        const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -67,8 +66,7 @@ export default function ResetPasswords() {
     setLoading(true);
     setMessages([]);
     try {
-      const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
-      const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
