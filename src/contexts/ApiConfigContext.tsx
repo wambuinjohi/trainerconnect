@@ -36,15 +36,21 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
 
   const testConnection = async (): Promise<boolean> => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'health_check' }),
         credentials: 'include',
-        signal: AbortSignal.timeout(5000), // 5 second timeout
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (response.ok) {
+        const result = await response.json();
         setIsConnected(true);
         setConnectionError(null);
         return true;
@@ -56,17 +62,15 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       setIsConnected(false);
       const errorMessage = error instanceof Error ? error.message : 'Failed to connect to API';
+      console.warn('API connection test failed:', errorMessage);
       setConnectionError(errorMessage);
       return false;
     }
   };
 
-  // Test connection on mount
-  useEffect(() => {
-    if (initialized) {
-      testConnection();
-    }
-  }, [initialized]);
+  // Don't automatically test connection on mount to avoid blocking the app
+  // Users can test connection manually when needed via the UI
+  // The login/signup flow will verify the API is working
 
   return (
     <ApiConfigContext.Provider

@@ -48,17 +48,14 @@ export function ConnectionStatusDialog() {
   };
 
   const handleClose = () => {
-    // Only allow closing if connected
-    if (isConnected) {
-      setIsOpen(false);
-    }
+    // Allow closing regardless of connection status
+    // The actual login will verify if API is working
+    setIsOpen(false);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => {
-        if (!isConnected) e.preventDefault();
-      }}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>API Connection Status</DialogTitle>
           <DialogDescription>
@@ -160,14 +157,13 @@ export function ConnectionStatusDialog() {
                 )}
               </Button>
             )}
-            {isConnected && (
-              <Button
-                onClick={handleClose}
-                className="flex-1"
-              >
-                Continue
-              </Button>
-            )}
+            <Button
+              onClick={handleClose}
+              className="flex-1"
+              variant={isConnected ? "default" : "secondary"}
+            >
+              {isConnected ? 'Continue' : 'Continue Anyway'}
+            </Button>
           </div>
 
           {!isConnected && (

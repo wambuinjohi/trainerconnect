@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router-dom';
 export default function ResetPasswords() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [password, setPassword] = useState('Test123');
+  const [password, setPassword] = useState('Pass1234');
   const [messages, setMessages] = useState<Array<{ type: 'success' | 'error', text: string }>>([]);
   const [resetDone, setResetDone] = useState(false);
 
@@ -28,7 +28,7 @@ export default function ResetPasswords() {
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reset_passwords', password: 'Test123' }),
+          body: JSON.stringify({ action: 'reset_passwords', password: 'Pass1234' }),
         });
 
         const result = await response.json();

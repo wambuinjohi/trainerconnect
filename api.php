@@ -25,6 +25,31 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 // Include the database connection
 include('connection.php');
 
+// Utility function for logging API events
+function logEvent($eventType, $details = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+
+    $logEntry = [
+        'timestamp' => $timestamp,
+        'event_type' => $eventType,
+        'client_ip' => $clientIp,
+        'user_agent' => substr($userAgent, 0, 200),
+    ];
+
+    // Merge with additional details
+    $logEntry = array_merge($logEntry, $details);
+
+    // Log to PHP error log (available in server logs)
+    error_log(json_encode($logEntry));
+
+    // Also log to a custom API log file
+    $logFile = __DIR__ . '/api_events.log';
+    $logLine = json_encode($logEntry) . PHP_EOL;
+    @file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
+}
+
 // Handle preflight (OPTIONS) requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -303,15 +328,23 @@ switch ($action) {
         respond("success", "$inserted record(s) seeded successfully.");
         break;
 
+    // HEALTH CHECK ACTION
+    case 'health_check':
+        logEvent('health_check', ['status' => 'success']);
+        respond("success", "API is healthy and responding correctly.");
+        break;
+
     // LOGIN ACTION
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
-            error_log("Login attempt failed: Missing email or password");
+            logEvent('login_failed', ['reason' => 'missing_credentials']);
             respond("error", "Missing email or password.");
         }
 
         $email = $conn->real_escape_string($input['email']);
         $password = $input['password'];
+
+        logEvent('login_attempt', ['email' => $email]);
 
         // Query user by email using prepared statement
         $stmt = $conn->prepare("SELECT id, email, first_name, last_name, password_hash, status FROM users WHERE email = ? LIMIT 1");
@@ -320,7 +353,7 @@ switch ($action) {
         $result = $stmt->get_result();
 
         if (!$result || $result->num_rows === 0) {
-            error_log("Login attempt failed: User not found for email: " . $email);
+            logEvent('login_failed', ['email' => $email, 'reason' => 'user_not_found']);
             respond("error", "Invalid email or password.");
         }
 
@@ -329,13 +362,13 @@ switch ($action) {
 
         // Verify password using password_verify
         if (!password_verify($password, $user['password_hash'])) {
-            error_log("Login attempt failed: Invalid password for email: " . $email);
+            logEvent('login_failed', ['email' => $email, 'reason' => 'invalid_password']);
             respond("error", "Invalid email or password.");
         }
 
         // Check user status
         if ($user['status'] !== 'active') {
-            error_log("Login attempt failed: User account is not active for email: " . $email . " (Status: " . $user['status'] . ")");
+            logEvent('login_failed', ['email' => $email, 'reason' => 'inactive_account', 'status' => $user['status']]);
             respond("error", "User account is not active.");
         }
 
@@ -362,6 +395,13 @@ switch ($action) {
         $profile = $profileResult->fetch_assoc();
         $stmt->close();
 
+        // Log successful login
+        logEvent('login_success', [
+            'email' => $user['email'],
+            'user_id' => $user['id'],
+            'user_type' => $profile['user_type'] ?? 'client'
+        ]);
+
         // Return user and token
         respond("success", "Login successful.", [
             "user" => [
@@ -380,6 +420,7 @@ switch ($action) {
     // SIGNUP ACTION
     case 'signup':
         if (!isset($input['email']) || !isset($input['password'])) {
+            logEvent('signup_failed', ['reason' => 'missing_credentials']);
             respond("error", "Missing email or password.");
         }
 
@@ -391,6 +432,8 @@ switch ($action) {
         $country = isset($input['country']) ? $conn->real_escape_string($input['country']) : NULL;
         $userType = isset($input['user_type']) ? $conn->real_escape_string($input['user_type']) : 'client';
 
+        logEvent('signup_attempt', ['email' => $email, 'user_type' => $userType]);
+
         // Check if user exists using prepared statement
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
@@ -398,6 +441,7 @@ switch ($action) {
         $checkResult = $stmt->get_result();
         if ($checkResult->num_rows > 0) {
             $stmt->close();
+            logEvent('signup_failed', ['email' => $email, 'reason' => 'user_already_exists']);
             respond("error", "User already exists.");
         }
         $stmt->close();
@@ -445,6 +489,12 @@ switch ($action) {
             "exp" => time() + (7 * 24 * 60 * 60)
         ]));
 
+        logEvent('signup_success', [
+            'email' => $email,
+            'user_id' => $userId,
+            'user_type' => $userType
+        ]);
+
         respond("success", "Signup successful.", [
             "user" => [
                 "id" => $userId,
@@ -463,6 +513,7 @@ switch ($action) {
 
     // MIGRATE: Create users and password_reset_tokens tables
     case 'migrate':
+        logEvent('migration_started');
         $sql = "
         CREATE TABLE IF NOT EXISTS `users` (
           `id` VARCHAR(36) PRIMARY KEY,
@@ -490,8 +541,10 @@ switch ($action) {
         ";
 
         if ($conn->query($sql)) {
+            logEvent('migration_success', ['table' => 'users']);
             respond("success", "Migration successful: users table created or already exists.");
         } else {
+            logEvent('migration_failed', ['table' => 'users', 'error' => $conn->error]);
             respond("error", "Migration failed: " . $conn->error);
         }
 
@@ -511,14 +564,17 @@ switch ($action) {
         ";
 
         if ($conn->query($resetTokensTable)) {
+            logEvent('migration_success', ['table' => 'password_reset_tokens']);
             respond("success", "Migration successful: users and password_reset_tokens tables created or already exist.");
         } else {
+            logEvent('migration_failed', ['table' => 'password_reset_tokens', 'error' => $conn->error]);
             respond("error", "Migration failed: " . $conn->error);
         }
         break;
 
     // SEED_USERS: Create test users
     case 'seed_users':
+        logEvent('seed_users_started');
         $testUsers = [
             [
                 'email' => 'admin@skatryk.co.ke',

@@ -17,90 +17,128 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Helper function to perform login logic
+async function performLogin(
+  email: string,
+  password: string,
+  onSuccess: (user: User, userType: string, token: string) => void
+): Promise<void> {
+  const maxRetries = 3;
+  const retryDelay = 1000;
+  const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', email, password }),
+        credentials: 'include',
+      });
+
+      const contentType = response.headers.get('content-type');
+      const isHtml = contentType?.includes('text/html');
+
+      if (isHtml) {
+        const errorText = await response.text();
+        console.error(`Login attempt ${attempt}: Server returned HTML instead of JSON`);
+        console.error('Response:', errorText.substring(0, 500));
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+      }
+
+      const result = await response.json();
+      if (result.status === 'error') {
+        throw new Error(result.message || 'Login failed');
+      }
+
+      const userData = result.data;
+      const user_id = userData?.user?.id;
+      const access_token = userData?.session?.access_token;
+
+      if (!user_id || !access_token) {
+        throw new Error('Invalid response from server');
+      }
+
+      const user = { id: user_id, email };
+      const userProfileType = userData?.profile?.user_type || 'client';
+
+      onSuccess(user, userProfileType, access_token);
+      return;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+    }
+  }
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userType, setUserType] = useState<'client' | 'trainer' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('app-user');
-    const storedType = localStorage.getItem('app-user-type');
-    const storedToken = localStorage.getItem('auth_token');
-    if (storedUser && storedType && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setUserType(storedType as 'client' | 'trainer' | 'admin');
-      } catch {
-        localStorage.removeItem('app-user');
-        localStorage.removeItem('app-user-type');
-        localStorage.removeItem('auth_token');
-      }
-    }
-    setLoading(false);
-  }, []);
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('app-user');
+      const storedType = localStorage.getItem('app-user-type');
+      const storedToken = localStorage.getItem('auth_token');
 
-  const signIn = async (email: string, password: string) => {
-    const maxRetries = 3;
-    const retryDelay = 1000;
-    const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'login', email, password }),
-          credentials: 'include',
-        });
-
-        const contentType = response.headers.get('content-type');
-        const isHtml = contentType?.includes('text/html');
-
-        if (isHtml) {
-          const errorText = await response.text();
-          console.error(`Login attempt ${attempt}: Server returned HTML instead of JSON`);
-          console.error('Response:', errorText.substring(0, 500));
-          if (attempt < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, retryDelay));
-            continue;
-          }
-          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
-        }
-
-        const result = await response.json();
-        if (result.status === 'error') {
-          throw new Error(result.message || 'Login failed');
-        }
-
-        const userData = result.data;
-        const sessionData = userData?.session || userData;
-        const user_id = userData?.user?.id || userData?.session?.user?.id;
-        const access_token = userData?.session?.access_token || sessionData?.access_token;
-
-        if (!user_id || !access_token) {
-          throw new Error('Invalid response from server');
-        }
-
-        const user = { id: user_id, email };
-        setUser(user);
-
-        const userProfile = userData?.profile;
-        const type = userProfile?.user_type || 'client';
-        setUserType(type as 'client' | 'trainer' | 'admin');
-
-        localStorage.setItem('app-user', JSON.stringify(user));
-        localStorage.setItem('app-user-type', type);
-        localStorage.setItem('auth_token', access_token);
-        return;
-      } catch (error) {
-        if (attempt === maxRetries) {
+      if (storedUser && storedType && storedToken) {
+        try {
+          setUser(JSON.parse(storedUser));
+          setUserType(storedType as 'client' | 'trainer' | 'admin');
+          setLoading(false);
+          return;
+        } catch {
           localStorage.removeItem('app-user');
           localStorage.removeItem('app-user-type');
           localStorage.removeItem('auth_token');
-          throw error;
         }
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
       }
+
+      // Auto-login with admin account if no user is logged in
+      // Set to 'false' by default until server is properly configured
+      const autoLoginEnabled = localStorage.getItem('auto_login_enabled') === 'true';
+      if (autoLoginEnabled && !storedUser) {
+        try {
+          await performLogin('admin@skatryk.co.ke', 'Pass1234', (user, userProfileType, token) => {
+            setUser(user);
+            setUserType(userProfileType as 'client' | 'trainer' | 'admin');
+            localStorage.setItem('app-user', JSON.stringify(user));
+            localStorage.setItem('app-user-type', userProfileType);
+            localStorage.setItem('auth_token', token);
+          });
+          console.log('Auto-login successful for admin@skatryk.co.ke');
+        } catch (error) {
+          console.log('Auto-login failed, proceeding to login page');
+        }
+      }
+
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      await performLogin(email, password, (user, userProfileType, token) => {
+        setUser(user);
+        setUserType(userProfileType as 'client' | 'trainer' | 'admin');
+        localStorage.setItem('app-user', JSON.stringify(user));
+        localStorage.setItem('app-user-type', userProfileType);
+        localStorage.setItem('auth_token', token);
+      });
+    } catch (error) {
+      localStorage.removeItem('app-user');
+      localStorage.removeItem('app-user-type');
+      localStorage.removeItem('auth_token');
+      throw error;
     }
   };
 
