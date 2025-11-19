@@ -395,6 +395,13 @@ switch ($action) {
         $profile = $profileResult->fetch_assoc();
         $stmt->close();
 
+        // Log successful login
+        logEvent('login_success', [
+            'email' => $user['email'],
+            'user_id' => $user['id'],
+            'user_type' => $profile['user_type'] ?? 'client'
+        ]);
+
         // Return user and token
         respond("success", "Login successful.", [
             "user" => [
