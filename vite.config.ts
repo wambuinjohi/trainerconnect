@@ -129,7 +129,7 @@ function databaseApiPlugin() {
               const testUsers = [
                 {
                   email: "admin@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Admin",
                   last_name: "User",
                   user_type: "admin",
@@ -137,7 +137,7 @@ function databaseApiPlugin() {
                 },
                 {
                   email: "trainer@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Trainer",
                   last_name: "User",
                   user_type: "trainer",
@@ -145,7 +145,7 @@ function databaseApiPlugin() {
                 },
                 {
                   email: "client@skatryk.co.ke",
-                  password: "Test1234",
+                  password: "Pass1234",
                   first_name: "Client",
                   last_name: "User",
                   user_type: "client",
