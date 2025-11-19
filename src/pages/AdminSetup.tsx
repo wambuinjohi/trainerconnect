@@ -47,7 +47,9 @@ export default function AdminSetup() {
   const runSeeding = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api.php', {
+      const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
+      const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'seed_all_users' }),
