@@ -513,6 +513,7 @@ switch ($action) {
 
     // MIGRATE: Create users and password_reset_tokens tables
     case 'migrate':
+        logEvent('migration_started');
         $sql = "
         CREATE TABLE IF NOT EXISTS `users` (
           `id` VARCHAR(36) PRIMARY KEY,
