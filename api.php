@@ -25,6 +25,31 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 // Include the database connection
 include('connection.php');
 
+// Utility function for logging API events
+function logEvent($eventType, $details = []) {
+    $timestamp = date('Y-m-d H:i:s');
+    $clientIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
+
+    $logEntry = [
+        'timestamp' => $timestamp,
+        'event_type' => $eventType,
+        'client_ip' => $clientIp,
+        'user_agent' => substr($userAgent, 0, 200),
+    ];
+
+    // Merge with additional details
+    $logEntry = array_merge($logEntry, $details);
+
+    // Log to PHP error log (available in server logs)
+    error_log(json_encode($logEntry));
+
+    // Also log to a custom API log file
+    $logFile = __DIR__ . '/api_events.log';
+    $logLine = json_encode($logEntry) . PHP_EOL;
+    @file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
+}
+
 // Handle preflight (OPTIONS) requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
