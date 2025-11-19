@@ -551,7 +551,8 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === 'development' && componentTagger(),
-    databaseApiPlugin(),
+    // Using external API at https://trainer.skatryk.co.ke/api.php
+    // databaseApiPlugin(),
     adminApiPlugin(),
     paymentsApiPlugin(),
   ].filter(Boolean),
