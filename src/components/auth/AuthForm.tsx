@@ -157,7 +157,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                       Forgot?
                     </Link>
                   </div>
-                  <Input id="signin-password" type="password" placeholder="Enter your password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required className="bg-input border-border" />
+                  <div className="relative">
+                    <Input id="signin-password" type={showPassword ? "text" : "password"} placeholder="Enter your password" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} required className="bg-input border-border pr-10" />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
