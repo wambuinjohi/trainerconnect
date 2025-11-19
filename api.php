@@ -337,12 +337,14 @@ switch ($action) {
     // LOGIN ACTION
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
-            error_log("Login attempt failed: Missing email or password");
+            logEvent('login_failed', ['reason' => 'missing_credentials']);
             respond("error", "Missing email or password.");
         }
 
         $email = $conn->real_escape_string($input['email']);
         $password = $input['password'];
+
+        logEvent('login_attempt', ['email' => $email]);
 
         // Query user by email using prepared statement
         $stmt = $conn->prepare("SELECT id, email, first_name, last_name, password_hash, status FROM users WHERE email = ? LIMIT 1");
@@ -351,7 +353,7 @@ switch ($action) {
         $result = $stmt->get_result();
 
         if (!$result || $result->num_rows === 0) {
-            error_log("Login attempt failed: User not found for email: " . $email);
+            logEvent('login_failed', ['email' => $email, 'reason' => 'user_not_found']);
             respond("error", "Invalid email or password.");
         }
 
@@ -360,13 +362,13 @@ switch ($action) {
 
         // Verify password using password_verify
         if (!password_verify($password, $user['password_hash'])) {
-            error_log("Login attempt failed: Invalid password for email: " . $email);
+            logEvent('login_failed', ['email' => $email, 'reason' => 'invalid_password']);
             respond("error", "Invalid email or password.");
         }
 
         // Check user status
         if ($user['status'] !== 'active') {
-            error_log("Login attempt failed: User account is not active for email: " . $email . " (Status: " . $user['status'] . ")");
+            logEvent('login_failed', ['email' => $email, 'reason' => 'inactive_account', 'status' => $user['status']]);
             respond("error", "User account is not active.");
         }
 
