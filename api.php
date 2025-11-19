@@ -303,6 +303,11 @@ switch ($action) {
         respond("success", "$inserted record(s) seeded successfully.");
         break;
 
+    // HEALTH CHECK ACTION
+    case 'health_check':
+        respond("success", "API is healthy and responding correctly.");
+        break;
+
     // LOGIN ACTION
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
