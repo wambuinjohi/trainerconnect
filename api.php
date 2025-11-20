@@ -225,17 +225,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
 }
 
 // Read input JSON
-$input = json_decode(file_get_contents("php://input"), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    $input = $_GET ?? [];
+$rawInput = file_get_contents("php://input");
+$input = null;
+
+if (!empty($rawInput)) {
+    $input = json_decode($rawInput, true);
+    if ($input === null && json_last_error() !== JSON_ERROR_NONE) {
+        respond("error", "Invalid JSON in request body.", null, 400);
+    }
+} else if (!empty($_GET)) {
+    $input = $_GET;
+} else {
+    $input = [];
 }
 
-// Verify input
-if (!isset($input['action'])) {
+// Ensure input is an array
+if (!is_array($input)) {
+    respond("error", "Request must be JSON object.", null, 400);
+}
+
+// Verify action parameter
+if (empty($input['action'])) {
     respond("error", "Missing action parameter.", null, 400);
 }
 
-$action = strtolower($input['action']);
+$action = strtolower(trim($input['action']));
 
 // =============================
 // ACTION HANDLERS
