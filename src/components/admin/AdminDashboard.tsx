@@ -437,16 +437,12 @@ export const AdminDashboard: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={async ()=>{
-                    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                  }}
+                  onClick={() => rejectTrainer(trainer.user_id)}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Reject
                 </Button>
-                <Button size="sm" className="bg-gradient-primary text-white" onClick={async ()=>{
-                  toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                }}>
+                <Button size="sm" className="bg-gradient-primary text-white" onClick={() => approveTrainer(trainer.user_id)}>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
