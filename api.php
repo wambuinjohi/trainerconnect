@@ -1159,6 +1159,125 @@ switch ($action) {
         }
         break;
 
+    // GET CATEGORIES
+    case 'get_categories':
+        $stmt = $conn->prepare("SELECT id, name, icon, description, created_at FROM categories ORDER BY created_at DESC");
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $categories = [];
+            while ($row = $result->fetch_assoc()) {
+                $categories[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Categories fetched successfully.", ["data" => $categories]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch categories: " . $conn->error, null, 500);
+        }
+        break;
+
+    // ADD CATEGORY
+    case 'add_category':
+        if (!isset($input['name'])) {
+            respond("error", "Missing name.", null, 400);
+        }
+
+        $name = $conn->real_escape_string($input['name']);
+        $icon = isset($input['icon']) ? $conn->real_escape_string($input['icon']) : '';
+        $description = isset($input['description']) ? $conn->real_escape_string($input['description']) : '';
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("INSERT INTO categories (name, icon, description, created_at) VALUES (?, ?, ?, ?)");
+        $stmt->bind_param("ssss", $name, $icon, $description, $now);
+
+        if ($stmt->execute()) {
+            $categoryId = $conn->insert_id;
+            $stmt->close();
+            logEvent('category_added', ['category_id' => $categoryId, 'name' => $name]);
+            respond("success", "Category added successfully.", ["id" => $categoryId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to add category: " . $conn->error, null, 500);
+        }
+        break;
+
+    // UPDATE CATEGORY
+    case 'update_category':
+        if (!isset($input['id'])) {
+            respond("error", "Missing id.", null, 400);
+        }
+
+        $categoryId = $conn->real_escape_string($input['id']);
+        $name = isset($input['name']) ? $conn->real_escape_string($input['name']) : null;
+        $icon = isset($input['icon']) ? $conn->real_escape_string($input['icon']) : null;
+        $description = isset($input['description']) ? $conn->real_escape_string($input['description']) : null;
+
+        $updates = [];
+        $params = [];
+        $types = "";
+
+        if ($name !== null) {
+            $updates[] = "name = ?";
+            $params[] = $name;
+            $types .= "s";
+        }
+        if ($icon !== null) {
+            $updates[] = "icon = ?";
+            $params[] = $icon;
+            $types .= "s";
+        }
+        if ($description !== null) {
+            $updates[] = "description = ?";
+            $params[] = $description;
+            $types .= "s";
+        }
+
+        if (empty($updates)) {
+            respond("error", "No fields to update.", null, 400);
+        }
+
+        $params[] = $categoryId;
+        $types .= "i";
+
+        $sql = "UPDATE categories SET " . implode(", ", $updates) . " WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+
+        if (count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('category_updated', ['category_id' => $categoryId]);
+            respond("success", "Category updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update category: " . $conn->error, null, 500);
+        }
+        break;
+
+    // DELETE CATEGORY
+    case 'delete_category':
+        if (!isset($input['id'])) {
+            respond("error", "Missing id.", null, 400);
+        }
+
+        $categoryId = $conn->real_escape_string($input['id']);
+
+        $stmt = $conn->prepare("DELETE FROM categories WHERE id = ?");
+        $stmt->bind_param("i", $categoryId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('category_deleted', ['category_id' => $categoryId]);
+            respond("success", "Category deleted successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to delete category: " . $conn->error, null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
