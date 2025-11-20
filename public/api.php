@@ -4,14 +4,27 @@
 // TRAINER COACH CONNECT SYSTEM
 // ======================================
 
-// Include the database connection
-include('connection.php');
-
-// Allow cross-origin requests
+// Set JSON headers FIRST, before any other code
+header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor");
-header("Content-Type: application/json; charset=utf-8");
+
+// Set error handler to prevent HTML output
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (!headers_sent()) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Server error. Please check the logs."
+        ]);
+    }
+    error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
+    exit;
+}, E_ALL);
+
+// Include the database connection
+include('connection.php');
 
 // Handle preflight (OPTIONS) requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
