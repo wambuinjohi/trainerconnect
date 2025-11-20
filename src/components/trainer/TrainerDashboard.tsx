@@ -301,10 +301,33 @@ export const TrainerDashboard: React.FC = () => {
 
   const renderProfileContent = () => (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
-      <p className="text-muted-foreground">{profileData.bio}</p>
-      <div className="flex gap-2">
-        <Button onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+      <div className="text-center">
+        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
+          {profileData.profile_image ? '🖼️' : '👨‍💼'}
+        </div>
+        <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
+        <p className="text-muted-foreground mt-2">{profileData.bio}</p>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Hourly Rate</p>
+            <p className="text-lg font-semibold text-foreground">Ksh {profileData.hourly_rate}</p>
+          </div>
+          {profileData.availability && profileData.availability.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground">Availability</p>
+              <p className="text-sm text-foreground">{typeof profileData.availability === 'object' ? Object.keys(profileData.availability).join(', ') : 'Check schedule'}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-2">
+        <Button className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+        <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Edit Availability</Button>
+        <Button variant="outline" className="w-full" onClick={() => setShowServiceArea(true)}>Service Area</Button>
       </div>
     </div>
   )
