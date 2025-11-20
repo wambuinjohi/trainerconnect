@@ -269,22 +269,33 @@ export const TrainerDashboard: React.FC = () => {
   const renderBookingsContent = () => (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
-      {bookings.map(b => (
-        <Card key={b.id} className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex justify-between">
-              <div>{b.client_name}</div>
-              <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>{b.status}</Badge>
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Button onClick={() => openChat(b)}>Chat</Button>
-              {b.status === 'pending' && <Button onClick={() => acceptBooking(b.id)}>Accept</Button>}
-              {b.status === 'pending' && <Button onClick={() => declineBooking(b.id)}>Decline</Button>}
-              {(b.status === 'confirmed' || b.status === 'in_session') && <Button onClick={() => startSession(b.id)}>Start/End</Button>}
-            </div>
+      {bookings && bookings.length > 0 ? (
+        bookings.map(b => (
+          <Card key={b.id || b.user_id} className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex justify-between">
+                <div>{b.client_name || 'Client'}</div>
+                <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>{b.status || 'pending'}</Badge>
+              </div>
+              <div className="text-sm text-muted-foreground mt-2">{b.session_date || 'TBD'} at {b.session_time || ''}</div>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" onClick={() => openChat(b)}>Chat</Button>
+                {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => acceptBooking(b.id)}>Accept</Button>}
+                {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => declineBooking(b.id)}>Decline</Button>}
+                {(b.status === 'confirmed' || b.status === 'in_session') && <Button size="sm" onClick={() => startSession(b.id)}>Start/End</Button>}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">No bookings yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Your bookings will appear here</p>
           </CardContent>
         </Card>
-      ))}
+      )}
     </div>
   )
 
