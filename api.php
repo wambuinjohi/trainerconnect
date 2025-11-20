@@ -1,25 +1,51 @@
 <?php
 // ======================================
 // UNIVERSAL MYSQL API FOR REACT FRONTEND
+// TRAINER COACH CONNECT SYSTEM
 // ======================================
 
-// Set headers before any output
-header("Content-Type: application/json; charset=utf-8");
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+// Disable output buffering and output directly
+if (ob_get_level()) {
+    ob_end_clean();
+}
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
+// Set headers BEFORE any output
+if (!headers_sent()) {
+    header("Content-Type: application/json; charset=utf-8");
+    header("Access-Control-Allow-Origin: *");
+    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor");
+}
 
 // Set error handler to prevent HTML error output
 set_error_handler(function($errno, $errstr, $errfile, $errline) {
     error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
     if (!headers_sent()) {
         http_response_code(500);
+        header("Content-Type: application/json; charset=utf-8");
+    }
+    echo json_encode([
+        "status" => "error",
+        "message" => "Server error. Please check the logs."
+    ]);
+    exit;
+}, E_ALL);
+
+// Register shutdown function to catch fatal errors
+register_shutdown_function(function() {
+    $error = error_get_last();
+    if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header("Content-Type: application/json; charset=utf-8");
+        }
         echo json_encode([
             "status" => "error",
-            "message" => "An error occurred. Please try again later."
+            "message" => "Server error: " . $error['message']
         ]);
     }
-    exit;
 });
 
 // Include the database connection
@@ -38,13 +64,10 @@ function logEvent($eventType, $details = []) {
         'user_agent' => substr($userAgent, 0, 200),
     ];
 
-    // Merge with additional details
     $logEntry = array_merge($logEntry, $details);
 
-    // Log to PHP error log (available in server logs)
     error_log(json_encode($logEntry));
 
-    // Also log to a custom API log file
     $logFile = __DIR__ . '/api_events.log';
     $logLine = json_encode($logEntry) . PHP_EOL;
     @file_put_contents($logFile, $logLine, FILE_APPEND | LOCK_EX);
@@ -57,18 +80,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Utility function for safe JSON response
-function respond($status, $message, $data = null) {
-    echo json_encode(["status" => $status, "message" => $message, "data" => $data]);
+function respond($status, $message, $data = null, $code = 200) {
+    if (!headers_sent()) {
+        http_response_code($code);
+        header("Content-Type: application/json; charset=utf-8");
+    }
+    $response = ["status" => $status, "message" => $message, "data" => $data];
+    $json = json_encode($response);
+    if ($json === false) {
+        echo json_encode(["status" => "error", "message" => "Response encoding failed"]);
+    } else {
+        echo $json;
+    }
     exit;
+}
+
+// Safe query builder helper
+function buildWhereClause($conditions) {
+    if (empty($conditions)) return "";
+    $parts = [];
+    foreach ($conditions as $column => $value) {
+        $parts[] = "`" . addslashes($column) . "` = '" . addslashes($value) . "'";
+    }
+    return "WHERE " . implode(" AND ", $parts);
 }
 
 // =============================
 // HANDLE FILE UPLOADS (MULTIPART)
 // =============================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
-    // Configuration
-    $uploadDir = __DIR__ . '/public/uploads/';
-    $maxFileSize = 50 * 1024 * 1024; // 50MB
+    $uploadDir = __DIR__ . '/uploads/';
+    $maxFileSize = 50 * 1024 * 1024;
     $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4', 'avi', 'mov', 'webm', 'zip', 'rar'];
     $allowedMimeTypes = [
         'image/jpeg', 'image/png', 'image/gif',
@@ -81,19 +123,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         'application/zip', 'application/x-rar-compressed'
     ];
 
-    // Create uploads directory if it doesn't exist
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
-            respond("error", "Failed to create uploads directory.");
+            respond("error", "Failed to create uploads directory.", null, 500);
         }
     }
 
     $uploadedFiles = [];
     $errors = [];
 
-    // Process each uploaded file
     foreach ($_FILES as $fieldName => $fileData) {
-        // Handle both single and multiple files
         $files = is_array($fileData['name']) ? $fileData : [$fileData];
 
         if (!is_array($files['name'])) {
@@ -113,12 +152,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
             $fileSize = $files['size'][$i];
             $fileMimeType = $files['type'][$i];
 
-            // Skip empty files
             if (empty($fileName)) {
                 continue;
             }
 
-            // Check for upload errors
             if ($fileError !== UPLOAD_ERR_OK) {
                 $errorMessages = [
                     UPLOAD_ERR_INI_SIZE => "File exceeds upload_max_filesize directive",
@@ -133,40 +170,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
                 continue;
             }
 
-            // Validate file size
             if ($fileSize > $maxFileSize) {
                 $errors[] = "$fileName: File size exceeds 50MB limit";
                 continue;
             }
 
-            // Validate file extension
             $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
             if (!in_array($fileExt, $allowedExtensions)) {
                 $errors[] = "$fileName: File type not allowed (.$fileExt)";
                 continue;
             }
 
-            // Validate MIME type
             if (!in_array($fileMimeType, $allowedMimeTypes)) {
                 $errors[] = "$fileName: Invalid MIME type detected";
                 continue;
             }
 
-            // Generate unique filename
             $uniqueFileName = uniqid('file_') . '_' . time() . '.' . $fileExt;
             $uploadPath = $uploadDir . $uniqueFileName;
 
-            // Move uploaded file
             if (!move_uploaded_file($fileTmpName, $uploadPath)) {
                 $errors[] = "$fileName: Failed to save file";
                 continue;
             }
 
-            // Set proper permissions
             chmod($uploadPath, 0644);
 
-            // Build file URL - adjusted to reflect public/uploads location
-            $fileUrl = '/public/uploads/' . $uniqueFileName;
+            $fileUrl = '/uploads/' . $uniqueFileName;
 
             $uploadedFiles[] = [
                 'originalName' => $fileName,
@@ -179,9 +209,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         }
     }
 
-    // Prepare response
     if (empty($uploadedFiles) && !empty($errors)) {
-        respond("error", "File upload failed. " . implode("; ", $errors));
+        respond("error", "File upload failed. " . implode("; ", $errors), null, 400);
     } else {
         $message = "Upload completed";
         if (!empty($errors)) {
@@ -196,14 +225,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
 }
 
 // Read input JSON
-$input = json_decode(file_get_contents("php://input"), true);
+$rawInput = file_get_contents("php://input");
+$input = null;
 
-// Verify input
-if (!isset($input['action'])) {
-    respond("error", "Missing action parameter.");
+if (!empty($rawInput)) {
+    $input = json_decode($rawInput, true);
+    if ($input === null && json_last_error() !== JSON_ERROR_NONE) {
+        respond("error", "Invalid JSON in request body.", null, 400);
+    }
+} else if (!empty($_GET)) {
+    $input = $_GET;
+} else {
+    $input = [];
 }
 
-$action = strtolower($input['action']);
+// Ensure input is an array
+if (!is_array($input)) {
+    respond("error", "Request must be JSON object.", null, 400);
+}
+
+// Verify action parameter
+if (empty($input['action'])) {
+    respond("error", "Missing action parameter.", null, 400);
+}
+
+$action = strtolower(trim($input['action']));
 
 // =============================
 // ACTION HANDLERS
@@ -213,66 +259,121 @@ switch ($action) {
     // CREATE TABLE DYNAMICALLY
     case 'create_table':
         if (!isset($input['table']) || !isset($input['columns'])) {
-            respond("error", "Missing table or columns.");
+            respond("error", "Missing table or columns.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
         $columns = $input['columns'];
-
-        // Example: ["id INT AUTO_INCREMENT PRIMARY KEY", "name VARCHAR(255)", "email VARCHAR(255)"]
         $columns_sql = implode(", ", $columns);
         $sql = "CREATE TABLE IF NOT EXISTS `$table` ($columns_sql)";
 
         if ($conn->query($sql)) {
             respond("success", "Table '$table' created successfully.");
         } else {
-            respond("error", "Failed to create table: " . $conn->error);
+            respond("error", "Failed to create table: " . $conn->error, null, 500);
         }
         break;
 
     // INSERT DATA
     case 'insert':
         if (!isset($input['table']) || !isset($input['data'])) {
-            respond("error", "Missing table or data.");
+            respond("error", "Missing table or data.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
         $data = $input['data'];
+        if (!is_array($data)) {
+            respond("error", "Data must be an array.", null, 400);
+        }
+
+        $upsert = isset($input['upsert']) && $input['upsert'];
+        $onConflict = isset($input['onConflict']) ? $input['onConflict'] : null;
+
+        if ($upsert && $onConflict === 'user_id' && isset($data['user_id'])) {
+            $existsResult = $conn->query("SELECT id FROM `$table` WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "' LIMIT 1");
+            if ($existsResult->num_rows > 0) {
+                $updates = [];
+                foreach ($data as $key => $value) {
+                    if ($key === 'user_id') continue;
+                    $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($value) . "'";
+                }
+                $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "'";
+                if ($conn->query($sql)) {
+                    respond("success", "Record upserted successfully.", ["affected_rows" => $conn->affected_rows]);
+                } else {
+                    respond("error", "Upsert failed: " . $conn->error, null, 500);
+                }
+            }
+        }
 
         $columns = implode("`, `", array_keys($data));
         $values = implode("', '", array_map([$conn, 'real_escape_string'], array_values($data)));
-
         $sql = "INSERT INTO `$table` (`$columns`) VALUES ('$values')";
+
         if ($conn->query($sql)) {
             respond("success", "Record inserted successfully.", ["id" => $conn->insert_id]);
         } else {
-            respond("error", "Insert failed: " . $conn->error);
+            respond("error", "Insert failed: " . $conn->error, null, 500);
         }
         break;
 
     // READ / SELECT DATA
     case 'select':
         if (!isset($input['table'])) {
-            respond("error", "Missing table name.");
+            respond("error", "Missing table name.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
-        $where = isset($input['where']) ? "WHERE " . $input['where'] : "";
-        $sql = "SELECT * FROM `$table` $where";
+        $where = "";
+        $orderBy = "";
+        $limit = "";
+
+        if (isset($input['where'])) {
+            $where = "WHERE " . $input['where'];
+        } else if (isset($input['conditions'])) {
+            $where = buildWhereClause($input['conditions']);
+        }
+
+        if (isset($input['order'])) {
+            $orderBy = "ORDER BY " . $input['order'];
+        }
+
+        if (isset($input['limit'])) {
+            $limit = "LIMIT " . intval($input['limit']);
+        }
+
+        $sql = "SELECT * FROM `$table` $where $orderBy $limit";
         $result = $conn->query($sql);
 
-        if (!$result) respond("error", "Query failed: " . $conn->error);
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
 
         $rows = [];
         while ($row = $result->fetch_assoc()) $rows[] = $row;
 
-        respond("success", "Data fetched successfully.", $rows);
+        $count = null;
+        if (isset($input['count']) && $input['count'] === 'exact') {
+            $countSql = "SELECT COUNT(*) as cnt FROM `$table` $where";
+            $countResult = $conn->query($countSql);
+            if ($countResult) {
+                $countRow = $countResult->fetch_assoc();
+                $count = intval($countRow['cnt']);
+            }
+        }
+
+        $response = ["data" => $rows];
+        if ($count !== null) {
+            $response["count"] = $count;
+        }
+
+        respond("success", "Data fetched successfully.", $response);
         break;
 
     // UPDATE DATA
     case 'update':
         if (!isset($input['table']) || !isset($input['data']) || !isset($input['where'])) {
-            respond("error", "Missing table, data, or where condition.");
+            respond("error", "Missing table, data, or where condition.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
@@ -288,14 +389,14 @@ switch ($action) {
         if ($conn->query($sql)) {
             respond("success", "Record updated successfully.", ["affected_rows" => $conn->affected_rows]);
         } else {
-            respond("error", "Update failed: " . $conn->error);
+            respond("error", "Update failed: " . $conn->error, null, 500);
         }
         break;
 
     // DELETE DATA
     case 'delete':
         if (!isset($input['table']) || !isset($input['where'])) {
-            respond("error", "Missing table or where condition.");
+            respond("error", "Missing table or where condition.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
@@ -304,14 +405,14 @@ switch ($action) {
         if ($conn->query($sql)) {
             respond("success", "Record(s) deleted successfully.", ["affected_rows" => $conn->affected_rows]);
         } else {
-            respond("error", "Delete failed: " . $conn->error);
+            respond("error", "Delete failed: " . $conn->error, null, 500);
         }
         break;
 
     // SEED TABLE WITH SAMPLE DATA
     case 'seed':
         if (!isset($input['table']) || !isset($input['data'])) {
-            respond("error", "Missing table or seed data.");
+            respond("error", "Missing table or seed data.", null, 400);
         }
 
         $table = $conn->real_escape_string($input['table']);
@@ -334,11 +435,11 @@ switch ($action) {
         respond("success", "API is healthy and responding correctly.");
         break;
 
-    // LOGIN ACTION
+    // AUTH: LOGIN
     case 'login':
         if (!isset($input['email']) || !isset($input['password'])) {
             logEvent('login_failed', ['reason' => 'missing_credentials']);
-            respond("error", "Missing email or password.");
+            respond("error", "Missing email or password.", null, 400);
         }
 
         $email = $conn->real_escape_string($input['email']);
@@ -346,7 +447,6 @@ switch ($action) {
 
         logEvent('login_attempt', ['email' => $email]);
 
-        // Query user by email using prepared statement
         $stmt = $conn->prepare("SELECT id, email, first_name, last_name, password_hash, status FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -354,40 +454,35 @@ switch ($action) {
 
         if (!$result || $result->num_rows === 0) {
             logEvent('login_failed', ['email' => $email, 'reason' => 'user_not_found']);
-            respond("error", "Invalid email or password.");
+            respond("error", "Invalid email or password.", null, 401);
         }
 
         $user = $result->fetch_assoc();
         $stmt->close();
 
-        // Verify password using password_verify
         if (!password_verify($password, $user['password_hash'])) {
             logEvent('login_failed', ['email' => $email, 'reason' => 'invalid_password']);
-            respond("error", "Invalid email or password.");
+            respond("error", "Invalid email or password.", null, 401);
         }
 
-        // Check user status
         if ($user['status'] !== 'active') {
             logEvent('login_failed', ['email' => $email, 'reason' => 'inactive_account', 'status' => $user['status']]);
-            respond("error", "User account is not active.");
+            respond("error", "User account is not active.", null, 403);
         }
 
-        // Generate access token (simple base64 encoded JSON)
         $token = base64_encode(json_encode([
             "id" => $user['id'],
             "email" => $user['email'],
             "ts" => time(),
-            "exp" => time() + (7 * 24 * 60 * 60) // 7 days
+            "exp" => time() + (7 * 24 * 60 * 60)
         ]));
 
-        // Update last_login using prepared statement
         $now = date('Y-m-d H:i:s');
         $stmt = $conn->prepare("UPDATE users SET last_login = ? WHERE id = ?");
         $stmt->bind_param("ss", $now, $user['id']);
         $stmt->execute();
         $stmt->close();
 
-        // Fetch user profile
         $stmt = $conn->prepare("SELECT user_type FROM user_profiles WHERE user_id = ? LIMIT 1");
         $stmt->bind_param("s", $user['id']);
         $stmt->execute();
@@ -395,14 +490,12 @@ switch ($action) {
         $profile = $profileResult->fetch_assoc();
         $stmt->close();
 
-        // Log successful login
         logEvent('login_success', [
             'email' => $user['email'],
             'user_id' => $user['id'],
             'user_type' => $profile['user_type'] ?? 'client'
         ]);
 
-        // Return user and token
         respond("success", "Login successful.", [
             "user" => [
                 "id" => $user['id'],
@@ -417,11 +510,11 @@ switch ($action) {
         ]);
         break;
 
-    // SIGNUP ACTION
+    // AUTH: SIGNUP
     case 'signup':
         if (!isset($input['email']) || !isset($input['password'])) {
             logEvent('signup_failed', ['reason' => 'missing_credentials']);
-            respond("error", "Missing email or password.");
+            respond("error", "Missing email or password.", null, 400);
         }
 
         $email = $conn->real_escape_string($input['email']);
@@ -434,7 +527,6 @@ switch ($action) {
 
         logEvent('signup_attempt', ['email' => $email, 'user_type' => $userType]);
 
-        // Check if user exists using prepared statement
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
@@ -442,14 +534,11 @@ switch ($action) {
         if ($checkResult->num_rows > 0) {
             $stmt->close();
             logEvent('signup_failed', ['email' => $email, 'reason' => 'user_already_exists']);
-            respond("error", "User already exists.");
+            respond("error", "User already exists.", null, 409);
         }
         $stmt->close();
 
-        // Hash password using PASSWORD_BCRYPT
         $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-
-        // Create user using prepared statement
         $userId = 'user_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
@@ -465,11 +554,10 @@ switch ($action) {
         if (!$stmt->execute()) {
             $error = $stmt->error;
             $stmt->close();
-            respond("error", "Failed to create user: " . $error);
+            respond("error", "Failed to create user: " . $error, null, 500);
         }
         $stmt->close();
 
-        // Create user profile entry
         $profileId = 'profile_' . uniqid();
         $fullName = trim($firstName . ' ' . $lastName);
 
@@ -481,7 +569,6 @@ switch ($action) {
         $stmt->execute();
         $stmt->close();
 
-        // Generate access token
         $token = base64_encode(json_encode([
             "id" => $userId,
             "email" => $email,
@@ -545,10 +632,9 @@ switch ($action) {
             respond("success", "Migration successful: users table created or already exists.");
         } else {
             logEvent('migration_failed', ['table' => 'users', 'error' => $conn->error]);
-            respond("error", "Migration failed: " . $conn->error);
+            respond("error", "Migration failed: " . $conn->error, null, 500);
         }
 
-        // Create password_reset_tokens table
         $resetTokensTable = "
         CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
           `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
@@ -568,7 +654,7 @@ switch ($action) {
             respond("success", "Migration successful: users and password_reset_tokens tables created or already exist.");
         } else {
             logEvent('migration_failed', ['table' => 'password_reset_tokens', 'error' => $conn->error]);
-            respond("error", "Migration failed: " . $conn->error);
+            respond("error", "Migration failed: " . $conn->error, null, 500);
         }
         break;
 
@@ -607,7 +693,6 @@ switch ($action) {
         $errors = [];
 
         foreach ($testUsers as $user) {
-            // Check if user exists
             $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
             $stmt->bind_param("s", $user['email']);
             $stmt->execute();
@@ -648,7 +733,7 @@ switch ($action) {
 
         $message = "Seeding complete: $seeded created, $skipped already exist.";
         if (!empty($errors)) {
-            respond("error", $message . " Errors: " . implode("; ", $errors), ["seeded" => $seeded, "skipped" => $skipped]);
+            respond("success", $message . " Errors: " . implode("; ", $errors), ["seeded" => $seeded, "skipped" => $skipped]);
         } else {
             respond("success", $message, ["seeded" => $seeded, "skipped" => $skipped]);
         }
@@ -670,7 +755,7 @@ switch ($action) {
 
         $result = $conn->query($sql);
         if (!$result) {
-            respond("error", "Query failed: " . $conn->error);
+            respond("error", "Query failed: " . $conn->error, null, 500);
         }
 
         $users = [];
@@ -678,12 +763,11 @@ switch ($action) {
             $users[] = $row;
         }
 
-        respond("success", "Users fetched successfully.", $users);
+        respond("success", "Users fetched successfully.", ["data" => $users]);
         break;
 
     // SEED ALL TEST USERS
     case 'seed_all_users':
-        // Ensure user_profiles table exists
         $createProfilesTable = "
             CREATE TABLE IF NOT EXISTS `user_profiles` (
                 `id` VARCHAR(36) PRIMARY KEY,
@@ -744,7 +828,6 @@ switch ($action) {
         $now = date('Y-m-d H:i:s');
 
         foreach ($testUsers as $user) {
-            // Check if user already exists
             $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
             $stmt->bind_param("s", $user['email']);
             $stmt->execute();
@@ -757,15 +840,11 @@ switch ($action) {
             }
             $stmt->close();
 
-            // Generate IDs
             $userId = 'user_' . uniqid();
             $profileId = 'profile_' . uniqid();
-
-            // Hash password
             $passwordHash = password_hash($user['password'], PASSWORD_BCRYPT);
             $fullName = trim($user['first_name'] . ' ' . $user['last_name']);
 
-            // Insert into users table
             $stmt = $conn->prepare("
                 INSERT INTO users (
                     id, email, phone, password_hash,
@@ -778,8 +857,7 @@ switch ($action) {
 
             if ($stmt->execute()) {
                 $stmt->close();
-                
-                // Insert into user_profiles table
+
                 $stmt = $conn->prepare("
                     INSERT INTO user_profiles (
                         id, user_id, user_type, full_name, phone_number, created_at
@@ -815,10 +893,28 @@ switch ($action) {
         }
         break;
 
-    // REQUEST PASSWORD RESET: Send reset email
+    // GET CURRENT USER TYPE
+    case 'get_user_type':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $sql = "SELECT user_type FROM user_profiles WHERE user_id = '$userId' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if ($result->num_rows === 0) {
+            respond("success", "User type fetched (default: client).", ["user_type" => "client"]);
+        }
+
+        $row = $result->fetch_assoc();
+        respond("success", "User type fetched.", ["user_type" => $row['user_type'] ?? 'client']);
+        break;
+
+    // REQUEST PASSWORD RESET
     case 'request_password_reset':
         if (!isset($input['email'])) {
-            respond("error", "Email is required.");
+            respond("error", "Email is required.", null, 400);
         }
 
         $email = $conn->real_escape_string($input['email']);
@@ -836,11 +932,9 @@ switch ($action) {
         $user = $result->fetch_assoc();
         $stmt->close();
 
-        // Generate reset token
         $resetToken = bin2hex(random_bytes(32));
         $tokenExpiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
 
-        // Store reset token in a password_reset_tokens table
         $stmt = $conn->prepare("INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at) VALUES (?, ?, ?, NOW())");
         $stmt->bind_param("sss", $user['id'], $resetToken, $tokenExpiry);
 
@@ -848,22 +942,20 @@ switch ($action) {
             error_log("Password reset token generated for: " . $email);
             $stmt->close();
 
-            // In production, send email here
-            // For now, just return success
             respond("success", "Password reset link has been sent to your email.", [
                 "email" => $email,
-                "token" => $resetToken // In production, don't return token in response
+                "token" => $resetToken
             ]);
         } else {
             $stmt->close();
-            respond("error", "Failed to generate reset link. Please try again.");
+            respond("error", "Failed to generate reset link. Please try again.", null, 500);
         }
         break;
 
-    // RESET PASSWORD WITH TOKEN: Complete password reset
+    // RESET PASSWORD WITH TOKEN
     case 'reset_password_with_token':
         if (!isset($input['email']) || !isset($input['token']) || !isset($input['new_password'])) {
-            respond("error", "Email, token, and new password are required.");
+            respond("error", "Email, token, and new password are required.", null, 400);
         }
 
         $email = $conn->real_escape_string($input['email']);
@@ -871,23 +963,21 @@ switch ($action) {
         $newPassword = $input['new_password'];
 
         if (strlen($newPassword) < 8) {
-            respond("error", "Password must be at least 8 characters long.");
+            respond("error", "Password must be at least 8 characters long.", null, 400);
         }
 
-        // Find user
         $stmt = $conn->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $userResult = $stmt->get_result();
 
         if (!$userResult || $userResult->num_rows === 0) {
-            respond("error", "User not found.");
+            respond("error", "User not found.", null, 404);
         }
 
         $user = $userResult->fetch_assoc();
         $stmt->close();
 
-        // Verify token
         $now = date('Y-m-d H:i:s');
         $stmt = $conn->prepare("SELECT id FROM password_reset_tokens WHERE user_id = ? AND token = ? AND expires_at > ? LIMIT 1");
         $stmt->bind_param("sss", $user['id'], $token, $now);
@@ -896,26 +986,23 @@ switch ($action) {
 
         if (!$tokenResult || $tokenResult->num_rows === 0) {
             error_log("Invalid or expired password reset token for: " . $email);
-            respond("error", "Reset link is invalid or has expired.");
+            respond("error", "Reset link is invalid or has expired.", null, 401);
         }
 
         $stmt->close();
 
-        // Hash new password
         $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
 
-        // Update password
         $stmt = $conn->prepare("UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?");
         $stmt->bind_param("ss", $passwordHash, $user['id']);
 
         if (!$stmt->execute()) {
             $stmt->close();
-            respond("error", "Failed to update password. Please try again.");
+            respond("error", "Failed to update password. Please try again.", null, 500);
         }
 
         $stmt->close();
 
-        // Delete used token
         $stmt = $conn->prepare("DELETE FROM password_reset_tokens WHERE user_id = ? AND token = ?");
         $stmt->bind_param("ss", $user['id'], $token);
         $stmt->execute();
@@ -930,7 +1017,7 @@ switch ($action) {
         $newPassword = isset($input['password']) ? $input['password'] : 'Test123';
 
         if (strlen($newPassword) < 6) {
-            respond("error", "Password must be at least 6 characters long.");
+            respond("error", "Password must be at least 6 characters long.", null, 400);
         }
 
         $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
@@ -959,8 +1046,23 @@ switch ($action) {
         }
         break;
 
+    // SEND AUDIT LOG
+    case 'audit':
+        $action = isset($input['action']) ? $conn->real_escape_string($input['action']) : 'unknown';
+        $target = isset($input['target']) ? $conn->real_escape_string($input['target']) : null;
+        $details = isset($input['details']) ? json_encode($input['details']) : null;
+        $actor = isset($_SERVER['HTTP_X_ADMIN_ACTOR']) ? $conn->real_escape_string($_SERVER['HTTP_X_ADMIN_ACTOR']) : null;
+
+        $now = date('Y-m-d H:i:s');
+        $sql = "INSERT INTO audit_logs (action, target_id, details, actor, created_at)
+                VALUES ('$action', '$target', '$details', '$actor', '$now')";
+
+        $conn->query($sql);
+        respond("success", "Audit logged.");
+        break;
+
     // UNKNOWN ACTION
     default:
-        respond("error", "Invalid action '$action'.");
+        respond("error", "Invalid action '$action'.", null, 400);
 }
 ?>

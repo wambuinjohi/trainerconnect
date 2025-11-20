@@ -1,38 +1,81 @@
 <?php
-// Load environment variables from .env file if it exists
+// Set JSON header FIRST before any output
+header("Content-Type: application/json; charset=utf-8");
+
+// Ensure no output buffering interferes
+if (ob_get_level()) {
+    ob_clean();
+}
+
+// Database configuration with fallback values
+$server = 'localhost';
+$username = 'skatrykc_trainer';
+$password = 'Sirgeorge.12';
+$database = 'skatrykc_trainer';
+$port = 3306;
+
+// Try to load from .env file if it exists
 if (file_exists(__DIR__ . '/.env')) {
     $env = parse_ini_file(__DIR__ . '/.env');
-    foreach ($env as $key => $value) {
-        if (!getenv($key)) {
-            putenv("$key=$value");
-        }
+    if ($env !== false) {
+        $server = $env['DB_HOST'] ?? $server;
+        $username = $env['DB_USER'] ?? $username;
+        $password = $env['DB_PASS'] ?? $password;
+        $database = $env['DB_NAME'] ?? $database;
+        $port = isset($env['DB_PORT']) ? (int)$env['DB_PORT'] : $port;
     }
 }
 
-// Database connection settings from environment variables
-$server = getenv('DB_HOST') ?: 'localhost';
-$username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') ?: '';
-$database = getenv('DB_NAME') ?: 'trainer_db';
-$port = (int)(getenv('DB_PORT') ?: 3306);
+// Try to load from environment variables
+if (getenv('DB_HOST')) $server = getenv('DB_HOST');
+if (getenv('DB_USER')) $username = getenv('DB_USER');
+if (getenv('DB_PASS')) $password = getenv('DB_PASS');
+if (getenv('DB_NAME')) $database = getenv('DB_NAME');
+if (getenv('DB_PORT')) $port = (int)getenv('DB_PORT');
 
-// Create connection
-$conn = new mysqli($server, $username, $password, $database, $port);
+// Suppress mysqli errors and handle them ourselves
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
-// Check connection
-if ($conn->connect_error) {
-    error_log("Database connection error: " . $conn->connect_error);
+try {
+    // Create connection with explicit error handling
+    $conn = new mysqli($server, $username, $password, $database, $port);
+    
+    // Check connection
+    if ($conn->connect_error) {
+        error_log("Database connection failed: " . $conn->connect_error);
+        http_response_code(500);
+        die(json_encode([
+            "status" => "error",
+            "message" => "Database connection failed. Please try again later."
+        ]));
+    }
+    
+    // Set charset
+    if (!$conn->set_charset("utf8mb4")) {
+        error_log("Charset setting failed: " . $conn->error);
+        http_response_code(500);
+        die(json_encode([
+            "status" => "error",
+            "message" => "Database configuration error."
+        ]));
+    }
+    
+} catch (mysqli_sql_exception $e) {
+    error_log("MySQL Exception: " . $e->getMessage());
     http_response_code(500);
-    header("Content-Type: application/json; charset=utf-8");
     die(json_encode([
         "status" => "error",
-        "message" => "Database connection failed. Please try again later."
+        "message" => "Database error: " . $e->getMessage()
+    ]));
+} catch (Exception $e) {
+    error_log("Connection Exception: " . $e->getMessage());
+    http_response_code(500);
+    die(json_encode([
+        "status" => "error",
+        "message" => "Connection error: " . $e->getMessage()
     ]));
 }
 
-// Set charset to utf8mb4
-$conn->set_charset("utf8mb4");
-
-// Do NOT echo anything here
-// api.php will handle the response
+// Connection successful - do NOT output anything here
+// The api.php file will handle all responses
 ?>
