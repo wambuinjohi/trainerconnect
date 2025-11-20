@@ -92,6 +92,9 @@ export const ClientDashboard: React.FC = () => {
             distance: '—',
             distanceKm: null,
             service_radius: trainer.service_radius || 10,
+            location_lat: trainer.location_lat || null,
+            location_lng: trainer.location_lng || null,
+            location_label: trainer.location_label || 'Unknown',
             image: '👤'
           })))
         }
