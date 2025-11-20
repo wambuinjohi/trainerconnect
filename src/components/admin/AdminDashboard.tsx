@@ -634,13 +634,23 @@ export const AdminDashboard: React.FC = () => {
           })
         }
 
+        // Load categories
+        const categoriesResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_categories' })
+        })
+        const categoriesData = await categoriesResponse.json()
+        if (categoriesData.status === 'success' && categoriesData.data?.data) {
+          setCategories(categoriesData.data.data)
+        }
+
         // Set other data to empty for now (can be extended)
         setPromotions([])
         setPayoutRequests([])
         setDisputes([])
         setIssues([])
         setApprovals([])
-        setCategories([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
