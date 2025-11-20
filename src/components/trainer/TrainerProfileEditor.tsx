@@ -160,9 +160,25 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         bio: profile.bio || null,
       }
 
-      // Save to localStorage as fallback - replace with your preferred storage
+      // Save to API
+      try {
+        await apiService.updateUserProfile(userId, {
+          full_name: name,
+          disciplines: JSON.stringify(disciplines),
+          certifications: JSON.stringify(certifications),
+          hourly_rate: hourlyRateNum,
+          service_radius: serviceRadiusNum,
+          availability: JSON.stringify(availabilityVal),
+          profile_image: profile.profile_image || null,
+          bio: profile.bio || null,
+        })
+      } catch (apiErr) {
+        console.warn('API save failed, falling back to localStorage', apiErr)
+      }
+
+      // Save to localStorage as fallback
       localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
-      
+
       toast({ title: 'Saved', description: 'Profile updated successfully.' })
       onClose?.()
     } catch (err) {
