@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { MediaUploadSection } from './MediaUploadSection'
+import * as apiService from '@/lib/api-service'
 
 interface TrainerProfile {
   user_id?: string
@@ -32,21 +33,39 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   useEffect(() => {
     if (!userId) return
     setLoading(true)
-    // Simulate loading profile data - replace with your data source
-    try {
-      // Load from localStorage or other source as fallback
-      const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
-      if (savedProfile) {
-        const data = JSON.parse(savedProfile)
-        setProfile(data)
-        setName(String(data.name || ''))
+    const loadProfile = async () => {
+      try {
+        // Load profile from API
+        const profileData = await apiService.getUserProfile(userId)
+        if (profileData?.data && profileData.data.length > 0) {
+          const data = profileData.data[0]
+          setProfile(data)
+          setName(String(data.full_name || data.name || ''))
+        } else {
+          // Fallback to localStorage
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            const data = JSON.parse(savedProfile)
+            setProfile(data)
+            setName(String(data.name || ''))
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile', error)
+        // Fallback to localStorage on error
+        try {
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            const data = JSON.parse(savedProfile)
+            setProfile(data)
+            setName(String(data.name || ''))
+          }
+        } catch {}
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('Failed to fetch profile', error)
-      toast({ title: 'Error', description: 'Failed to load profile', variant: 'destructive' })
-    } finally {
-      setLoading(false)
     }
+    loadProfile()
   }, [userId])
 
   const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
@@ -141,9 +160,25 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         bio: profile.bio || null,
       }
 
-      // Save to localStorage as fallback - replace with your preferred storage
+      // Save to API
+      try {
+        await apiService.updateUserProfile(userId, {
+          full_name: name,
+          disciplines: JSON.stringify(disciplines),
+          certifications: JSON.stringify(certifications),
+          hourly_rate: hourlyRateNum,
+          service_radius: serviceRadiusNum,
+          availability: JSON.stringify(availabilityVal),
+          profile_image: profile.profile_image || null,
+          bio: profile.bio || null,
+        })
+      } catch (apiErr) {
+        console.warn('API save failed, falling back to localStorage', apiErr)
+      }
+
+      // Save to localStorage as fallback
       localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
-      
+
       toast({ title: 'Saved', description: 'Profile updated successfully.' })
       onClose?.()
     } catch (err) {

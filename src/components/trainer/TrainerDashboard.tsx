@@ -31,6 +31,7 @@ import { PromoteProfile } from './PromoteProfile'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
 import { TrainerReportIssue } from './TrainerReportIssue'
+import * as apiService from '@/lib/api-service'
 
 export const TrainerDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -103,32 +104,164 @@ export const TrainerDashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    // Placeholder: replace with API call to fetch bookings
-    setBookings([
-      { id: '1', client_name: 'John Doe', session_date: '2025-11-12', session_time: '10:00 AM', total_amount: 1000, status: 'pending' }
-    ])
-  }, [])
+    const loadBookings = async () => {
+      if (!user?.id) return
+      try {
+        const bookingsData = await apiService.getBookings(user.id, 'trainer')
+        if (bookingsData?.data && Array.isArray(bookingsData.data)) {
+          setBookings(bookingsData.data)
+
+          // Calculate month stats
+          const now = new Date()
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+          const monthBookings = bookingsData.data.filter((b: any) => b.session_date && new Date(b.session_date) >= monthStart)
+          setMonthSessions(monthBookings.length)
+
+          const monthRevenue = monthBookings.reduce((sum: number, b: any) => sum + (Number(b.total_amount) || 0), 0)
+          setMonthRevenue(monthRevenue)
+        } else {
+          setBookings([])
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer bookings', err)
+        setBookings([])
+      }
+    }
+    loadBookings()
+  }, [user?.id])
 
   useEffect(() => {
-    if (!showReviews) return
-    // Placeholder: replace with API call to fetch reviews
-    setReviews([{ rating: 5, comment: 'Great trainer!', created_at: new Date().toISOString() }])
-    setAvgRating(5)
-  }, [showReviews])
+    const loadReviews = async () => {
+      if (!user?.id || !showReviews) return
+      try {
+        const reviewsData = await apiService.getReviews(user.id)
+        if (reviewsData?.data && Array.isArray(reviewsData.data)) {
+          setReviews(reviewsData.data)
+          if (reviewsData.data.length > 0) {
+            const avgRate = reviewsData.data.reduce((sum: number, r: any) => sum + (Number(r.rating) || 0), 0) / reviewsData.data.length
+            setAvgRating(avgRate)
+          }
+        } else {
+          setReviews([])
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer reviews', err)
+        setReviews([])
+      }
+    }
+    loadReviews()
+  }, [user?.id, showReviews])
 
   const [editingProfile, setEditingProfile] = useState(false)
   const [editingAvailability, setEditingAvailability] = useState(false)
   const [showServiceArea, setShowServiceArea] = useState(false)
   const [showReport, setShowReport] = useState(false)
 
+  useEffect(() => {
+    const loadTrainerProfile = async () => {
+      if (!user?.id) return
+      try {
+        const profile = await apiService.getTrainerProfile(user.id)
+        if (profile?.data && profile.data.length > 0) {
+          const profileData = profile.data[0]
+          setProfileData({
+            name: profileData.full_name || user.email,
+            bio: profileData.bio || 'Professional Trainer',
+            profile_image: profileData.profile_image || null,
+            hourly_rate: profileData.hourly_rate || 0,
+            availability: profileData.availability ? (typeof profileData.availability === 'string' ? JSON.parse(profileData.availability) : profileData.availability) : [],
+            pricing_packages: profileData.pricing_packages ? (typeof profileData.pricing_packages === 'string' ? JSON.parse(profileData.pricing_packages) : profileData.pricing_packages) : []
+          })
+        } else {
+          setProfileData({
+            name: user.email,
+            bio: 'Professional Trainer',
+            profile_image: null,
+            hourly_rate: 0,
+            availability: [],
+            pricing_packages: []
+          })
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer profile', err)
+        setProfileData({
+          name: user.email,
+          bio: 'Professional Trainer',
+          profile_image: null,
+          hourly_rate: 0,
+          availability: [],
+          pricing_packages: []
+        })
+      }
+
+      // Load wallet balance - handle gracefully if table doesn't exist
+      try {
+        const walletData = await apiService.getWalletBalance(user.id)
+        if (walletData?.data && walletData.data.length > 0) {
+          setWalletBalance(walletData.data[0].balance || 0)
+        }
+      } catch (err) {
+        console.warn('Failed to load wallet balance', err)
+        setWalletBalance(0)
+      }
+    }
+    loadTrainerProfile()
+  }, [user?.id])
+
   const renderHomeContent = () => (
     <div className="space-y-6">
       <div className="text-center py-4">
         <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
-          👨‍💼
+          ���‍💼
         </div>
         <h1 className="text-2xl font-bold text-foreground">Welcome back!</h1>
         <p className="text-muted-foreground">Ready to inspire and train today?</p>
+      </div>
+
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">This Month</div>
+            <div className="text-2xl font-bold text-foreground mt-2">Ksh {monthRevenue.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">Revenue</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Sessions</div>
+            <div className="text-2xl font-bold text-foreground mt-2">{monthSessions}</div>
+            <div className="text-xs text-muted-foreground mt-1">This month</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Wallet</div>
+            <div className="text-2xl font-bold text-foreground mt-2">Ksh {walletBalance.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">Available balance</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Messages</div>
+            <div className="text-2xl font-bold text-foreground mt-2">{unreadMessages}</div>
+            <div className="text-xs text-muted-foreground mt-1">Unread</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="space-y-2">
+        <h3 className="font-semibold text-foreground">Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+          <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Set Hours</Button>
+          <Button variant="outline" className="w-full" onClick={() => setShowPayouts(true)}>Payouts</Button>
+          <Button variant="outline" className="w-full" onClick={openPromote}>Promote</Button>
+        </div>
       </div>
     </div>
   )
@@ -136,31 +269,65 @@ export const TrainerDashboard: React.FC = () => {
   const renderBookingsContent = () => (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
-      {bookings.map(b => (
-        <Card key={b.id} className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex justify-between">
-              <div>{b.client_name}</div>
-              <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>{b.status}</Badge>
-            </div>
-            <div className="flex gap-2 mt-2">
-              <Button onClick={() => openChat(b)}>Chat</Button>
-              {b.status === 'pending' && <Button onClick={() => acceptBooking(b.id)}>Accept</Button>}
-              {b.status === 'pending' && <Button onClick={() => declineBooking(b.id)}>Decline</Button>}
-              {(b.status === 'confirmed' || b.status === 'in_session') && <Button onClick={() => startSession(b.id)}>Start/End</Button>}
-            </div>
+      {bookings && bookings.length > 0 ? (
+        bookings.map(b => (
+          <Card key={b.id || b.user_id} className="bg-card border-border">
+            <CardContent className="p-4">
+              <div className="flex justify-between">
+                <div>{b.client_name || 'Client'}</div>
+                <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>{b.status || 'pending'}</Badge>
+              </div>
+              <div className="text-sm text-muted-foreground mt-2">{b.session_date || 'TBD'} at {b.session_time || ''}</div>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" onClick={() => openChat(b)}>Chat</Button>
+                {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => acceptBooking(b.id)}>Accept</Button>}
+                {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => declineBooking(b.id)}>Decline</Button>}
+                {(b.status === 'confirmed' || b.status === 'in_session') && <Button size="sm" onClick={() => startSession(b.id)}>Start/End</Button>}
+              </div>
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <Card className="bg-card border-border">
+          <CardContent className="p-8 text-center">
+            <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+            <p className="text-muted-foreground">No bookings yet</p>
+            <p className="text-sm text-muted-foreground mt-1">Your bookings will appear here</p>
           </CardContent>
         </Card>
-      ))}
+      )}
     </div>
   )
 
   const renderProfileContent = () => (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
-      <p className="text-muted-foreground">{profileData.bio}</p>
-      <div className="flex gap-2">
-        <Button onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+      <div className="text-center">
+        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
+          {profileData.profile_image ? '🖼️' : '👨‍💼'}
+        </div>
+        <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
+        <p className="text-muted-foreground mt-2">{profileData.bio}</p>
+      </div>
+
+      <Card className="bg-card border-border">
+        <CardContent className="p-4 space-y-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Hourly Rate</p>
+            <p className="text-lg font-semibold text-foreground">Ksh {profileData.hourly_rate}</p>
+          </div>
+          {profileData.availability && profileData.availability.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground">Availability</p>
+              <p className="text-sm text-foreground">{typeof profileData.availability === 'object' ? Object.keys(profileData.availability).join(', ') : 'Check schedule'}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="space-y-2">
+        <Button className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+        <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Edit Availability</Button>
+        <Button variant="outline" className="w-full" onClick={() => setShowServiceArea(true)}>Service Area</Button>
       </div>
     </div>
   )
@@ -185,16 +352,21 @@ export const TrainerDashboard: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
         <div className="container max-w-md mx-auto">
           <div className="flex items-center justify-around py-2">
-            <Button onClick={() => setActiveTab('home')}><Home /></Button>
-            <Button onClick={() => setActiveTab('bookings')}><Calendar /></Button>
-            <Button onClick={() => setShowServicesManager(true)}><Plus /></Button>
-            <Button onClick={() => setActiveTab('profile')}><User /></Button>
+            <Button variant={activeTab === 'home' ? 'default' : 'ghost'} onClick={() => setActiveTab('home')} size="sm"><Home className="h-5 w-5" /></Button>
+            <Button variant={activeTab === 'bookings' ? 'default' : 'ghost'} onClick={() => setActiveTab('bookings')} size="sm"><Calendar className="h-5 w-5" /></Button>
+            <Button variant="ghost" onClick={() => setShowServicesManager(true)} size="sm"><Plus className="h-5 w-5" /></Button>
+            <Button variant={activeTab === 'profile' ? 'default' : 'ghost'} onClick={() => setActiveTab('profile')} size="sm"><User className="h-5 w-5" /></Button>
           </div>
         </div>
       </div>
 
       {showServicesManager && <ServicesManager onClose={() => setShowServicesManager(false)} />}
       {editingProfile && <TrainerProfileEditor onClose={() => setEditingProfile(false)} />}
+      {editingAvailability && <AvailabilityEditor onClose={() => setEditingAvailability(false)} />}
+      {showServiceArea && <ServiceAreaEditor onClose={() => setShowServiceArea(false)} />}
+      {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
+      {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
+      {showReport && <TrainerReportIssue onClose={() => setShowReport(false)} />}
       {chatBooking && <TrainerChat booking={chatBooking} onClose={closeChat} />}
     </div>
   )

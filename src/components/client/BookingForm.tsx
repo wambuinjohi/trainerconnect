@@ -6,6 +6,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
+import * as apiService from '@/lib/api-service'
 
 export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ trainer, onDone }) => {
   const { user } = useAuth()
@@ -86,8 +87,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
 
     try {
-      // create booking
-      const bookingData = await apiRequest('booking_insert', payload, { headers: withAuth() })
+      // create booking using API service
+      const bookingData = await apiService.createBooking(payload)
 
       // in-app notifications: client, trainer, admins
       try {

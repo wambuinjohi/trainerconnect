@@ -38,6 +38,7 @@ import {
   XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts'
 import { toast } from '@/hooks/use-toast'
+import * as apiService from '@/lib/api-service'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
@@ -504,51 +505,31 @@ export const AdminDashboard: React.FC = () => {
     return ['1','true','yes','y','t'].includes(s)
   }
 
-  // Helper to get the API URL
-  const getApiUrl = () => {
-    return 'https://trainer.skatryk.co.ke/api.php'
-  }
-
   // Approve a trainer
   const approveTrainer = async (userId: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve_trainer', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u))
-        toast({ title: 'Success', description: 'Trainer approved' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to approve trainer', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.approveTrainer(userId)
+      toast({ title: 'Success', description: 'Trainer approved' })
+      // Refresh page after showing success message
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+    } catch (err: any) {
       console.error('Approve trainer error:', err)
-      toast({ title: 'Error', description: 'Failed to approve trainer', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
     }
   }
 
   // Reject a trainer
   const rejectTrainer = async (userId: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject_trainer', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.filter(u => u.user_id !== userId))
-        setApprovals(approvals.filter(a => a.user_id !== userId))
-        toast({ title: 'Success', description: 'Trainer rejected' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to reject trainer', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.rejectTrainer(userId)
+      setUsers(users.filter(u => u.user_id !== userId))
+      setApprovals(approvals.filter(a => a.user_id !== userId))
+      toast({ title: 'Success', description: 'Trainer rejected' })
+    } catch (err: any) {
       console.error('Reject trainer error:', err)
-      toast({ title: 'Error', description: 'Failed to reject trainer', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
     }
   }
 
@@ -556,42 +537,24 @@ export const AdminDashboard: React.FC = () => {
   const deleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete_user', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.filter(u => u.user_id !== userId))
-        toast({ title: 'Success', description: 'User deleted' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to delete user', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.deleteUser(userId)
+      setUsers(users.filter(u => u.user_id !== userId))
+      toast({ title: 'Success', description: 'User deleted' })
+    } catch (err: any) {
       console.error('Delete user error:', err)
-      toast({ title: 'Error', description: 'Failed to delete user', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
     }
   }
 
   // Update user type
   const updateUserType = async (userId: string, newType: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_user_type', user_id: userId, user_type: newType })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.map(u => u.user_id === userId ? { ...u, user_type: newType } : u))
-        toast({ title: 'Success', description: 'User type updated' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to update user type', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.updateUserType(userId, newType)
+      setUsers(users.map(u => u.user_id === userId ? { ...u, user_type: newType } : u))
+      toast({ title: 'Success', description: 'User type updated' })
+    } catch (err: any) {
       console.error('Update user type error:', err)
-      toast({ title: 'Error', description: 'Failed to update user type', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to update user type', variant: 'destructive' })
     }
   }
 
@@ -602,24 +565,20 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        const apiUrl = getApiUrl();
-        // Load users with profiles from MySQL API
-        const usersResponse = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_users' })
-        })
-        const usersData = await usersResponse.json()
-        if (usersData.status === 'success' && usersData.data?.data) {
-          setUsers(usersData.data.data)
+        // Load users with profiles from API
+        const usersData = await apiService.getUsers()
+        if (usersData?.data) {
+          setUsers(usersData.data)
 
           // Calculate stats from users
-          const allUsers = usersData.data.data
+          const allUsers = usersData.data
           const trainers = allUsers.filter((u: any) => u.user_type === 'trainer')
           const clients = allUsers.filter((u: any) => u.user_type === 'client')
           const admins = allUsers.filter((u: any) => u.user_type === 'admin')
           const approvedTrainers = trainers.filter((u: any) => u.is_approved)
+          const pendingTrainers = trainers.filter((u: any) => !u.is_approved)
 
+          setApprovals(pendingTrainers)
           setStats({
             totalUsers: allUsers.length,
             totalTrainers: trainers.length,
@@ -627,28 +586,22 @@ export const AdminDashboard: React.FC = () => {
             totalAdmins: admins.length,
             totalBookings: 0,
             totalRevenue: 0,
-            pendingApprovals: trainers.length - approvedTrainers.length,
+            pendingApprovals: pendingTrainers.length,
             activeDisputes: 0
           })
         }
 
         // Load categories
-        const categoriesResponse = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_categories' })
-        })
-        const categoriesData = await categoriesResponse.json()
-        if (categoriesData.status === 'success' && categoriesData.data?.data) {
-          setCategories(categoriesData.data.data)
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setCategories(categoriesData.data)
         }
 
-        // Set other data to empty for now (can be extended)
+        // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
         setDisputes([])
         setIssues([])
-        setApprovals([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
@@ -683,27 +636,14 @@ export const AdminDashboard: React.FC = () => {
 
     setCatLoading(true)
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'add_category',
-          name: catForm.name,
-          icon: catForm.icon,
-          description: catForm.description
-        })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setCategories([...categories, { id: data.data.id, ...catForm, created_at: new Date().toISOString() }])
-        setCatForm({ name: '', icon: '', description: '' })
-        toast({ title: 'Success', description: 'Category added' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to add category', variant: 'destructive' })
-      }
-    } catch (err) {
+      const result = await apiService.addCategory(catForm.name, catForm.icon, catForm.description)
+      const categoryId = result?.id || Date.now()
+      setCategories([...categories, { id: categoryId, ...catForm, created_at: new Date().toISOString() }])
+      setCatForm({ name: '', icon: '', description: '' })
+      toast({ title: 'Success', description: 'Category added' })
+    } catch (err: any) {
       console.error('Add category error:', err)
-      toast({ title: 'Error', description: 'Failed to add category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to add category', variant: 'destructive' })
     } finally {
       setCatLoading(false)
     }
@@ -711,20 +651,11 @@ export const AdminDashboard: React.FC = () => {
 
   const updateCategory = async (id: any, patch: any) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_category', id, ...patch })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        toast({ title: 'Success', description: 'Category updated' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to update category', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.updateCategory(id, patch)
+      toast({ title: 'Success', description: 'Category updated' })
+    } catch (err: any) {
       console.error('Update category error:', err)
-      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to update category', variant: 'destructive' })
     }
   }
 
@@ -740,21 +671,12 @@ export const AdminDashboard: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this category?')) return
 
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete_category', id })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setCategories(categories.filter(c => c.id !== id))
-        toast({ title: 'Success', description: 'Category deleted' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to delete category', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.deleteCategory(id)
+      setCategories(categories.filter(c => c.id !== id))
+      toast({ title: 'Success', description: 'Category deleted' })
+    } catch (err: any) {
       console.error('Delete category error:', err)
-      toast({ title: 'Error', description: 'Failed to delete category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
     }
   }
 
@@ -844,7 +766,7 @@ export const AdminDashboard: React.FC = () => {
           const trainer = users.find((u:any) => u.user_id === (p.trainer_id || p.trainer_user_id || p.trainer))
           const trainerLabel = trainer?.full_name || trainer?.user_id || p.trainer_id || p.trainer_user_id || 'Unknown'
           const commissionRaw = (p.commission_rate ?? p.requested_commission)
-          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? '—' : `${Number(commissionRaw).toFixed(0)}%`
+          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? '���' : `${Number(commissionRaw).toFixed(0)}%`
           const createdAt = p.created_at ? new Date(p.created_at).toLocaleString() : ''
           return (
             <Card key={p.id} className="bg-card border-border">
