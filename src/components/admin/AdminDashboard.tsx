@@ -1199,8 +1199,8 @@ export const AdminDashboard: React.FC = () => {
                     <td className="p-2">{u.full_name || u.user_id}</td>
                     <td className="p-2">{u.email || u.phone_number || '-'}</td>
                     <td className="p-2">
-                      <Select value={u.user_type || 'client'} onValueChange={async (v)=>{
-                        toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+                      <Select value={u.user_type || 'client'} onValueChange={(v)=>{
+                        updateUserType(u.user_id, v)
                       }}>
                         <SelectTrigger className="bg-input border-border"><SelectValue /></SelectTrigger>
                         <SelectContent>
