@@ -1214,15 +1214,11 @@ export const AdminDashboard: React.FC = () => {
                     <td className="p-2">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                     <td className="p-2">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={async ()=>{
-                          toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                        }}>Delete</Button>
+                        <Button size="sm" variant="outline" onClick={() => deleteUser(u.user_id)}>Delete</Button>
 
                         {/* Approve trainer (if applicable) */}
                         {String(u.user_type || '').toLowerCase() === 'trainer' && !approvedOf(u) && (
-                          <Button size="sm" variant="outline" onClick={async ()=>{
-                            toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                          }}>Approve</Button>
+                          <Button size="sm" variant="outline" onClick={() => approveTrainer(u.user_id)}>Approve</Button>
                         )}
 
                         <Button size="sm" variant="ghost" disabled title="Admin API not configured">Reset PW</Button>
