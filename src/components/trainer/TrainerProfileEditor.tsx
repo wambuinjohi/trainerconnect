@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { MediaUploadSection } from './MediaUploadSection'
+import { useFileUpload } from '@/hooks/use-file-upload'
+import { Upload, X } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
 
 interface TrainerProfile {
