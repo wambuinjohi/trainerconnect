@@ -31,6 +31,7 @@ import { PromoteProfile } from './PromoteProfile'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
 import { TrainerReportIssue } from './TrainerReportIssue'
+import * as apiService from '@/lib/api-service'
 
 export const TrainerDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
