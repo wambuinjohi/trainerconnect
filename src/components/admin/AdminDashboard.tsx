@@ -563,24 +563,20 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        const apiUrl = getApiUrl();
-        // Load users with profiles from MySQL API
-        const usersResponse = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_users' })
-        })
-        const usersData = await usersResponse.json()
-        if (usersData.status === 'success' && usersData.data?.data) {
-          setUsers(usersData.data.data)
+        // Load users with profiles from API
+        const usersData = await apiService.getUsers()
+        if (usersData?.data) {
+          setUsers(usersData.data)
 
           // Calculate stats from users
-          const allUsers = usersData.data.data
+          const allUsers = usersData.data
           const trainers = allUsers.filter((u: any) => u.user_type === 'trainer')
           const clients = allUsers.filter((u: any) => u.user_type === 'client')
           const admins = allUsers.filter((u: any) => u.user_type === 'admin')
           const approvedTrainers = trainers.filter((u: any) => u.is_approved)
+          const pendingTrainers = trainers.filter((u: any) => !u.is_approved)
 
+          setApprovals(pendingTrainers)
           setStats({
             totalUsers: allUsers.length,
             totalTrainers: trainers.length,
@@ -588,28 +584,22 @@ export const AdminDashboard: React.FC = () => {
             totalAdmins: admins.length,
             totalBookings: 0,
             totalRevenue: 0,
-            pendingApprovals: trainers.length - approvedTrainers.length,
+            pendingApprovals: pendingTrainers.length,
             activeDisputes: 0
           })
         }
 
         // Load categories
-        const categoriesResponse = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_categories' })
-        })
-        const categoriesData = await categoriesResponse.json()
-        if (categoriesData.status === 'success' && categoriesData.data?.data) {
-          setCategories(categoriesData.data.data)
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setCategories(categoriesData.data)
         }
 
-        // Set other data to empty for now (can be extended)
+        // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
         setDisputes([])
         setIssues([])
-        setApprovals([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
