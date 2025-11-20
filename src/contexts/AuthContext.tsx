@@ -35,13 +35,13 @@ async function performLogin(
         body: JSON.stringify({ action: 'login', email, password }),
       });
 
+      const responseText = await response.text();
       const contentType = response.headers.get('content-type');
       const isHtml = contentType?.includes('text/html');
 
       if (isHtml) {
-        const errorText = await response.text();
         console.error(`Login attempt ${attempt}: Server returned HTML instead of JSON`);
-        console.error('Response:', errorText.substring(0, 500));
+        console.error('Response:', responseText.substring(0, 500));
         if (attempt < maxRetries) {
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           continue;
@@ -49,7 +49,18 @@ async function performLogin(
         throw new Error('Server error: API returned invalid response. Please try again or contact support.');
       }
 
-      const result = await response.json();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        console.error(`Login attempt ${attempt}: Invalid JSON response`);
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+      }
+
       if (result.status === 'error') {
         throw new Error(result.message || 'Login failed');
       }
@@ -162,13 +173,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           body: JSON.stringify(payload),
         });
 
+        const responseText = await response.text();
         const contentType = response.headers.get('content-type');
         const isHtml = contentType?.includes('text/html');
 
         if (isHtml) {
-          const errorText = await response.text();
           console.error(`Signup attempt ${attempt}: Server returned HTML instead of JSON`);
-          console.error('Response:', errorText.substring(0, 500));
+          console.error('Response:', responseText.substring(0, 500));
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
@@ -176,7 +187,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           throw new Error('Server error: API returned invalid response. Please try again or contact support.');
         }
 
-        const result = await response.json();
+        let result;
+        try {
+          result = JSON.parse(responseText);
+        } catch {
+          console.error(`Signup attempt ${attempt}: Invalid JSON response`);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+        }
+
         if (result.status === 'error') {
           throw new Error(result.message || 'Signup failed');
         }

@@ -506,8 +506,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Helper to get the API URL
   const getApiUrl = () => {
-    const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'))
-    return isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php'
+    return 'https://trainer.skatryk.co.ke/api.php'
   }
 
   // Approve a trainer
@@ -603,8 +602,7 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
-        const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+        const apiUrl = getApiUrl();
         // Load users with profiles from MySQL API
         const usersResponse = await fetch(apiUrl, {
           method: 'POST',
@@ -634,13 +632,23 @@ export const AdminDashboard: React.FC = () => {
           })
         }
 
+        // Load categories
+        const categoriesResponse = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_categories' })
+        })
+        const categoriesData = await categoriesResponse.json()
+        if (categoriesData.status === 'success' && categoriesData.data?.data) {
+          setCategories(categoriesData.data.data)
+        }
+
         // Set other data to empty for now (can be extended)
         setPromotions([])
         setPayoutRequests([])
         setDisputes([])
         setIssues([])
         setApprovals([])
-        setCategories([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
@@ -668,11 +676,56 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const addCategory = async () => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+    if (!catForm.name.trim()) {
+      toast({ title: 'Error', description: 'Category name is required', variant: 'destructive' })
+      return
+    }
+
+    setCatLoading(true)
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add_category',
+          name: catForm.name,
+          icon: catForm.icon,
+          description: catForm.description
+        })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setCategories([...categories, { id: data.data.id, ...catForm, created_at: new Date().toISOString() }])
+        setCatForm({ name: '', icon: '', description: '' })
+        toast({ title: 'Success', description: 'Category added' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to add category', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Add category error:', err)
+      toast({ title: 'Error', description: 'Failed to add category', variant: 'destructive' })
+    } finally {
+      setCatLoading(false)
+    }
   }
 
   const updateCategory = async (id: any, patch: any) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_category', id, ...patch })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        toast({ title: 'Success', description: 'Category updated' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to update category', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Update category error:', err)
+      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' })
+    }
   }
 
   const [activeIssue, setActiveIssue] = useState<any | null>(null)
@@ -684,7 +737,25 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const deleteCategory = async (id: any) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+    if (!window.confirm('Are you sure you want to delete this category?')) return
+
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_category', id })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setCategories(categories.filter(c => c.id !== id))
+        toast({ title: 'Success', description: 'Category deleted' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to delete category', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Delete category error:', err)
+      toast({ title: 'Error', description: 'Failed to delete category', variant: 'destructive' })
+    }
   }
 
   const processPayout = async (id: number) => {
@@ -1032,7 +1103,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-4 space-y-3">
               <p className="text-sm text-muted-foreground">Type: {activeIssue.complaint_type}</p>
               <p className="text-sm text-muted-foreground">Description: {activeIssue.description}</p>
-              <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '—'}</p>
+              <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '���'}</p>
               <div className="grid grid-cols-1 gap-2">
                 {(activeIssue.attachments || []).map((a:any,i:number)=>(
                   <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
