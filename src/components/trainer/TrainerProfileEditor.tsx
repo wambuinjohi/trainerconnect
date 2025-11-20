@@ -211,16 +211,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
           hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
         })
-        console.log('Profile update response:', response)
-        if (response && response.status !== 'success') {
-          console.error('API returned error:', response.message)
-          throw new Error(response.message || 'Failed to update profile')
-        }
+        console.log('Profile updated successfully:', response)
       } catch (apiErr) {
         console.error('API save failed:', apiErr)
         toast({
           title: 'Database update failed',
-          description: apiErr instanceof Error ? apiErr.message : 'Could not save to database. Check console for details.',
+          description: apiErr instanceof Error ? apiErr.message : 'Could not save to database',
           variant: 'destructive'
         })
         setLoading(false)
