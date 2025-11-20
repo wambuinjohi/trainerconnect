@@ -34,12 +34,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Utility function for safe JSON response
 function respond($status, $message, $data = null, $code = 200) {
-    http_response_code($code);
-    echo json_encode([
+    if (!headers_sent()) {
+        http_response_code($code);
+        header("Content-Type: application/json; charset=utf-8");
+    }
+    $response = [
         "status" => $status,
         "message" => $message,
         "data" => $data
-    ]);
+    ];
+    $json = json_encode($response);
+    if ($json === false) {
+        echo json_encode(["status" => "error", "message" => "Response encoding failed"]);
+    } else {
+        echo $json;
+    }
     exit;
 }
 
