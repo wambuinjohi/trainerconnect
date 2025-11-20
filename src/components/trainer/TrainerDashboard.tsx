@@ -217,6 +217,52 @@ export const TrainerDashboard: React.FC = () => {
         <h1 className="text-2xl font-bold text-foreground">Welcome back!</h1>
         <p className="text-muted-foreground">Ready to inspire and train today?</p>
       </div>
+
+      {/* Quick Stats Cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">This Month</div>
+            <div className="text-2xl font-bold text-foreground mt-2">Ksh {monthRevenue.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">Revenue</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Sessions</div>
+            <div className="text-2xl font-bold text-foreground mt-2">{monthSessions}</div>
+            <div className="text-xs text-muted-foreground mt-1">This month</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Wallet</div>
+            <div className="text-2xl font-bold text-foreground mt-2">Ksh {walletBalance.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-1">Available balance</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card border-border">
+          <CardContent className="p-4">
+            <div className="text-sm text-muted-foreground">Messages</div>
+            <div className="text-2xl font-bold text-foreground mt-2">{unreadMessages}</div>
+            <div className="text-xs text-muted-foreground mt-1">Unread</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="space-y-2">
+        <h3 className="font-semibold text-foreground">Quick Actions</h3>
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="outline" className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
+          <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Set Hours</Button>
+          <Button variant="outline" className="w-full" onClick={() => setShowPayouts(true)}>Payouts</Button>
+          <Button variant="outline" className="w-full" onClick={openPromote}>Promote</Button>
+        </div>
+      </div>
     </div>
   )
 
