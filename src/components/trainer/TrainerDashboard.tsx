@@ -151,6 +151,35 @@ export const TrainerDashboard: React.FC = () => {
   const [showServiceArea, setShowServiceArea] = useState(false)
   const [showReport, setShowReport] = useState(false)
 
+  useEffect(() => {
+    const loadTrainerProfile = async () => {
+      if (!user?.id) return
+      try {
+        const profile = await apiService.getTrainerProfile(user.id)
+        if (profile?.data && profile.data.length > 0) {
+          const profileData = profile.data[0]
+          setProfileData({
+            name: profileData.full_name || user.email,
+            bio: profileData.bio || 'Professional Trainer',
+            profile_image: profileData.profile_image || null,
+            hourly_rate: profileData.hourly_rate || 0,
+            availability: profileData.availability ? JSON.parse(profileData.availability) : [],
+            pricing_packages: profileData.pricing_packages ? JSON.parse(profileData.pricing_packages) : []
+          })
+
+          // Load wallet balance
+          const walletData = await apiService.getWalletBalance(user.id)
+          if (walletData?.data && walletData.data.length > 0) {
+            setWalletBalance(walletData.data[0].balance || 0)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer profile', err)
+      }
+    }
+    loadTrainerProfile()
+  }, [user?.id])
+
   const renderHomeContent = () => (
     <div className="space-y-6">
       <div className="text-center py-4">
