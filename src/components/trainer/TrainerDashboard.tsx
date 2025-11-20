@@ -17,7 +17,9 @@ import {
   Plus,
   User,
   Home,
-  Briefcase
+  Briefcase,
+  ArrowLeft,
+  LogOut
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { TrainerProfileEditor } from './TrainerProfileEditor'
@@ -82,6 +84,11 @@ export const TrainerDashboard: React.FC = () => {
   const openPromote = () => setShowPromote(true)
   const openChat = (booking: any) => setChatBooking(booking)
   const closeChat = () => setChatBooking(null)
+
+  const handleLogout = async () => {
+    await signOut()
+    window.location.href = '/'
+  }
 
   const acceptBooking = (id: string) => {
     setBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'confirmed' } : b))
@@ -210,6 +217,12 @@ export const TrainerDashboard: React.FC = () => {
 
   const renderHomeContent = () => (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-4">
+        <div></div>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </div>
       <div className="text-center py-4">
         <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
           ���‍💼
@@ -268,7 +281,12 @@ export const TrainerDashboard: React.FC = () => {
 
   const renderBookingsContent = () => (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-2xl font-bold text-foreground">My Bookings</h1>
+      </div>
       {bookings && bookings.length > 0 ? (
         bookings.map(b => (
           <Card key={b.id || b.user_id} className="bg-card border-border">
@@ -301,6 +319,17 @@ export const TrainerDashboard: React.FC = () => {
 
   const renderProfileContent = () => (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h2 className="text-2xl font-bold text-foreground">Profile</h2>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </div>
       <div className="text-center">
         <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
           {profileData.profile_image ? '🖼️' : '👨‍💼'}
@@ -328,6 +357,7 @@ export const TrainerDashboard: React.FC = () => {
         <Button className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
         <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Edit Availability</Button>
         <Button variant="outline" className="w-full" onClick={() => setShowServiceArea(true)}>Service Area</Button>
+        <Button variant="destructive" className="w-full" onClick={handleLogout}><LogOut className="h-4 w-4 mr-2" />Logout</Button>
       </div>
     </div>
   )
