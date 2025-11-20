@@ -267,13 +267,25 @@ export const TrainerDashboard: React.FC = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <h3 className="font-semibold text-foreground">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <Button variant="outline" className="w-full" onClick={() => setEditingProfile(true)}>Edit Profile</Button>
-          <Button variant="outline" className="w-full" onClick={() => setEditingAvailability(true)}>Set Hours</Button>
-          <Button variant="outline" className="w-full" onClick={() => setShowPayouts(true)}>Payouts</Button>
-          <Button variant="outline" className="w-full" onClick={openPromote}>Promote</Button>
+        <div className="grid grid-cols-2 gap-3">
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setEditingProfile(true)}>
+            <User className="h-4 w-4" />
+            <span className="text-sm">Edit Profile</span>
+          </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setEditingAvailability(true)}>
+            <Clock className="h-4 w-4" />
+            <span className="text-sm">Set Hours</span>
+          </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setShowPayouts(true)}>
+            <DollarSign className="h-4 w-4" />
+            <span className="text-sm">Payouts</span>
+          </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={openPromote}>
+            <Star className="h-4 w-4" />
+            <span className="text-sm">Promote</span>
+          </Button>
         </div>
       </div>
     </div>
