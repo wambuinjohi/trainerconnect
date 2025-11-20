@@ -679,21 +679,12 @@ export const AdminDashboard: React.FC = () => {
     if (!window.confirm('Are you sure you want to delete this category?')) return
 
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete_category', id })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setCategories(categories.filter(c => c.id !== id))
-        toast({ title: 'Success', description: 'Category deleted' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to delete category', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.deleteCategory(id)
+      setCategories(categories.filter(c => c.id !== id))
+      toast({ title: 'Success', description: 'Category deleted' })
+    } catch (err: any) {
       console.error('Delete category error:', err)
-      toast({ title: 'Error', description: 'Failed to delete category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
     }
   }
 
