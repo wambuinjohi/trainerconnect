@@ -31,6 +31,24 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
   const [name, setName] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const { upload } = useFileUpload({
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'gif'],
+    onSuccess: (files) => {
+      if (files.length > 0) {
+        const uploadedFile = files[0]
+        handleChange('profile_image', uploadedFile.url)
+        toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
+        setUploadingImage(false)
+      }
+    },
+    onError: (error) => {
+      toast({ title: 'Upload failed', description: error, variant: 'destructive' })
+      setUploadingImage(false)
+    }
+  })
 
   useEffect(() => {
     if (!userId) return
