@@ -506,7 +506,10 @@ export const AdminDashboard: React.FC = () => {
 
   // Helper to get the API URL
   const getApiUrl = () => {
-    const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'))
+    if (typeof window === 'undefined') return 'https://trainer.skatryk.co.ke/api.php'
+
+    const { hostname } = window.location
+    const isDev = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168') || hostname.includes('fly.dev')
     return isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php'
   }
 
