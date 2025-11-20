@@ -238,9 +238,60 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
           </div>
 
-          <div>
-            <Label htmlFor="profile-image">Profile Image URL</Label>
-            <Input id="profile-image" value={profile.profile_image || ''} onChange={(e) => handleChange('profile_image', e.target.value)} placeholder="https://..." />
+          <div className="space-y-2">
+            <Label>Profile Image</Label>
+            <div className="space-y-3">
+              {/* Image Preview */}
+              {profile.profile_image && (
+                <div className="relative w-32 h-32 mx-auto rounded-lg overflow-hidden border-2 border-border bg-muted">
+                  <img
+                    src={profile.profile_image}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearProfileImage}
+                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage || loading}
+                  className="flex-1 p-3 border-2 border-dashed border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Upload Photo'}</span>
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage || loading}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Manual URL Input */}
+              <div>
+                <Label htmlFor="profile-image-url" className="text-xs text-muted-foreground">Or paste image URL</Label>
+                <Input
+                  id="profile-image-url"
+                  value={profile.profile_image || ''}
+                  onChange={(e) => handleChange('profile_image', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
 
           <div>
