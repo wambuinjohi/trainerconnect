@@ -506,15 +506,6 @@ export const AdminDashboard: React.FC = () => {
 
   // Helper to get the API URL
   const getApiUrl = () => {
-    if (typeof window === 'undefined') return 'https://trainer.skatryk.co.ke/api.php'
-
-    const { hostname, port } = window.location
-    const isDev = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168') || hostname.includes('fly.dev') || hostname.includes('builder')
-
-    if (isDev) {
-      // For dev environments, use relative path that will proxy to the actual API
-      return window.location.origin + '/api.php'
-    }
     return 'https://trainer.skatryk.co.ke/api.php'
   }
 
@@ -1112,7 +1103,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-4 space-y-3">
               <p className="text-sm text-muted-foreground">Type: {activeIssue.complaint_type}</p>
               <p className="text-sm text-muted-foreground">Description: {activeIssue.description}</p>
-              <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '—'}</p>
+              <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '���'}</p>
               <div className="grid grid-cols-1 gap-2">
                 {(activeIssue.attachments || []).map((a:any,i:number)=>(
                   <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
