@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { MediaUploadSection } from './MediaUploadSection'
+import * as apiService from '@/lib/api-service'
 
 interface TrainerProfile {
   user_id?: string
