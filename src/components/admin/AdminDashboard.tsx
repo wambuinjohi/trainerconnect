@@ -505,51 +505,29 @@ export const AdminDashboard: React.FC = () => {
     return ['1','true','yes','y','t'].includes(s)
   }
 
-  // Helper to get the API URL
-  const getApiUrl = () => {
-    return 'https://trainer.skatryk.co.ke/api.php'
-  }
-
   // Approve a trainer
   const approveTrainer = async (userId: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'approve_trainer', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u))
-        toast({ title: 'Success', description: 'Trainer approved' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to approve trainer', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.approveTrainer(userId)
+      setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u))
+      setApprovals(approvals.map(a => a.user_id === userId ? { ...a, is_approved: true } : a))
+      toast({ title: 'Success', description: 'Trainer approved' })
+    } catch (err: any) {
       console.error('Approve trainer error:', err)
-      toast({ title: 'Error', description: 'Failed to approve trainer', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
     }
   }
 
   // Reject a trainer
   const rejectTrainer = async (userId: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reject_trainer', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.filter(u => u.user_id !== userId))
-        setApprovals(approvals.filter(a => a.user_id !== userId))
-        toast({ title: 'Success', description: 'Trainer rejected' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to reject trainer', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.rejectTrainer(userId)
+      setUsers(users.filter(u => u.user_id !== userId))
+      setApprovals(approvals.filter(a => a.user_id !== userId))
+      toast({ title: 'Success', description: 'Trainer rejected' })
+    } catch (err: any) {
       console.error('Reject trainer error:', err)
-      toast({ title: 'Error', description: 'Failed to reject trainer', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
     }
   }
 
@@ -557,42 +535,24 @@ export const AdminDashboard: React.FC = () => {
   const deleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete_user', user_id: userId })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.filter(u => u.user_id !== userId))
-        toast({ title: 'Success', description: 'User deleted' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to delete user', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.deleteUser(userId)
+      setUsers(users.filter(u => u.user_id !== userId))
+      toast({ title: 'Success', description: 'User deleted' })
+    } catch (err: any) {
       console.error('Delete user error:', err)
-      toast({ title: 'Error', description: 'Failed to delete user', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
     }
   }
 
   // Update user type
   const updateUserType = async (userId: string, newType: string) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_user_type', user_id: userId, user_type: newType })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setUsers(users.map(u => u.user_id === userId ? { ...u, user_type: newType } : u))
-        toast({ title: 'Success', description: 'User type updated' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to update user type', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.updateUserType(userId, newType)
+      setUsers(users.map(u => u.user_id === userId ? { ...u, user_type: newType } : u))
+      toast({ title: 'Success', description: 'User type updated' })
+    } catch (err: any) {
       console.error('Update user type error:', err)
-      toast({ title: 'Error', description: 'Failed to update user type', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to update user type', variant: 'destructive' })
     }
   }
 
