@@ -644,27 +644,14 @@ export const AdminDashboard: React.FC = () => {
 
     setCatLoading(true)
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'add_category',
-          name: catForm.name,
-          icon: catForm.icon,
-          description: catForm.description
-        })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        setCategories([...categories, { id: data.data.id, ...catForm, created_at: new Date().toISOString() }])
-        setCatForm({ name: '', icon: '', description: '' })
-        toast({ title: 'Success', description: 'Category added' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to add category', variant: 'destructive' })
-      }
-    } catch (err) {
+      const result = await apiService.addCategory(catForm.name, catForm.icon, catForm.description)
+      const categoryId = result?.id || Date.now()
+      setCategories([...categories, { id: categoryId, ...catForm, created_at: new Date().toISOString() }])
+      setCatForm({ name: '', icon: '', description: '' })
+      toast({ title: 'Success', description: 'Category added' })
+    } catch (err: any) {
       console.error('Add category error:', err)
-      toast({ title: 'Error', description: 'Failed to add category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to add category', variant: 'destructive' })
     } finally {
       setCatLoading(false)
     }
@@ -672,20 +659,11 @@ export const AdminDashboard: React.FC = () => {
 
   const updateCategory = async (id: any, patch: any) => {
     try {
-      const response = await fetch(getApiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update_category', id, ...patch })
-      })
-      const data = await response.json()
-      if (data.status === 'success') {
-        toast({ title: 'Success', description: 'Category updated' })
-      } else {
-        toast({ title: 'Error', description: data.message || 'Failed to update category', variant: 'destructive' })
-      }
-    } catch (err) {
+      await apiService.updateCategory(id, patch)
+      toast({ title: 'Success', description: 'Category updated' })
+    } catch (err: any) {
       console.error('Update category error:', err)
-      toast({ title: 'Error', description: 'Failed to update category', variant: 'destructive' })
+      toast({ title: 'Error', description: err?.message || 'Failed to update category', variant: 'destructive' })
     }
   }
 
