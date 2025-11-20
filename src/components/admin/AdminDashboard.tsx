@@ -508,9 +508,14 @@ export const AdminDashboard: React.FC = () => {
   const getApiUrl = () => {
     if (typeof window === 'undefined') return 'https://trainer.skatryk.co.ke/api.php'
 
-    const { hostname } = window.location
-    const isDev = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168') || hostname.includes('fly.dev')
-    return isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php'
+    const { hostname, port } = window.location
+    const isDev = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.includes('192.168') || hostname.includes('fly.dev') || hostname.includes('builder')
+
+    if (isDev) {
+      // For dev environments, use relative path that will proxy to the actual API
+      return window.location.origin + '/api.php'
+    }
+    return 'https://trainer.skatryk.co.ke/api.php'
   }
 
   // Approve a trainer
