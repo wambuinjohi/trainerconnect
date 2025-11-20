@@ -332,7 +332,7 @@ export const TrainerDashboard: React.FC = () => {
       </div>
       <div className="text-center">
         <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
-          {profileData.profile_image ? '🖼️' : '👨‍💼'}
+          {profileData.profile_image ? '🖼️' : '💪'}
         </div>
         <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
         <p className="text-muted-foreground mt-2">{profileData.bio}</p>
