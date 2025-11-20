@@ -38,6 +38,7 @@ import {
   XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts'
 import { toast } from '@/hooks/use-toast'
+import * as apiService from '@/lib/api-service'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
