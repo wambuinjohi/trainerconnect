@@ -16,7 +16,9 @@ import {
   Clock,
   User,
   Plus,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft,
+  LogOut
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
@@ -32,7 +34,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import * as apiService from '@/lib/api-service'
 
 export const ClientDashboard: React.FC = () => {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('home')
@@ -155,9 +157,20 @@ export const ClientDashboard: React.FC = () => {
   const closeTrainer = () => setSelectedTrainer(null)
   const handleCategorySelect = (category: string) => { setSelectedCategory(category); setActiveTab('explore') }
 
+  const handleLogout = async () => {
+    await signOut()
+    window.location.href = '/'
+  }
+
   // -------------------- Render Functions --------------------
   const renderHomeContent = () => (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div></div>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+          <LogOut className="h-5 w-5" />
+        </Button>
+      </div>
       <div className="text-center py-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
         <p className="text-muted-foreground">Connect with certified professionals in your area</p>
@@ -236,8 +249,13 @@ export const ClientDashboard: React.FC = () => {
   const renderExploreContent = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-foreground">Nearby Trainers</h1>
-        <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}><MapPin className="h-4 w-4 mr-2" />Filter</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold text-foreground">Nearby Trainers</h1>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}><MapPin className="h-4 w-4 mr-2" />Filters</Button>
       </div>
 
       <div className="space-y-4">
