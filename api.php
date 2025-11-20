@@ -1693,14 +1693,28 @@ switch ($action) {
         respond("success", "Payment methods fetched successfully.", ["data" => $methods]);
         break;
 
-    // GET MESSAGES
+    // GET MESSAGES (supports both trainer_id/client_id and user_id formats)
     case 'messages_get':
-        if (!isset($input['user_id'])) {
-            respond("error", "Missing user_id.", null, 400);
+        if (!isset($input['user_id']) && !isset($input['trainer_id']) && !isset($input['client_id'])) {
+            respond("error", "Missing user_id, trainer_id, or client_id.", null, 400);
         }
 
-        $userId = $conn->real_escape_string($input['user_id']);
-        $sql = "SELECT * FROM messages WHERE sender_id = '$userId' OR recipient_id = '$userId' ORDER BY created_at DESC LIMIT 100";
+        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : null;
+        $clientId = isset($input['client_id']) ? $conn->real_escape_string($input['client_id']) : null;
+        $userId = isset($input['user_id']) ? $conn->real_escape_string($input['user_id']) : null;
+
+        $where = "1=1";
+        if ($trainerId && $clientId) {
+            $where = "(trainer_id = '$trainerId' AND client_id = '$clientId') OR (trainer_id = '$clientId' AND client_id = '$trainerId')";
+        } else if ($trainerId) {
+            $where = "(trainer_id = '$trainerId' OR sender_id = '$trainerId' OR recipient_id = '$trainerId')";
+        } else if ($clientId) {
+            $where = "(client_id = '$clientId' OR sender_id = '$clientId' OR recipient_id = '$clientId')";
+        } else if ($userId) {
+            $where = "sender_id = '$userId' OR recipient_id = '$userId'";
+        }
+
+        $sql = "SELECT * FROM messages WHERE $where ORDER BY created_at DESC LIMIT 100";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -1715,24 +1729,42 @@ switch ($action) {
         respond("success", "Messages fetched successfully.", ["data" => $messages]);
         break;
 
-    // INSERT MESSAGE
+    // INSERT MESSAGE (supports both trainer_id/client_id and sender_id/recipient_id formats)
     case 'message_insert':
-        if (!isset($input['sender_id']) || !isset($input['recipient_id']) || !isset($input['content'])) {
-            respond("error", "Missing sender_id, recipient_id, or content.", null, 400);
+        if (!isset($input['content'])) {
+            respond("error", "Missing content.", null, 400);
         }
 
-        $senderId = $conn->real_escape_string($input['sender_id']);
-        $recipientId = $conn->real_escape_string($input['recipient_id']);
+        $senderId = null;
+        $recipientId = null;
+        $trainerId = null;
+        $clientId = null;
+
+        if (isset($input['sender_id']) && isset($input['recipient_id'])) {
+            $senderId = $conn->real_escape_string($input['sender_id']);
+            $recipientId = $conn->real_escape_string($input['recipient_id']);
+        } else if (isset($input['trainer_id']) && isset($input['client_id'])) {
+            $trainerId = $conn->real_escape_string($input['trainer_id']);
+            $clientId = $conn->real_escape_string($input['client_id']);
+            $senderId = isset($input['client_id']) ? $clientId : $trainerId;
+            $recipientId = isset($input['trainer_id']) ? $trainerId : $clientId;
+        } else {
+            respond("error", "Missing sender_id/recipient_id or trainer_id/client_id.", null, 400);
+        }
+
         $content = $conn->real_escape_string($input['content']);
+        $readByTrainer = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+        $readByClient = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
         $messageId = 'msg_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
         $stmt = $conn->prepare("
             INSERT INTO messages (
-                id, sender_id, recipient_id, content, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                id, sender_id, recipient_id, trainer_id, client_id, content,
+                read_by_trainer, read_by_client, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssssss", $messageId, $senderId, $recipientId, $content, $now, $now);
+        $stmt->bind_param("ssssssssss", $messageId, $senderId, $recipientId, $trainerId, $clientId, $content, $readByTrainer, $readByClient, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -1780,6 +1812,7 @@ switch ($action) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
+            $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
             $notifId = 'notif_' . uniqid();
 
@@ -1787,10 +1820,10 @@ switch ($action) {
 
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
-                    id, user_id, title, message, type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    id, user_id, title, body, message, type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("sssssss", $notifId, $userId, $title, $message, $type, $now, $now);
+            $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
 
             if ($stmt->execute()) {
                 $inserted++;
