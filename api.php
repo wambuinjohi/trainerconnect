@@ -1061,6 +1061,104 @@ switch ($action) {
         respond("success", "Audit logged.");
         break;
 
+    // APPROVE TRAINER
+    case 'approve_trainer':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $stmt = $conn->prepare("UPDATE user_profiles SET is_approved = 1 WHERE user_id = ?");
+        $stmt->bind_param("s", $userId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_approved', ['user_id' => $userId]);
+            respond("success", "Trainer approved successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to approve trainer: " . $conn->error, null, 500);
+        }
+        break;
+
+    // REJECT TRAINER
+    case 'reject_trainer':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+
+        // Delete from user_profiles
+        $stmt = $conn->prepare("DELETE FROM user_profiles WHERE user_id = ?");
+        $stmt->bind_param("s", $userId);
+        $stmt->execute();
+        $stmt->close();
+
+        // Delete from users
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("s", $userId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_rejected', ['user_id' => $userId]);
+            respond("success", "Trainer rejected and deleted successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to reject trainer: " . $conn->error, null, 500);
+        }
+        break;
+
+    // DELETE USER
+    case 'delete_user':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+
+        // Delete from user_profiles
+        $stmt = $conn->prepare("DELETE FROM user_profiles WHERE user_id = ?");
+        $stmt->bind_param("s", $userId);
+        $stmt->execute();
+        $stmt->close();
+
+        // Delete from users
+        $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
+        $stmt->bind_param("s", $userId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('user_deleted', ['user_id' => $userId]);
+            respond("success", "User deleted successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to delete user: " . $conn->error, null, 500);
+        }
+        break;
+
+    // UPDATE USER TYPE
+    case 'update_user_type':
+        if (!isset($input['user_id']) || !isset($input['user_type'])) {
+            respond("error", "Missing user_id or user_type.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $userType = $conn->real_escape_string($input['user_type']);
+
+        $stmt = $conn->prepare("UPDATE user_profiles SET user_type = ? WHERE user_id = ?");
+        $stmt->bind_param("ss", $userType, $userId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('user_type_updated', ['user_id' => $userId, 'new_type' => $userType]);
+            respond("success", "User type updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update user type: " . $conn->error, null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
