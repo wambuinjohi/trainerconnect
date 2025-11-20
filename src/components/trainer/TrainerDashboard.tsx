@@ -343,8 +343,16 @@ export const TrainerDashboard: React.FC = () => {
         </Button>
       </div>
       <div className="text-center">
-        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
-          {profileData.profile_image ? '🖼️' : '💪'}
+        <div className="w-24 h-24 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4 overflow-hidden border-4 border-card shadow-lg">
+          {profileData.profile_image ? (
+            <img
+              src={profileData.profile_image}
+              alt={profileData.name || 'Profile'}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            '💪'
+          )}
         </div>
         <h1 className="text-2xl font-bold text-foreground">{profileData.name}</h1>
         <p className="text-muted-foreground mt-2">{profileData.bio}</p>
