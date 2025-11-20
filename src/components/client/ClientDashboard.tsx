@@ -28,50 +28,8 @@ import { ReviewModal } from './ReviewModal'
 import { NextSessionModal } from './NextSessionModal'
 import { LocationSelector } from './LocationSelector'
 import { toast } from '@/hooks/use-toast'
-
-const mockUser = { id: '1', email: 'client@example.com' }
-
-const mockCategories = [
-  { id: 'c1', name: 'Yoga', icon: '🧘' },
-  { id: 'c2', name: 'Strength', icon: '🏋️' },
-  { id: 'c3', name: 'Cardio', icon: '🏃' },
-]
-
-const mockTrainers = [
-  { 
-    id: 't1', 
-    name: 'Alice', 
-    discipline: 'Yoga', 
-    disciplines: ['Yoga'], 
-    rating: 4.8, 
-    reviews: 12, 
-    hourlyRate: 50, 
-    distance: '2 km', 
-    distanceKm: 2,
-    service_radius: 5,
-    available: true,
-    image: '👩'
-  },
-  { 
-    id: 't2', 
-    name: 'Bob', 
-    discipline: 'Strength', 
-    disciplines: ['Strength'], 
-    rating: 4.5, 
-    reviews: 8, 
-    hourlyRate: 60, 
-    distance: '5 km', 
-    distanceKm: 5,
-    service_radius: 10,
-    available: false,
-    image: '👨'
-  }
-]
-
-const mockBookings = [
-  { id: 'b1', session_date: '2025-11-12', session_time: '10:00', total_sessions: 1, status: 'completed', total_amount: 50 },
-  { id: 'b2', session_date: '2025-11-13', session_time: '14:00', total_sessions: 3, status: 'upcoming', total_amount: 180 }
-]
+import { useAuth } from '@/contexts/AuthContext'
+import * as apiService from '@/lib/api-service'
 
 export const ClientDashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
