@@ -138,6 +138,36 @@ export const ClientDashboard: React.FC = () => {
     })
   }
 
+  // Haversine formula to calculate distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371 // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  // Update distances when user location changes
+  useEffect(() => {
+    if (userLocation && trainers.length > 0) {
+      const updatedTrainers = trainers.map(trainer => {
+        if (trainer.location_lat && trainer.location_lng) {
+          const distKm = calculateDistance(userLocation.lat, userLocation.lng, trainer.location_lat, trainer.location_lng)
+          return {
+            ...trainer,
+            distanceKm: distKm,
+            distance: distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)}km`
+          }
+        }
+        return trainer
+      }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      setTrainers(updatedTrainers)
+    }
+  }, [userLocation])
+
   const requestLocation = () => {
     if (!navigator.geolocation) {
       toast({ title: 'Location not supported' })
