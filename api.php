@@ -382,7 +382,7 @@ switch ($action) {
 
         foreach ($data as $key => $value) {
             $escapedKey = $conn->real_escape_string($key);
-            if ($value === null || $value === 'null' || $value === '') {
+            if ($value === null || $value === 'null') {
                 $updates[] = "`$escapedKey` = NULL";
             } else {
                 $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($value) . "'";
