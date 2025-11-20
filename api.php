@@ -658,6 +658,173 @@ switch ($action) {
         }
         break;
 
+    // MIGRATE: Create audit-fixed missing tables
+    case 'apply_audit_migration':
+        logEvent('audit_migration_started');
+
+        $migrations = [
+            'trainer_availability' => "
+                CREATE TABLE IF NOT EXISTS `trainer_availability` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `slots` JSON NOT NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_trainer_availability_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  UNIQUE KEY `uq_trainer_availability` (`trainer_id`),
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_updated_at` (`updated_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'transactions' => "
+                CREATE TABLE IF NOT EXISTS `transactions` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL,
+                  `type` VARCHAR(50) NOT NULL,
+                  `amount` DECIMAL(15, 2) NOT NULL,
+                  `balance_before` DECIMAL(15, 2),
+                  `balance_after` DECIMAL(15, 2),
+                  `reference` VARCHAR(255),
+                  `description` TEXT,
+                  `status` VARCHAR(50) DEFAULT 'completed',
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_transactions_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_type` (`type`),
+                  INDEX `idx_created_at` (`created_at` DESC)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'payout_requests' => "
+                CREATE TABLE IF NOT EXISTS `payout_requests` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `amount` DECIMAL(15, 2) NOT NULL,
+                  `status` VARCHAR(50) DEFAULT 'pending',
+                  `payment_method_id` VARCHAR(36),
+                  `notes` TEXT,
+                  `requested_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `processed_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_payout_requests_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'reported_issues' => "
+                CREATE TABLE IF NOT EXISTS `reported_issues` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL,
+                  `trainer_id` VARCHAR(36),
+                  `booking_reference` VARCHAR(100),
+                  `complaint_type` VARCHAR(100),
+                  `title` VARCHAR(255),
+                  `description` TEXT NOT NULL,
+                  `status` VARCHAR(50) DEFAULT 'open',
+                  `priority` VARCHAR(50) DEFAULT 'normal',
+                  `attachments` JSON,
+                  `resolution` TEXT,
+                  `resolved_at` TIMESTAMP NULL,
+                  `assigned_to` VARCHAR(36),
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_reported_issues_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'user_wallets' => "
+                CREATE TABLE IF NOT EXISTS `user_wallets` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL UNIQUE,
+                  `balance` DECIMAL(15, 2) DEFAULT 0,
+                  `pending_balance` DECIMAL(15, 2) DEFAULT 0,
+                  `total_earned` DECIMAL(15, 2) DEFAULT 0,
+                  `total_spent` DECIMAL(15, 2) DEFAULT 0,
+                  `total_refunded` DECIMAL(15, 2) DEFAULT 0,
+                  `currency` VARCHAR(3) DEFAULT 'KES',
+                  `last_transaction_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_user_wallets_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_balance` (`balance`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'promotion_requests' => "
+                CREATE TABLE IF NOT EXISTS `promotion_requests` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `promotion_type` VARCHAR(100),
+                  `status` VARCHAR(50) DEFAULT 'pending',
+                  `duration_days` INT,
+                  `commission_rate` DECIMAL(5, 2) DEFAULT 0,
+                  `cost` DECIMAL(15, 2) DEFAULT 0,
+                  `features` JSON,
+                  `approved_by` VARCHAR(36),
+                  `started_at` TIMESTAMP NULL,
+                  `expires_at` TIMESTAMP NULL,
+                  `requested_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `approved_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_promotion_requests_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            "
+        ];
+
+        $successCount = 0;
+        $failureCount = 0;
+        $messages = [];
+
+        foreach ($migrations as $tableName => $sql) {
+            if ($conn->query($sql)) {
+                $successCount++;
+                $messages[] = "✓ $tableName created";
+                logEvent('audit_migration_success', ['table' => $tableName]);
+            } else {
+                $failureCount++;
+                $messages[] = "✗ $tableName failed: " . $conn->error;
+                logEvent('audit_migration_failed', ['table' => $tableName, 'error' => $conn->error]);
+            }
+        }
+
+        if ($failureCount === 0) {
+            respond("success", "All audit migrations applied successfully.", [
+                "created" => $successCount,
+                "failed" => $failureCount,
+                "messages" => $messages
+            ]);
+        } else {
+            respond("success", "Audit migration completed with $failureCount error(s).", [
+                "created" => $successCount,
+                "failed" => $failureCount,
+                "messages" => $messages
+            ]);
+        }
+        break;
+
     // SEED_USERS: Create test users
     case 'seed_users':
         logEvent('seed_users_started');
@@ -1276,6 +1443,384 @@ switch ($action) {
             $stmt->close();
             respond("error", "Failed to delete category: " . $conn->error, null, 500);
         }
+        break;
+
+    // =============================
+    // CUSTOM ACTIONS: Client Portal
+    // =============================
+
+    // INSERT REPORTED ISSUE
+    case 'issue_insert':
+        if (!isset($input['user_id']) || !isset($input['description'])) {
+            respond("error", "Missing user_id or description.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : NULL;
+        $bookingReference = isset($input['booking_reference']) ? $conn->real_escape_string($input['booking_reference']) : NULL;
+        $complaintType = isset($input['complaint_type']) ? $conn->real_escape_string($input['complaint_type']) : NULL;
+        $title = isset($input['title']) ? $conn->real_escape_string($input['title']) : 'Support Issue';
+        $description = $conn->real_escape_string($input['description']);
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'open';
+        $priority = isset($input['priority']) ? $conn->real_escape_string($input['priority']) : 'normal';
+        $issueId = 'issue_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO reported_issues (
+                id, user_id, trainer_id, booking_reference, complaint_type,
+                title, description, status, priority, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("sssssssssss", $issueId, $userId, $trainerId, $bookingReference, $complaintType, $title, $description, $status, $priority, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('issue_reported', ['issue_id' => $issueId, 'user_id' => $userId]);
+            respond("success", "Issue reported successfully.", ["id" => $issueId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to report issue: " . $conn->error, null, 500);
+        }
+        break;
+
+    // INSERT REVIEW
+    case 'review_insert':
+        if (!isset($input['trainer_id']) || !isset($input['client_id']) || !isset($input['rating'])) {
+            respond("error", "Missing trainer_id, client_id, or rating.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $clientId = $conn->real_escape_string($input['client_id']);
+        $rating = floatval($input['rating']);
+        $comment = isset($input['comment']) ? $conn->real_escape_string($input['comment']) : '';
+        $bookingId = isset($input['booking_id']) ? $conn->real_escape_string($input['booking_id']) : NULL;
+        $reviewId = 'review_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO reviews (
+                id, trainer_id, client_id, booking_id, rating, comment, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssssdsss", $reviewId, $trainerId, $clientId, $bookingId, $rating, $comment, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('review_added', ['review_id' => $reviewId, 'trainer_id' => $trainerId]);
+            respond("success", "Review added successfully.", ["id" => $reviewId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to add review: " . $conn->error, null, 500);
+        }
+        break;
+
+    // INSERT PAYOUT REQUEST
+    case 'payout_insert':
+        if (!isset($input['trainer_id']) || !isset($input['amount'])) {
+            respond("error", "Missing trainer_id or amount.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $amount = floatval($input['amount']);
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $payoutId = 'payout_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO payout_requests (
+                id, trainer_id, amount, status, requested_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssdsssss", $payoutId, $trainerId, $amount, $status, $now, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('payout_requested', ['payout_id' => $payoutId, 'trainer_id' => $trainerId, 'amount' => $amount]);
+            respond("success", "Payout request submitted successfully.", ["id" => $payoutId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to submit payout request: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET PAYMENTS (for earnings)
+    case 'payments_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+
+        $sql = "SELECT * FROM payments WHERE trainer_id = '$trainerId' ORDER BY created_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $payments = [];
+        while ($row = $result->fetch_assoc()) {
+            $payments[] = $row;
+        }
+
+        respond("success", "Payments fetched successfully.", ["data" => $payments]);
+        break;
+
+    // INSERT PAYMENT
+    case 'payment_insert':
+        if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['amount'])) {
+            respond("error", "Missing client_id, trainer_id, or amount.", null, 400);
+        }
+
+        $clientId = $conn->real_escape_string($input['client_id']);
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $amount = floatval($input['amount']);
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'completed';
+        $bookingId = isset($input['booking_id']) ? $conn->real_escape_string($input['booking_id']) : NULL;
+        $paymentId = 'payment_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO payments (
+                id, client_id, trainer_id, booking_id, amount, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("sssssssss", $paymentId, $clientId, $trainerId, $bookingId, $amount, $status, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('payment_recorded', ['payment_id' => $paymentId, 'amount' => $amount]);
+            respond("success", "Payment recorded successfully.", ["id" => $paymentId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to record payment: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET PROFILE (custom wrapper)
+    case 'profile_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $sql = "SELECT * FROM user_profiles WHERE user_id = '$userId' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        if ($result->num_rows === 0) {
+            respond("success", "Profile not found.", ["data" => null]);
+        }
+
+        $profile = $result->fetch_assoc();
+        respond("success", "Profile fetched successfully.", ["data" => $profile]);
+        break;
+
+    // UPDATE PROFILE (custom wrapper)
+    case 'profile_update':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $updates = [];
+        $params = [];
+        $types = "";
+
+        foreach ($input as $key => $value) {
+            if ($key === 'user_id' || $key === 'action') continue;
+            if ($value === null) continue;
+
+            $safeKey = $conn->real_escape_string($key);
+            if (is_array($value) || is_object($value)) {
+                $updates[] = "`$safeKey` = ?";
+                $params[] = json_encode($value);
+                $types .= "s";
+            } else {
+                $updates[] = "`$safeKey` = ?";
+                $params[] = $value;
+                $types .= is_numeric($value) && strpos($value, '.') === false ? "i" : "s";
+            }
+        }
+
+        if (empty($updates)) {
+            respond("error", "No fields to update.", null, 400);
+        }
+
+        $params[] = $userId;
+        $types .= "s";
+
+        $sql = "UPDATE user_profiles SET " . implode(", ", $updates) . " WHERE user_id = ?";
+        $stmt = $conn->prepare($sql);
+
+        if (count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('profile_updated', ['user_id' => $userId]);
+            respond("success", "Profile updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update profile: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET PAYMENT METHODS
+    case 'payment_methods_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $sql = "SELECT * FROM payment_methods WHERE user_id = '$userId' ORDER BY created_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $methods = [];
+        while ($row = $result->fetch_assoc()) {
+            $methods[] = $row;
+        }
+
+        respond("success", "Payment methods fetched successfully.", ["data" => $methods]);
+        break;
+
+    // GET MESSAGES
+    case 'messages_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $sql = "SELECT * FROM messages WHERE sender_id = '$userId' OR recipient_id = '$userId' ORDER BY created_at DESC LIMIT 100";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $messages = [];
+        while ($row = $result->fetch_assoc()) {
+            $messages[] = $row;
+        }
+
+        respond("success", "Messages fetched successfully.", ["data" => $messages]);
+        break;
+
+    // INSERT MESSAGE
+    case 'message_insert':
+        if (!isset($input['sender_id']) || !isset($input['recipient_id']) || !isset($input['content'])) {
+            respond("error", "Missing sender_id, recipient_id, or content.", null, 400);
+        }
+
+        $senderId = $conn->real_escape_string($input['sender_id']);
+        $recipientId = $conn->real_escape_string($input['recipient_id']);
+        $content = $conn->real_escape_string($input['content']);
+        $messageId = 'msg_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO messages (
+                id, sender_id, recipient_id, content, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssssss", $messageId, $senderId, $recipientId, $content, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('message_sent', ['message_id' => $messageId, 'sender_id' => $senderId]);
+            respond("success", "Message sent successfully.", ["id" => $messageId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to send message: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET NOTIFICATIONS
+    case 'notifications_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $sql = "SELECT * FROM notifications WHERE user_id = '$userId' ORDER BY created_at DESC LIMIT 50";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $notifications = [];
+        while ($row = $result->fetch_assoc()) {
+            $notifications[] = $row;
+        }
+
+        respond("success", "Notifications fetched successfully.", ["data" => $notifications]);
+        break;
+
+    // INSERT NOTIFICATIONS
+    case 'notifications_insert':
+        if (!isset($input['notifications']) || !is_array($input['notifications'])) {
+            respond("error", "Missing notifications array.", null, 400);
+        }
+
+        $notifications = $input['notifications'];
+        $inserted = 0;
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($notifications as $notif) {
+            $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
+            $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
+            $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
+            $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
+            $notifId = 'notif_' . uniqid();
+
+            if (!$userId) continue;
+
+            $stmt = $conn->prepare("
+                INSERT INTO notifications (
+                    id, user_id, title, message, type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param("sssssss", $notifId, $userId, $title, $message, $type, $now, $now);
+
+            if ($stmt->execute()) {
+                $inserted++;
+            }
+            $stmt->close();
+        }
+
+        respond("success", "Notifications created successfully.", ["inserted" => $inserted]);
+        break;
+
+    // GET REFERRAL
+    case 'referral_get':
+        if (!isset($input['code'])) {
+            respond("error", "Missing code.", null, 400);
+        }
+
+        $code = $conn->real_escape_string($input['code']);
+        $sql = "SELECT * FROM referrals WHERE code = '$code' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        if ($result->num_rows === 0) {
+            respond("success", "Referral not found.", ["data" => null]);
+        }
+
+        $referral = $result->fetch_assoc();
+        respond("success", "Referral fetched successfully.", ["data" => $referral]);
         break;
 
     // UNKNOWN ACTION
