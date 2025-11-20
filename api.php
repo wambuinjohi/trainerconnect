@@ -381,7 +381,12 @@ switch ($action) {
         $updates = [];
 
         foreach ($data as $key => $value) {
-            $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($value) . "'";
+            $escapedKey = $conn->real_escape_string($key);
+            if ($value === null || $value === 'null') {
+                $updates[] = "`$escapedKey` = NULL";
+            } else {
+                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($value) . "'";
+            }
         }
 
         $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE " . $input['where'];

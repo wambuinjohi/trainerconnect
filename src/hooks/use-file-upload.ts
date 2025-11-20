@@ -113,7 +113,10 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         onError?.(errorMsg);
         toast.error(errorMsg);
       } else {
-        const uploaded = data.data?.uploaded || [];
+        const uploaded = (data.data?.uploaded || []).map((file: UploadedFile) => ({
+          ...file,
+          url: file.url.startsWith('http') ? file.url : `https://trainer.skatryk.co.ke${file.url}`
+        }));
         setUploadedFiles(prev => [...prev, ...uploaded]);
         onSuccess?.(uploaded);
         

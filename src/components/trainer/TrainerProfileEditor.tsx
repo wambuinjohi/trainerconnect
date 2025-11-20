@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { MediaUploadSection } from './MediaUploadSection'
+import { useFileUpload } from '@/hooks/use-file-upload'
+import { Upload, X } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
 
 interface TrainerProfile {
@@ -29,6 +31,24 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
   const [name, setName] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const { upload } = useFileUpload({
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'gif'],
+    onSuccess: (files) => {
+      if (files.length > 0) {
+        const uploadedFile = files[0]
+        handleChange('profile_image', uploadedFile.url)
+        toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
+        setUploadingImage(false)
+      }
+    },
+    onError: (error) => {
+      toast({ title: 'Upload failed', description: error, variant: 'destructive' })
+      setUploadingImage(false)
+    }
+  })
 
   useEffect(() => {
     if (!userId) return
@@ -69,6 +89,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   }, [userId])
 
   const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files
+    if (files && files.length > 0) {
+      setUploadingImage(true)
+      const fileArray = Array.from(files)
+      await upload(fileArray)
+    }
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
+
+  const clearProfileImage = () => {
+    handleChange('profile_image', '')
+  }
 
   const save = async () => {
     if (!userId) {
@@ -201,9 +238,60 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
           </div>
 
-          <div>
-            <Label htmlFor="profile-image">Profile Image URL</Label>
-            <Input id="profile-image" value={profile.profile_image || ''} onChange={(e) => handleChange('profile_image', e.target.value)} placeholder="https://..." />
+          <div className="space-y-2">
+            <Label>Profile Image</Label>
+            <div className="space-y-3">
+              {/* Image Preview */}
+              {profile.profile_image && (
+                <div className="relative w-32 h-32 mx-auto rounded-lg overflow-hidden border-2 border-border bg-muted">
+                  <img
+                    src={profile.profile_image}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearProfileImage}
+                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage || loading}
+                  className="flex-1 p-3 border-2 border-dashed border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Upload Photo'}</span>
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage || loading}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Manual URL Input */}
+              <div>
+                <Label htmlFor="profile-image-url" className="text-xs text-muted-foreground">Or paste image URL</Label>
+                <Input
+                  id="profile-image-url"
+                  value={profile.profile_image || ''}
+                  onChange={(e) => handleChange('profile_image', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={loading}
+                />
+              </div>
+            </div>
           </div>
 
           <div>
