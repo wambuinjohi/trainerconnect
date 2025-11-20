@@ -1693,14 +1693,28 @@ switch ($action) {
         respond("success", "Payment methods fetched successfully.", ["data" => $methods]);
         break;
 
-    // GET MESSAGES
+    // GET MESSAGES (supports both trainer_id/client_id and user_id formats)
     case 'messages_get':
-        if (!isset($input['user_id'])) {
-            respond("error", "Missing user_id.", null, 400);
+        if (!isset($input['user_id']) && !isset($input['trainer_id']) && !isset($input['client_id'])) {
+            respond("error", "Missing user_id, trainer_id, or client_id.", null, 400);
         }
 
-        $userId = $conn->real_escape_string($input['user_id']);
-        $sql = "SELECT * FROM messages WHERE sender_id = '$userId' OR recipient_id = '$userId' ORDER BY created_at DESC LIMIT 100";
+        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : null;
+        $clientId = isset($input['client_id']) ? $conn->real_escape_string($input['client_id']) : null;
+        $userId = isset($input['user_id']) ? $conn->real_escape_string($input['user_id']) : null;
+
+        $where = "1=1";
+        if ($trainerId && $clientId) {
+            $where = "(trainer_id = '$trainerId' AND client_id = '$clientId') OR (trainer_id = '$clientId' AND client_id = '$trainerId')";
+        } else if ($trainerId) {
+            $where = "(trainer_id = '$trainerId' OR sender_id = '$trainerId' OR recipient_id = '$trainerId')";
+        } else if ($clientId) {
+            $where = "(client_id = '$clientId' OR sender_id = '$clientId' OR recipient_id = '$clientId')";
+        } else if ($userId) {
+            $where = "sender_id = '$userId' OR recipient_id = '$userId'";
+        }
+
+        $sql = "SELECT * FROM messages WHERE $where ORDER BY created_at DESC LIMIT 100";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -1715,24 +1729,42 @@ switch ($action) {
         respond("success", "Messages fetched successfully.", ["data" => $messages]);
         break;
 
-    // INSERT MESSAGE
+    // INSERT MESSAGE (supports both trainer_id/client_id and sender_id/recipient_id formats)
     case 'message_insert':
-        if (!isset($input['sender_id']) || !isset($input['recipient_id']) || !isset($input['content'])) {
-            respond("error", "Missing sender_id, recipient_id, or content.", null, 400);
+        if (!isset($input['content'])) {
+            respond("error", "Missing content.", null, 400);
         }
 
-        $senderId = $conn->real_escape_string($input['sender_id']);
-        $recipientId = $conn->real_escape_string($input['recipient_id']);
+        $senderId = null;
+        $recipientId = null;
+        $trainerId = null;
+        $clientId = null;
+
+        if (isset($input['sender_id']) && isset($input['recipient_id'])) {
+            $senderId = $conn->real_escape_string($input['sender_id']);
+            $recipientId = $conn->real_escape_string($input['recipient_id']);
+        } else if (isset($input['trainer_id']) && isset($input['client_id'])) {
+            $trainerId = $conn->real_escape_string($input['trainer_id']);
+            $clientId = $conn->real_escape_string($input['client_id']);
+            $senderId = isset($input['client_id']) ? $clientId : $trainerId;
+            $recipientId = isset($input['trainer_id']) ? $trainerId : $clientId;
+        } else {
+            respond("error", "Missing sender_id/recipient_id or trainer_id/client_id.", null, 400);
+        }
+
         $content = $conn->real_escape_string($input['content']);
+        $readByTrainer = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+        $readByClient = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
         $messageId = 'msg_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
         $stmt = $conn->prepare("
             INSERT INTO messages (
-                id, sender_id, recipient_id, content, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+                id, sender_id, recipient_id, trainer_id, client_id, content,
+                read_by_trainer, read_by_client, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssssss", $messageId, $senderId, $recipientId, $content, $now, $now);
+        $stmt->bind_param("ssssssssss", $messageId, $senderId, $recipientId, $trainerId, $clientId, $content, $readByTrainer, $readByClient, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -1780,6 +1812,7 @@ switch ($action) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
+            $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
             $notifId = 'notif_' . uniqid();
 
@@ -1787,10 +1820,10 @@ switch ($action) {
 
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
-                    id, user_id, title, message, type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    id, user_id, title, body, message, type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("sssssss", $notifId, $userId, $title, $message, $type, $now, $now);
+            $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
 
             if ($stmt->execute()) {
                 $inserted++;
@@ -1821,6 +1854,193 @@ switch ($action) {
 
         $referral = $result->fetch_assoc();
         respond("success", "Referral fetched successfully.", ["data" => $referral]);
+        break;
+
+    // UPDATE REFERRAL
+    case 'referral_update':
+        if (!isset($input['id'])) {
+            respond("error", "Missing referral id.", null, 400);
+        }
+
+        $referralId = $conn->real_escape_string($input['id']);
+        $updates = [];
+        $params = [];
+        $types = "";
+
+        if (isset($input['referee_id'])) {
+            $updates[] = "referee_id = ?";
+            $params[] = $conn->real_escape_string($input['referee_id']);
+            $types .= "s";
+        }
+        if (isset($input['discount_used'])) {
+            $updates[] = "discount_used = ?";
+            $params[] = $input['discount_used'] ? 1 : 0;
+            $types .= "i";
+        }
+        if (isset($input['discount_amount'])) {
+            $updates[] = "discount_amount = ?";
+            $params[] = floatval($input['discount_amount']);
+            $types .= "d";
+        }
+
+        if (empty($updates)) {
+            respond("error", "No fields to update.", null, 400);
+        }
+
+        $params[] = $referralId;
+        $types .= "s";
+
+        $sql = "UPDATE referrals SET " . implode(", ", $updates) . " WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+
+        if (count($params) > 0) {
+            $stmt->bind_param($types, ...$params);
+        }
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('referral_updated', ['referral_id' => $referralId]);
+            respond("success", "Referral updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update referral: " . $conn->error, null, 500);
+        }
+        break;
+
+    // INSERT BOOKING (custom action wrapper)
+    case 'booking_insert':
+        if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['session_date']) || !isset($input['session_time'])) {
+            respond("error", "Missing required booking fields (client_id, trainer_id, session_date, session_time).", null, 400);
+        }
+
+        $clientId = $conn->real_escape_string($input['client_id']);
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $sessionDate = $conn->real_escape_string($input['session_date']);
+        $sessionTime = $conn->real_escape_string($input['session_time']);
+        $durationHours = isset($input['duration_hours']) ? intval($input['duration_hours']) : 1;
+        $totalSessions = isset($input['total_sessions']) ? intval($input['total_sessions']) : 1;
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $totalAmount = isset($input['total_amount']) ? floatval($input['total_amount']) : 0;
+        $notes = isset($input['notes']) ? $conn->real_escape_string($input['notes']) : NULL;
+        $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
+        $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
+        $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+        $bookingId = 'booking_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO bookings (
+                id, client_id, trainer_id, session_date, session_time, duration_hours,
+                total_sessions, status, total_amount, notes, client_location_label,
+                client_location_lat, client_location_lng, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("sssssiiisdddss", $bookingId, $clientId, $trainerId, $sessionDate, $sessionTime, $durationHours, $totalSessions, $status, $totalAmount, $notes, $clientLocationLabel, $clientLocationLat, $clientLocationLng, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('booking_created', ['booking_id' => $bookingId, 'client_id' => $clientId, 'trainer_id' => $trainerId]);
+            respond("success", "Booking created successfully.", ["id" => $bookingId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to create booking: " . $conn->error, null, 500);
+        }
+        break;
+
+    // MARK MESSAGES AS READ
+    case 'messages_mark_read':
+        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : null;
+        $clientId = isset($input['client_id']) ? $conn->real_escape_string($input['client_id']) : null;
+        $markReadByTrainer = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+        $markReadByClient = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
+
+        if (!$trainerId && !$clientId) {
+            respond("error", "Missing trainer_id or client_id.", null, 400);
+        }
+
+        $sql = "UPDATE messages SET ";
+        $updates = [];
+
+        if ($markReadByTrainer) {
+            $updates[] = "read_by_trainer = 1";
+        }
+        if ($markReadByClient) {
+            $updates[] = "read_by_client = 1";
+        }
+
+        if (empty($updates)) {
+            respond("error", "No read status specified.", null, 400);
+        }
+
+        $sql .= implode(", ", $updates) . " WHERE ";
+        $conditions = [];
+
+        if ($trainerId) {
+            $conditions[] = "(trainer_id = '$trainerId' OR sender_id = '$trainerId' OR recipient_id = '$trainerId')";
+        }
+        if ($clientId) {
+            $conditions[] = "(client_id = '$clientId' OR sender_id = '$clientId' OR recipient_id = '$clientId')";
+        }
+
+        $sql .= implode(" OR ", $conditions);
+
+        if ($conn->query($sql)) {
+            logEvent('messages_marked_read', ['trainer_id' => $trainerId, 'client_id' => $clientId]);
+            respond("success", "Messages marked as read successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            respond("error", "Failed to mark messages as read: " . $conn->error, null, 500);
+        }
+        break;
+
+    // INSERT PAYMENT METHOD
+    case 'payment_method_insert':
+        if (!isset($input['user_id']) || !isset($input['method'])) {
+            respond("error", "Missing user_id or method.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $method = $conn->real_escape_string($input['method']);
+        $details = isset($input['details']) ? json_encode($input['details']) : NULL;
+        $methodId = 'method_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO payment_methods (
+                id, user_id, method, details, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssssss", $methodId, $userId, $method, $details, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('payment_method_added', ['method_id' => $methodId, 'user_id' => $userId]);
+            respond("success", "Payment method added successfully.", ["id" => $methodId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to add payment method: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET PROFILES BY USER TYPE
+    case 'profiles_get_by_type':
+        if (!isset($input['user_type'])) {
+            respond("error", "Missing user_type.", null, 400);
+        }
+
+        $userType = $conn->real_escape_string($input['user_type']);
+        $sql = "SELECT * FROM user_profiles WHERE user_type = '$userType' ORDER BY created_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $profiles = [];
+        while ($row = $result->fetch_assoc()) {
+            $profiles[] = $row;
+        }
+
+        respond("success", "Profiles fetched successfully.", ["data" => $profiles]);
         break;
 
     // UNKNOWN ACTION
