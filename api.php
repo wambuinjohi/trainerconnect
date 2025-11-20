@@ -658,6 +658,173 @@ switch ($action) {
         }
         break;
 
+    // MIGRATE: Create audit-fixed missing tables
+    case 'apply_audit_migration':
+        logEvent('audit_migration_started');
+
+        $migrations = [
+            'trainer_availability' => "
+                CREATE TABLE IF NOT EXISTS `trainer_availability` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `slots` JSON NOT NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_trainer_availability_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  UNIQUE KEY `uq_trainer_availability` (`trainer_id`),
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_updated_at` (`updated_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'transactions' => "
+                CREATE TABLE IF NOT EXISTS `transactions` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL,
+                  `type` VARCHAR(50) NOT NULL,
+                  `amount` DECIMAL(15, 2) NOT NULL,
+                  `balance_before` DECIMAL(15, 2),
+                  `balance_after` DECIMAL(15, 2),
+                  `reference` VARCHAR(255),
+                  `description` TEXT,
+                  `status` VARCHAR(50) DEFAULT 'completed',
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_transactions_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_type` (`type`),
+                  INDEX `idx_created_at` (`created_at` DESC)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'payout_requests' => "
+                CREATE TABLE IF NOT EXISTS `payout_requests` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `amount` DECIMAL(15, 2) NOT NULL,
+                  `status` VARCHAR(50) DEFAULT 'pending',
+                  `payment_method_id` VARCHAR(36),
+                  `notes` TEXT,
+                  `requested_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `processed_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_payout_requests_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'reported_issues' => "
+                CREATE TABLE IF NOT EXISTS `reported_issues` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL,
+                  `trainer_id` VARCHAR(36),
+                  `booking_reference` VARCHAR(100),
+                  `complaint_type` VARCHAR(100),
+                  `title` VARCHAR(255),
+                  `description` TEXT NOT NULL,
+                  `status` VARCHAR(50) DEFAULT 'open',
+                  `priority` VARCHAR(50) DEFAULT 'normal',
+                  `attachments` JSON,
+                  `resolution` TEXT,
+                  `resolved_at` TIMESTAMP NULL,
+                  `assigned_to` VARCHAR(36),
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_reported_issues_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'user_wallets' => "
+                CREATE TABLE IF NOT EXISTS `user_wallets` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `user_id` VARCHAR(36) NOT NULL UNIQUE,
+                  `balance` DECIMAL(15, 2) DEFAULT 0,
+                  `pending_balance` DECIMAL(15, 2) DEFAULT 0,
+                  `total_earned` DECIMAL(15, 2) DEFAULT 0,
+                  `total_spent` DECIMAL(15, 2) DEFAULT 0,
+                  `total_refunded` DECIMAL(15, 2) DEFAULT 0,
+                  `currency` VARCHAR(3) DEFAULT 'KES',
+                  `last_transaction_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_user_wallets_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_user_id` (`user_id`),
+                  INDEX `idx_balance` (`balance`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'promotion_requests' => "
+                CREATE TABLE IF NOT EXISTS `promotion_requests` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `promotion_type` VARCHAR(100),
+                  `status` VARCHAR(50) DEFAULT 'pending',
+                  `duration_days` INT,
+                  `commission_rate` DECIMAL(5, 2) DEFAULT 0,
+                  `cost` DECIMAL(15, 2) DEFAULT 0,
+                  `features` JSON,
+                  `approved_by` VARCHAR(36),
+                  `started_at` TIMESTAMP NULL,
+                  `expires_at` TIMESTAMP NULL,
+                  `requested_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `approved_at` TIMESTAMP NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_promotion_requests_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_status` (`status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            "
+        ];
+
+        $successCount = 0;
+        $failureCount = 0;
+        $messages = [];
+
+        foreach ($migrations as $tableName => $sql) {
+            if ($conn->query($sql)) {
+                $successCount++;
+                $messages[] = "✓ $tableName created";
+                logEvent('audit_migration_success', ['table' => $tableName]);
+            } else {
+                $failureCount++;
+                $messages[] = "✗ $tableName failed: " . $conn->error;
+                logEvent('audit_migration_failed', ['table' => $tableName, 'error' => $conn->error]);
+            }
+        }
+
+        if ($failureCount === 0) {
+            respond("success", "All audit migrations applied successfully.", [
+                "created" => $successCount,
+                "failed" => $failureCount,
+                "messages" => $messages
+            ]);
+        } else {
+            respond("success", "Audit migration completed with $failureCount error(s).", [
+                "created" => $successCount,
+                "failed" => $failureCount,
+                "messages" => $messages
+            ]);
+        }
+        break;
+
     // SEED_USERS: Create test users
     case 'seed_users':
         logEvent('seed_users_started');
