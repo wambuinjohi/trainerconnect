@@ -26,7 +26,11 @@ export type ApiResponse<T = any> = {
 }
 
 export async function apiRequest<T = any>(action: string, payload: Record<string, any> = {}, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init.headers as Record<string, string> || {}) }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...withAuth(),
+    ...(init.headers as Record<string, string> || {})
+  }
   const apiUrl = getApiUrl()
   const res = await fetch(apiUrl, {
     method: 'POST',
