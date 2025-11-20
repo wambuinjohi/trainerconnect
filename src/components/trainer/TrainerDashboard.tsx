@@ -108,20 +108,23 @@ export const TrainerDashboard: React.FC = () => {
       if (!user?.id) return
       try {
         const bookingsData = await apiService.getBookings(user.id, 'trainer')
-        if (bookingsData?.data) {
+        if (bookingsData?.data && Array.isArray(bookingsData.data)) {
           setBookings(bookingsData.data)
 
           // Calculate month stats
           const now = new Date()
           const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-          const monthBookings = bookingsData.data.filter((b: any) => new Date(b.session_date) >= monthStart)
+          const monthBookings = bookingsData.data.filter((b: any) => b.session_date && new Date(b.session_date) >= monthStart)
           setMonthSessions(monthBookings.length)
 
           const monthRevenue = monthBookings.reduce((sum: number, b: any) => sum + (Number(b.total_amount) || 0), 0)
           setMonthRevenue(monthRevenue)
+        } else {
+          setBookings([])
         }
       } catch (err) {
         console.warn('Failed to load trainer bookings', err)
+        setBookings([])
       }
     }
     loadBookings()
@@ -132,15 +135,18 @@ export const TrainerDashboard: React.FC = () => {
       if (!user?.id || !showReviews) return
       try {
         const reviewsData = await apiService.getReviews(user.id)
-        if (reviewsData?.data) {
+        if (reviewsData?.data && Array.isArray(reviewsData.data)) {
           setReviews(reviewsData.data)
           if (reviewsData.data.length > 0) {
             const avgRate = reviewsData.data.reduce((sum: number, r: any) => sum + (Number(r.rating) || 0), 0) / reviewsData.data.length
             setAvgRating(avgRate)
           }
+        } else {
+          setReviews([])
         }
       } catch (err) {
         console.warn('Failed to load trainer reviews', err)
+        setReviews([])
       }
     }
     loadReviews()
