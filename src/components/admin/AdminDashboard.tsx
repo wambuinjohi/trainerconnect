@@ -509,9 +509,11 @@ export const AdminDashboard: React.FC = () => {
   const approveTrainer = async (userId: string) => {
     try {
       await apiService.approveTrainer(userId)
-      setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u))
-      setApprovals(approvals.map(a => a.user_id === userId ? { ...a, is_approved: true } : a))
       toast({ title: 'Success', description: 'Trainer approved' })
+      // Refresh page after showing success message
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (err: any) {
       console.error('Approve trainer error:', err)
       toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
@@ -764,7 +766,7 @@ export const AdminDashboard: React.FC = () => {
           const trainer = users.find((u:any) => u.user_id === (p.trainer_id || p.trainer_user_id || p.trainer))
           const trainerLabel = trainer?.full_name || trainer?.user_id || p.trainer_id || p.trainer_user_id || 'Unknown'
           const commissionRaw = (p.commission_rate ?? p.requested_commission)
-          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? '—' : `${Number(commissionRaw).toFixed(0)}%`
+          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? '���' : `${Number(commissionRaw).toFixed(0)}%`
           const createdAt = p.created_at ? new Date(p.created_at).toLocaleString() : ''
           return (
             <Card key={p.id} className="bg-card border-border">
