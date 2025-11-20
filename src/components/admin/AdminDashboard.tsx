@@ -437,16 +437,12 @@ export const AdminDashboard: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={async ()=>{
-                    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                  }}
+                  onClick={() => rejectTrainer(trainer.user_id)}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Reject
                 </Button>
-                <Button size="sm" className="bg-gradient-primary text-white" onClick={async ()=>{
-                  toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                }}>
+                <Button size="sm" className="bg-gradient-primary text-white" onClick={() => approveTrainer(trainer.user_id)}>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve
                 </Button>
@@ -506,6 +502,98 @@ export const AdminDashboard: React.FC = () => {
     if (v == null) return false
     const s = String(v).trim().toLowerCase()
     return ['1','true','yes','y','t'].includes(s)
+  }
+
+  // Helper to get the API URL
+  const getApiUrl = () => {
+    const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'))
+    return isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php'
+  }
+
+  // Approve a trainer
+  const approveTrainer = async (userId: string) => {
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve_trainer', user_id: userId })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setUsers(users.map(u => u.user_id === userId ? { ...u, is_approved: true } : u))
+        toast({ title: 'Success', description: 'Trainer approved' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to approve trainer', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Approve trainer error:', err)
+      toast({ title: 'Error', description: 'Failed to approve trainer', variant: 'destructive' })
+    }
+  }
+
+  // Reject a trainer
+  const rejectTrainer = async (userId: string) => {
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject_trainer', user_id: userId })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setUsers(users.filter(u => u.user_id !== userId))
+        setApprovals(approvals.filter(a => a.user_id !== userId))
+        toast({ title: 'Success', description: 'Trainer rejected' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to reject trainer', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Reject trainer error:', err)
+      toast({ title: 'Error', description: 'Failed to reject trainer', variant: 'destructive' })
+    }
+  }
+
+  // Delete a user
+  const deleteUser = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to delete this user?')) return
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_user', user_id: userId })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setUsers(users.filter(u => u.user_id !== userId))
+        toast({ title: 'Success', description: 'User deleted' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to delete user', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Delete user error:', err)
+      toast({ title: 'Error', description: 'Failed to delete user', variant: 'destructive' })
+    }
+  }
+
+  // Update user type
+  const updateUserType = async (userId: string, newType: string) => {
+    try {
+      const response = await fetch(getApiUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update_user_type', user_id: userId, user_type: newType })
+      })
+      const data = await response.json()
+      if (data.status === 'success') {
+        setUsers(users.map(u => u.user_id === userId ? { ...u, user_type: newType } : u))
+        toast({ title: 'Success', description: 'User type updated' })
+      } else {
+        toast({ title: 'Error', description: data.message || 'Failed to update user type', variant: 'destructive' })
+      }
+    } catch (err) {
+      console.error('Update user type error:', err)
+      toast({ title: 'Error', description: 'Failed to update user type', variant: 'destructive' })
+    }
   }
 
   // SMTP & MPesa settings (admin)
@@ -1107,8 +1195,8 @@ export const AdminDashboard: React.FC = () => {
                     <td className="p-2">{u.full_name || u.user_id}</td>
                     <td className="p-2">{u.email || u.phone_number || '-'}</td>
                     <td className="p-2">
-                      <Select value={u.user_type || 'client'} onValueChange={async (v)=>{
-                        toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+                      <Select value={u.user_type || 'client'} onValueChange={(v)=>{
+                        updateUserType(u.user_id, v)
                       }}>
                         <SelectTrigger className="bg-input border-border"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1122,15 +1210,11 @@ export const AdminDashboard: React.FC = () => {
                     <td className="p-2">{u.created_at ? new Date(u.created_at).toLocaleDateString() : '-'}</td>
                     <td className="p-2">
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" onClick={async ()=>{
-                          toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                        }}>Delete</Button>
+                        <Button size="sm" variant="outline" onClick={() => deleteUser(u.user_id)}>Delete</Button>
 
                         {/* Approve trainer (if applicable) */}
                         {String(u.user_type || '').toLowerCase() === 'trainer' && !approvedOf(u) && (
-                          <Button size="sm" variant="outline" onClick={async ()=>{
-                            toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-                          }}>Approve</Button>
+                          <Button size="sm" variant="outline" onClick={() => approveTrainer(u.user_id)}>Approve</Button>
                         )}
 
                         <Button size="sm" variant="ghost" disabled title="Admin API not configured">Reset PW</Button>

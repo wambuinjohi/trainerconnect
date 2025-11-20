@@ -43,7 +43,6 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'health_check' }),
-        credentials: 'include',
         signal: controller.signal,
       });
 
@@ -61,7 +60,16 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       setIsConnected(false);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to connect to API';
+      let errorMessage = 'Failed to connect to API';
+
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        errorMessage = 'Connection timeout (5s)';
+      } else if (error instanceof TypeError) {
+        errorMessage = 'Network error or CORS issue - check if the API endpoint is accessible';
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
       console.warn('API connection test failed:', errorMessage);
       setConnectionError(errorMessage);
       return false;
