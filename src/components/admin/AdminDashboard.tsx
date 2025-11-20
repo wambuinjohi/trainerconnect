@@ -611,8 +611,7 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('192.168'));
-        const apiUrl = isDev ? '/api.php' : 'https://trainer.skatryk.co.ke/api.php';
+        const apiUrl = getApiUrl();
         // Load users with profiles from MySQL API
         const usersResponse = await fetch(apiUrl, {
           method: 'POST',
