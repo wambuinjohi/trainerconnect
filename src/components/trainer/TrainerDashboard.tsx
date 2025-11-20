@@ -212,7 +212,7 @@ export const TrainerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="text-center py-4">
         <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
-          👨‍💼
+          ���‍💼
         </div>
         <h1 className="text-2xl font-bold text-foreground">Welcome back!</h1>
         <p className="text-muted-foreground">Ready to inspire and train today?</p>
@@ -352,16 +352,21 @@ export const TrainerDashboard: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
         <div className="container max-w-md mx-auto">
           <div className="flex items-center justify-around py-2">
-            <Button onClick={() => setActiveTab('home')}><Home /></Button>
-            <Button onClick={() => setActiveTab('bookings')}><Calendar /></Button>
-            <Button onClick={() => setShowServicesManager(true)}><Plus /></Button>
-            <Button onClick={() => setActiveTab('profile')}><User /></Button>
+            <Button variant={activeTab === 'home' ? 'default' : 'ghost'} onClick={() => setActiveTab('home')} size="sm"><Home className="h-5 w-5" /></Button>
+            <Button variant={activeTab === 'bookings' ? 'default' : 'ghost'} onClick={() => setActiveTab('bookings')} size="sm"><Calendar className="h-5 w-5" /></Button>
+            <Button variant="ghost" onClick={() => setShowServicesManager(true)} size="sm"><Plus className="h-5 w-5" /></Button>
+            <Button variant={activeTab === 'profile' ? 'default' : 'ghost'} onClick={() => setActiveTab('profile')} size="sm"><User className="h-5 w-5" /></Button>
           </div>
         </div>
       </div>
 
       {showServicesManager && <ServicesManager onClose={() => setShowServicesManager(false)} />}
       {editingProfile && <TrainerProfileEditor onClose={() => setEditingProfile(false)} />}
+      {editingAvailability && <AvailabilityEditor onClose={() => setEditingAvailability(false)} />}
+      {showServiceArea && <ServiceAreaEditor onClose={() => setShowServiceArea(false)} />}
+      {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
+      {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
+      {showReport && <TrainerReportIssue onClose={() => setShowReport(false)} />}
       {chatBooking && <TrainerChat booking={chatBooking} onClose={closeChat} />}
     </div>
   )
