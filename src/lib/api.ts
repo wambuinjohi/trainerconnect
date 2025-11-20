@@ -32,7 +32,6 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     method: 'POST',
     headers,
     body: JSON.stringify({ action, ...payload }),
-    credentials: 'include',
     ...init,
   })
   const json = (await res.json().catch(() => null)) as ApiResponse<T> | null

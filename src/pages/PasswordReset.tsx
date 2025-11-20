@@ -39,7 +39,6 @@ const PasswordReset: React.FC = () => {
           action: 'request_password_reset',
           email: email.trim().toLowerCase(),
         }),
-        credentials: 'include',
       })
 
       const result = await response.json()
@@ -102,7 +101,6 @@ const PasswordReset: React.FC = () => {
           token: token,
           new_password: password,
         }),
-        credentials: 'include',
       })
 
       const result = await response.json()
