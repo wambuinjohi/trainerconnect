@@ -208,6 +208,8 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           availability: JSON.stringify(availabilityVal),
           profile_image: profile.profile_image || null,
           bio: profile.bio || null,
+          payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
+          hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
         })
       } catch (apiErr) {
         console.warn('API save failed, falling back to localStorage', apiErr)
