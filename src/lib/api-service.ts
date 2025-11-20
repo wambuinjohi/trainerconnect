@@ -58,7 +58,9 @@ export async function getUserProfile(userId: string) {
 }
 
 export async function updateUserProfile(userId: string, data: Record<string, any>) {
-  const escapedWhere = `user_id = '${userId}'`
+  // Escape single quotes in userId for SQL safety
+  const escapedUserId = userId.replace(/'/g, "''")
+  const escapedWhere = `user_id = '${escapedUserId}'`
   return apiRequest('update', {
     table: 'user_profiles',
     data,
