@@ -104,18 +104,47 @@ export const TrainerDashboard: React.FC = () => {
   }
 
   useEffect(() => {
-    // Placeholder: replace with API call to fetch bookings
-    setBookings([
-      { id: '1', client_name: 'John Doe', session_date: '2025-11-12', session_time: '10:00 AM', total_amount: 1000, status: 'pending' }
-    ])
-  }, [])
+    const loadBookings = async () => {
+      if (!user?.id) return
+      try {
+        const bookingsData = await apiService.getBookings(user.id, 'trainer')
+        if (bookingsData?.data) {
+          setBookings(bookingsData.data)
+
+          // Calculate month stats
+          const now = new Date()
+          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+          const monthBookings = bookingsData.data.filter((b: any) => new Date(b.session_date) >= monthStart)
+          setMonthSessions(monthBookings.length)
+
+          const monthRevenue = monthBookings.reduce((sum: number, b: any) => sum + (Number(b.total_amount) || 0), 0)
+          setMonthRevenue(monthRevenue)
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer bookings', err)
+      }
+    }
+    loadBookings()
+  }, [user?.id])
 
   useEffect(() => {
-    if (!showReviews) return
-    // Placeholder: replace with API call to fetch reviews
-    setReviews([{ rating: 5, comment: 'Great trainer!', created_at: new Date().toISOString() }])
-    setAvgRating(5)
-  }, [showReviews])
+    const loadReviews = async () => {
+      if (!user?.id || !showReviews) return
+      try {
+        const reviewsData = await apiService.getReviews(user.id)
+        if (reviewsData?.data) {
+          setReviews(reviewsData.data)
+          if (reviewsData.data.length > 0) {
+            const avgRate = reviewsData.data.reduce((sum: number, r: any) => sum + (Number(r.rating) || 0), 0) / reviewsData.data.length
+            setAvgRating(avgRate)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load trainer reviews', err)
+      }
+    }
+    loadReviews()
+  }, [user?.id, showReviews])
 
   const [editingProfile, setEditingProfile] = useState(false)
   const [editingAvailability, setEditingAvailability] = useState(false)
