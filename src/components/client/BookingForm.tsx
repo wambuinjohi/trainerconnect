@@ -87,8 +87,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
 
     try {
-      // create booking
-      const bookingData = await apiRequest('booking_insert', payload, { headers: withAuth() })
+      // create booking using API service
+      const bookingData = await apiService.createBooking(payload)
 
       // in-app notifications: client, trainer, admins
       try {
