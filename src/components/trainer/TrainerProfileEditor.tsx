@@ -90,6 +90,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
   const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files
+    if (files && files.length > 0) {
+      setUploadingImage(true)
+      const fileArray = Array.from(files)
+      await upload(fileArray)
+    }
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
+
+  const clearProfileImage = () => {
+    handleChange('profile_image', '')
+  }
+
   const save = async () => {
     if (!userId) {
       toast({ title: 'Not signed in', description: 'Please sign in to edit your profile', variant: 'destructive' })
