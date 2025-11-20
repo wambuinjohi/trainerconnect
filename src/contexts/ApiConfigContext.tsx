@@ -35,10 +35,10 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const testConnection = async (): Promise<boolean> => {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
+    try {
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,6 +59,7 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       setIsConnected(false);
       let errorMessage = 'Failed to connect to API';
 

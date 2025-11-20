@@ -92,6 +92,9 @@ export const ClientDashboard: React.FC = () => {
             distance: '—',
             distanceKm: null,
             service_radius: trainer.service_radius || 10,
+            location_lat: trainer.location_lat || null,
+            location_lng: trainer.location_lng || null,
+            location_label: trainer.location_label || 'Unknown',
             image: '👤'
           })))
         }
@@ -134,6 +137,36 @@ export const ClientDashboard: React.FC = () => {
       return true
     })
   }
+
+  // Haversine formula to calculate distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371 // Earth's radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return R * c
+  }
+
+  // Update distances when user location changes
+  useEffect(() => {
+    if (userLocation && trainers.length > 0) {
+      const updatedTrainers = trainers.map(trainer => {
+        if (trainer.location_lat && trainer.location_lng) {
+          const distKm = calculateDistance(userLocation.lat, userLocation.lng, trainer.location_lat, trainer.location_lng)
+          return {
+            ...trainer,
+            distanceKm: distKm,
+            distance: distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)}km`
+          }
+        }
+        return trainer
+      }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      setTrainers(updatedTrainers)
+    }
+  }, [userLocation])
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
@@ -246,49 +279,87 @@ export const ClientDashboard: React.FC = () => {
     </div>
   )
 
-  const renderExploreContent = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold text-foreground">Nearby Trainers</h1>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}><MapPin className="h-4 w-4 mr-2" />Filters</Button>
-      </div>
+  const renderExploreContent = () => {
+    const filteredTrainers = applyFilters(trainers)
+    const nearestTrainerId = filteredTrainers.length > 0 ? filteredTrainers[0].id : null
 
-      <div className="space-y-4">
-        {applyFilters(trainers).map((trainer) => (
-          <Card key={trainer.id} className="bg-card border-border">
-            <CardContent className="p-4 flex items-start gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-2xl">{trainer.image}</div>
-              <div className="flex-1">
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-foreground">{trainer.name}</h3>
-                    <p className="text-sm text-muted-foreground">{trainer.discipline}</p>
-                  </div>
-                  <Badge variant={trainer.available ? "default" : "secondary"}>{trainer.available ? 'Available' : 'Busy'}</Badge>
-                </div>
-                <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{trainer.rating} ({trainer.reviews})</div>
-                  <div className="flex items-center gap-1"><MapPin className="h-4 w-4" />{trainer.distance}</div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground">Ksh {trainer.hourlyRate}/hour</span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => openTrainer(trainer)}><MessageCircle className="h-4 w-4" /></Button>
-                    <Button size="sm" className="bg-gradient-primary text-white" onClick={() => openTrainer(trainer)}>Book Now</Button>
-                  </div>
-                </div>
-              </div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-foreground">
+              {selectedCategory ? `${selectedCategory} Trainers` : 'Nearby Trainers'}
+            </h1>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setShowFilters(true)}><MapPin className="h-4 w-4 mr-2" />Filters</Button>
+        </div>
+
+        {filteredTrainers.length === 0 ? (
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground">No trainers found matching your criteria.</p>
             </CardContent>
           </Card>
-        ))}
+        ) : (
+          <div className="space-y-4">
+            {filteredTrainers.map((trainer, idx) => (
+              <Card
+                key={trainer.id}
+                className={`bg-card border-2 transition-all ${idx === 0 && userLocation ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-border'}`}
+              >
+                <CardContent className="p-4 flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-primary flex items-center justify-center text-2xl overflow-hidden flex-shrink-0">
+                    {trainer.image}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-foreground">{trainer.name}</h3>
+                          {idx === 0 && userLocation && selectedCategory && (
+                            <Badge className="bg-green-500 text-white text-xs">Nearest</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{trainer.discipline}</p>
+                      </div>
+                      <Badge variant={trainer.available ? "default" : "secondary"} className="flex-shrink-0">
+                        {trainer.available ? 'Available' : 'Busy'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        {trainer.rating} ({trainer.reviews})
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        {trainer.location_label}
+                        {trainer.distance !== '—' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">Ksh {trainer.hourlyRate}/hour</span>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => openTrainer(trainer)}>
+                          <MessageCircle className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" className="bg-gradient-primary text-white" onClick={() => openTrainer(trainer)}>
+                          Book Now
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-    </div>
-  )
+    )
+  }
 
   // -------------------- Other renderContent functions (Schedule, Profile) can also be simplified similarly --------------------
 

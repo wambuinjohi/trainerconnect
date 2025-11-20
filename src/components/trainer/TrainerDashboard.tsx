@@ -224,8 +224,16 @@ export const TrainerDashboard: React.FC = () => {
         </Button>
       </div>
       <div className="text-center py-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4">
-          💪
+        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4 overflow-hidden">
+          {profileData.profile_image ? (
+            <img
+              src={profileData.profile_image}
+              alt="Profile"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span>💪</span>
+          )}
         </div>
         <h1 className="text-2xl font-bold text-foreground">Welcome back!</h1>
         <p className="text-muted-foreground">Ready to inspire and train today?</p>
