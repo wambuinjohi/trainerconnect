@@ -32,6 +32,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import * as apiService from '@/lib/api-service'
 
 export const ClientDashboard: React.FC = () => {
+  const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('home')
@@ -48,7 +49,7 @@ export const ClientDashboard: React.FC = () => {
   const [dbCategories, setDbCategories] = useState<any[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [referralSavings, setReferralSavings] = useState(0)
-  const [referralCode, setReferralCode] = useState('REF123')
+  const [referralCode, setReferralCode] = useState('REF-' + Math.random().toString(36).slice(2, 8).toUpperCase())
   const [referralCount, setReferralCount] = useState(0)
   const [trainers, setTrainers] = useState<any[]>([])
   const [bookings, setBookings] = useState<any[]>([])
@@ -59,11 +60,62 @@ export const ClientDashboard: React.FC = () => {
   const modalOpen = Boolean(selectedTrainer || showEditProfile || showPaymentMethods || showNotifications || showHelpSupport || showFilters || reviewBooking || nextSessionBooking)
 
   useEffect(() => {
-    setDbCategories(mockCategories)
-    setCategoriesLoading(false)
-    setTrainers(mockTrainers)
-    setBookings(mockBookings)
-  }, [])
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setDbCategories(categoriesData.data)
+        }
+      } catch (err) {
+        console.warn('Failed to load categories', err)
+        setDbCategories([])
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    const loadTrainers = async () => {
+      try {
+        const trainersData = await apiService.getAvailableTrainers(filters)
+        if (trainersData?.data) {
+          setTrainers(trainersData.data.map((trainer: any) => ({
+            id: trainer.user_id,
+            name: trainer.full_name || trainer.user_id,
+            discipline: Array.isArray(trainer.disciplines) ? trainer.disciplines[0] : trainer.disciplines,
+            disciplines: Array.isArray(trainer.disciplines) ? trainer.disciplines : [trainer.disciplines],
+            rating: trainer.rating || 0,
+            reviews: trainer.total_reviews || 0,
+            hourlyRate: trainer.hourly_rate || 0,
+            available: true,
+            distance: '—',
+            distanceKm: null,
+            service_radius: trainer.service_radius || 10,
+            image: '👤'
+          })))
+        }
+      } catch (err) {
+        console.warn('Failed to load trainers', err)
+        setTrainers([])
+      }
+    }
+
+    const loadBookings = async () => {
+      if (!user?.id) return
+      try {
+        const bookingsData = await apiService.getBookings(user.id, 'client')
+        if (bookingsData?.data) {
+          setBookings(bookingsData.data)
+        }
+      } catch (err) {
+        console.warn('Failed to load bookings', err)
+        setBookings([])
+      }
+    }
+
+    loadCategories()
+    loadTrainers()
+    loadBookings()
+  }, [user?.id, filters])
 
   const applyFilters = (list: any[]) => {
     return list.filter(t => {
