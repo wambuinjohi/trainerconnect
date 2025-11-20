@@ -169,18 +169,40 @@ export const TrainerDashboard: React.FC = () => {
             bio: profileData.bio || 'Professional Trainer',
             profile_image: profileData.profile_image || null,
             hourly_rate: profileData.hourly_rate || 0,
-            availability: profileData.availability ? JSON.parse(profileData.availability) : [],
-            pricing_packages: profileData.pricing_packages ? JSON.parse(profileData.pricing_packages) : []
+            availability: profileData.availability ? (typeof profileData.availability === 'string' ? JSON.parse(profileData.availability) : profileData.availability) : [],
+            pricing_packages: profileData.pricing_packages ? (typeof profileData.pricing_packages === 'string' ? JSON.parse(profileData.pricing_packages) : profileData.pricing_packages) : []
           })
-
-          // Load wallet balance
-          const walletData = await apiService.getWalletBalance(user.id)
-          if (walletData?.data && walletData.data.length > 0) {
-            setWalletBalance(walletData.data[0].balance || 0)
-          }
+        } else {
+          setProfileData({
+            name: user.email,
+            bio: 'Professional Trainer',
+            profile_image: null,
+            hourly_rate: 0,
+            availability: [],
+            pricing_packages: []
+          })
         }
       } catch (err) {
         console.warn('Failed to load trainer profile', err)
+        setProfileData({
+          name: user.email,
+          bio: 'Professional Trainer',
+          profile_image: null,
+          hourly_rate: 0,
+          availability: [],
+          pricing_packages: []
+        })
+      }
+
+      // Load wallet balance - handle gracefully if table doesn't exist
+      try {
+        const walletData = await apiService.getWalletBalance(user.id)
+        if (walletData?.data && walletData.data.length > 0) {
+          setWalletBalance(walletData.data[0].balance || 0)
+        }
+      } catch (err) {
+        console.warn('Failed to load wallet balance', err)
+        setWalletBalance(0)
       }
     }
     loadTrainerProfile()
