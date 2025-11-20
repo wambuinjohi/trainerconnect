@@ -199,7 +199,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
       // Save to API
       try {
-        await apiService.updateUserProfile(userId, {
+        const response = await apiService.updateUserProfile(userId, {
           full_name: name,
           disciplines: JSON.stringify(disciplines),
           certifications: JSON.stringify(certifications),
@@ -211,8 +211,20 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
           hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
         })
+        console.log('Profile update response:', response)
+        if (response && response.status !== 'success') {
+          console.error('API returned error:', response.message)
+          throw new Error(response.message || 'Failed to update profile')
+        }
       } catch (apiErr) {
-        console.warn('API save failed, falling back to localStorage', apiErr)
+        console.error('API save failed:', apiErr)
+        toast({
+          title: 'Database update failed',
+          description: apiErr instanceof Error ? apiErr.message : 'Could not save to database. Check console for details.',
+          variant: 'destructive'
+        })
+        setLoading(false)
+        return
       }
 
       // Save to localStorage as fallback
