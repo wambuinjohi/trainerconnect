@@ -77,7 +77,7 @@ export default function AdminSetup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 pb-24">
       <div className="max-w-2xl mx-auto">
         <Card className="border-border shadow-lg">
           <CardHeader>
