@@ -98,9 +98,17 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
       save({ lat, lng }, location || 'My location')
     }, (err) => {
       console.warn('GPS error', err)
-      toast({ title: 'Location error', description: 'Unable to fetch GPS position', variant: 'destructive' })
+      let description = 'Unable to fetch GPS position'
+      if (err.code === 1) {
+        description = 'Please enable location permissions for this app'
+      } else if (err.code === 2) {
+        description = 'Location is temporarily unavailable. Please try again'
+      } else if (err.code === 3) {
+        description = 'Location request timed out. Please try again'
+      }
+      toast({ title: 'Location error', description, variant: 'destructive' })
       setSaving(false)
-    })
+    }, { timeout: 10000 })
   }
 
   const disabled = saving || loading
