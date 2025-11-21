@@ -117,17 +117,16 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
         const pollInterval = setInterval(async () => {
           checkAttempts++
           try {
-            const settings = loadSettings()
-            const queryResponse = await fetch('/payments/mpesa/stk-query', {
+            const queryResponse = await fetch('/api.php', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                checkout_request_id: checkoutId,
-                mpesa_creds: settings.mpesa
+                action: 'stk_push_query',
+                checkout_request_id: checkoutId
               })
             })
             const queryResult = await queryResponse.json()
-            const resultCode = queryResult.resultCode || queryResult.result?.ResultCode
+            const resultCode = queryResult.data?.result_code || queryResult.resultCode || queryResult.result?.ResultCode
 
             if (resultCode === '0' || resultCode === 0) {
               clearInterval(pollInterval)
