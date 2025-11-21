@@ -201,7 +201,7 @@ export const ClientDashboard: React.FC = () => {
       <div className="flex items-center justify-between">
         <div></div>
         <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-5 w-5 text-red-500" />
         </Button>
       </div>
       <div className="text-center py-6">
