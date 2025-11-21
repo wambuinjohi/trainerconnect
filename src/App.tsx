@@ -27,6 +27,7 @@ import Terms from "./pages/Terms";
 import UploadDemo from "./pages/UploadDemo";
 import PasswordReset from "./pages/PasswordReset";
 import ResetPasswords from "./pages/ResetPasswords";
+import MpesaMigration from "./pages/MpesaMigration";
 
 const queryClient = new QueryClient();
 
@@ -108,6 +109,7 @@ const App = () => (
                     <Route path="/home" element={<Home />} />
                     <Route path="/clear-cache" element={<ClearCache />} />
                     <Route path="/upload-demo" element={<UploadDemo />} />
+                    <Route path="/admin/mpesamigration" element={<MpesaMigration />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
