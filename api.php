@@ -2159,40 +2159,45 @@ switch ($action) {
 
     // SAVE ADMIN SETTINGS (including M-Pesa credentials)
     case 'settings_save':
-        // Verify admin token if required
-        $adminToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
-        // For now, allow saving if properly structured
+        try {
+            // Verify admin token if required
+            $adminToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+            // For now, allow saving if properly structured
 
-        if (isset($input['settings']) && is_array($input['settings'])) {
-            $settings = $input['settings'];
+            if (isset($input['settings']) && is_array($input['settings'])) {
+                $settings = $input['settings'];
 
-            // Extract and save M-Pesa credentials if present
-            if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
-                $mpesaCreds = $settings['mpesa'];
+                // Extract and save M-Pesa credentials if present
+                if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
+                    $mpesaCreds = $settings['mpesa'];
 
-                // Validate required fields
-                if (empty($mpesaCreds['consumerKey']) || empty($mpesaCreds['consumerSecret'])) {
-                    respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
+                    // Validate required fields
+                    if (empty($mpesaCreds['consumerKey']) || empty($mpesaCreds['consumerSecret'])) {
+                        respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
+                    }
+
+                    // Save M-Pesa credentials to database
+                    $saveResult = saveMpesaCredentials($mpesaCreds);
+                    if (!$saveResult) {
+                        respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
+                    }
+
+                    logEvent('admin_settings_updated', [
+                        'setting' => 'mpesa_credentials',
+                        'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                    ]);
                 }
 
-                // Save M-Pesa credentials to database
-                $saveResult = saveMpesaCredentials($mpesaCreds);
-                if (!$saveResult) {
-                    respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
-                }
-
-                logEvent('admin_settings_updated', [
-                    'setting' => 'mpesa_credentials',
-                    'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                respond("success", "Settings saved successfully.", [
+                    "saved_at" => date('Y-m-d H:i:s'),
+                    "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
                 ]);
+            } else {
+                respond("error", "Invalid settings format.", null, 400);
             }
-
-            respond("success", "Settings saved successfully.", [
-                "saved_at" => date('Y-m-d H:i:s'),
-                "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
-            ]);
-        } else {
-            respond("error", "Invalid settings format.", null, 400);
+        } catch (Exception $e) {
+            logEvent('settings_save_error', ['error' => $e->getMessage()]);
+            respond("error", "Failed to save settings: " . $e->getMessage(), null, 500);
         }
         break;
 
