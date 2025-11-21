@@ -566,7 +566,7 @@ export const AdminDashboard: React.FC = () => {
 
   // M-Pesa STK Push test form state
   const [testStkPhone, setTestStkPhone] = useState('254722241745')
-  const [testStkAmount, setTestStkAmount] = useState('10')
+  const [testStkAmount, setTestStkAmount] = useState('5')
   const [testStkLoading, setTestStkLoading] = useState(false)
   const [testStkResult, setTestStkResult] = useState<any>(null)
 
