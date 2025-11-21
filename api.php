@@ -2163,9 +2163,25 @@ switch ($action) {
             respond("error", "Missing required fields: b2c_payment_id, phone_number, amount.", null, 400);
         }
 
+        // Validate M-Pesa credentials are configured
+        $credValidation = validateMpesaCredentialsConfigured();
+        if (!$credValidation['valid']) {
+            respond("error", $credValidation['error'], null, 500);
+        }
+
         $b2cPaymentId = $conn->real_escape_string($input['b2c_payment_id']);
         $phoneNumber = $conn->real_escape_string($input['phone_number']);
         $amount = floatval($input['amount']);
+
+        // Normalize phone number
+        $phoneNumber = str_replace(['+', ' ', '-'], '', $phoneNumber);
+        if (substr($phoneNumber, 0, 1) !== '2') {
+            $phoneNumber = '254' . substr($phoneNumber, -9);
+        }
+
+        if (strlen($phoneNumber) !== 12 || !is_numeric($phoneNumber)) {
+            respond("error", "Invalid phone number format.", null, 400);
+        }
 
         // Get reference ID for this B2C payment
         $refQuery = $conn->query("SELECT reference_id FROM b2c_payments WHERE id = '$b2cPaymentId'");
@@ -2176,35 +2192,79 @@ switch ($action) {
         $refData = $refQuery->fetch_assoc();
         $referenceId = $refData['reference_id'];
 
-        // Prepare M-Pesa B2C API call (would be done via external service)
-        // For now, just update status to "initiated"
+        // Get server-side credentials (NOT from request body)
+        $mpesaCreds = getMpesaCredentials();
+        if (!$mpesaCreds) {
+            respond("error", "M-Pesa credentials not properly configured.", null, 500);
+        }
+
+        // Determine callback URLs
+        $resultUrl = $mpesaCreds['result_url'] ?? getenv('MPESA_RESULT_URL');
+        $queueTimeoutUrl = getenv('MPESA_QUEUE_TIMEOUT_URL') ?? $resultUrl;
+
+        if (empty($resultUrl)) {
+            respond("error", "M-Pesa callback URL not configured.", null, 500);
+        }
+
+        // Call M-Pesa API to initiate B2C payment
+        $b2cResult = initiateB2CPayment(
+            $mpesaCreds,
+            $phoneNumber,
+            $amount,
+            'BusinessPayment',
+            'Payout: ' . $referenceId,
+            $queueTimeoutUrl,
+            $resultUrl
+        );
+
+        if (!$b2cResult['success']) {
+            logPaymentEvent('b2c_payment_failed', [
+                'b2c_payment_id' => $b2cPaymentId,
+                'phone' => $phoneNumber,
+                'amount' => $amount,
+                'error' => $b2cResult['error']
+            ]);
+            respond("error", $b2cResult['error'], null, 500);
+        }
+
+        // Update B2C payment with M-Pesa transaction IDs
+        $conversationId = $b2cResult['conversation_id'];
+        $originatorConversationId = $b2cResult['originator_conversation_id'];
+        $initiatedStatus = 'initiated';
+
         $updateStmt = $conn->prepare("
             UPDATE b2c_payments
-            SET status = ?, updated_at = NOW()
+            SET status = ?, conversation_id = ?, originator_conversation_id = ?, updated_at = NOW()
             WHERE id = ?
         ");
 
-        $initiatedStatus = 'initiated';
-        $updateStmt->bind_param("ss", $initiatedStatus, $b2cPaymentId);
-
-        if ($updateStmt->execute()) {
-            $updateStmt->close();
-            logEvent('b2c_payment_initiated', [
-                'b2c_payment_id' => $b2cPaymentId,
-                'reference_id' => $referenceId,
-                'amount' => $amount,
-                'phone' => $phoneNumber
-            ]);
-
-            respond("success", "B2C payment initiated. Waiting for M-Pesa callback.", [
-                "b2c_payment_id" => $b2cPaymentId,
-                "reference_id" => $referenceId,
-                "status" => "initiated"
-            ]);
-        } else {
-            $updateStmt->close();
-            respond("error", "Failed to initiate B2C payment: " . $conn->error, null, 500);
+        if (!$updateStmt) {
+            respond("error", "Failed to update payment: " . $conn->error, null, 500);
         }
+
+        $updateStmt->bind_param("ssss", $initiatedStatus, $conversationId, $originatorConversationId, $b2cPaymentId);
+
+        if (!$updateStmt->execute()) {
+            $updateStmt->close();
+            respond("error", "Failed to update B2C payment status: " . $conn->error, null, 500);
+        }
+        $updateStmt->close();
+
+        logPaymentEvent('b2c_payment_initiated', [
+            'b2c_payment_id' => $b2cPaymentId,
+            'reference_id' => $referenceId,
+            'amount' => $amount,
+            'phone' => $phoneNumber,
+            'conversation_id' => $conversationId,
+            'credentials_source' => $mpesaCreds['source']
+        ]);
+
+        respond("success", "B2C payment initiated successfully. Waiting for M-Pesa callback.", [
+            "b2c_payment_id" => $b2cPaymentId,
+            "reference_id" => $referenceId,
+            "conversation_id" => $conversationId,
+            "status" => "initiated"
+        ]);
         break;
 
     // GET B2C PAYMENT STATUS
