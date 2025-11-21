@@ -116,17 +116,16 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
 
     setLoading(true)
     try {
-      const settings = loadSettings()
-      const response = await fetch('/payments/mpesa/stk-initiate', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'stk_push_initiate',
           phone: phoneNum,
           amount: amount,
           booking_id: bookingId,
           account_reference: bookingId ? `booking_${bookingId}` : 'service_payment',
-          transaction_description: 'Service Payment',
-          mpesa_creds: settings.mpesa
+          transaction_description: 'Service Payment'
         })
       })
 
