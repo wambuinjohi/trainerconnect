@@ -2048,6 +2048,217 @@ switch ($action) {
         respond("success", "Profiles fetched successfully.", ["data" => $profiles]);
         break;
 
+    // GET PAYOUT REQUESTS (for admin)
+    case 'payout_requests_get':
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $sql = "SELECT pr.*, up.full_name, up.phone, up.location_label FROM payout_requests pr
+                LEFT JOIN user_profiles up ON pr.trainer_id = up.user_id
+                WHERE pr.status = '$status'
+                ORDER BY pr.requested_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $requests = [];
+        while ($row = $result->fetch_assoc()) {
+            $requests[] = $row;
+        }
+
+        respond("success", "Payout requests fetched successfully.", ["data" => $requests]);
+        break;
+
+    // APPROVE PAYOUT REQUEST AND INITIATE B2C
+    case 'payout_request_approve':
+        if (!isset($input['payout_request_id'])) {
+            respond("error", "Missing payout_request_id.", null, 400);
+        }
+
+        $payoutRequestId = $conn->real_escape_string($input['payout_request_id']);
+        $commissionPercentage = isset($input['commission_percentage']) ? floatval($input['commission_percentage']) : 0;
+
+        // Get the payout request
+        $sql = "SELECT * FROM payout_requests WHERE id = '$payoutRequestId' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if (!$result || $result->num_rows === 0) {
+            respond("error", "Payout request not found.", null, 404);
+        }
+
+        $request = $result->fetch_assoc();
+        $trainerId = $request['trainer_id'];
+        $requestedAmount = floatval($request['amount']);
+
+        // Calculate net amount after commission
+        $commission = ($requestedAmount * $commissionPercentage) / 100;
+        $netAmount = $requestedAmount - $commission;
+
+        // Get trainer's phone number
+        $phoneQuery = $conn->query("SELECT phone FROM user_profiles WHERE user_id = '$trainerId'");
+        if (!$phoneQuery || $phoneQuery->num_rows === 0) {
+            respond("error", "Trainer phone not found.", null, 404);
+        }
+
+        $trainerData = $phoneQuery->fetch_assoc();
+        $phoneNumber = $trainerData['phone'];
+
+        // Create B2C payment record
+        $b2cId = 'b2c_' . uniqid();
+        $referenceId = 'payout_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO b2c_payments (
+                id, user_id, user_type, phone_number, amount, reference_id, status, initiated_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $userType = 'trainer';
+        $status = 'pending';
+
+        $stmt->bind_param("ssssdsssss", $b2cId, $trainerId, $userType, $phoneNumber, $netAmount, $referenceId, $status, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            // Update payout request status
+            $updateStmt = $conn->prepare("
+                UPDATE payout_requests
+                SET status = ?, b2c_payment_id = ?, commission = ?, net_amount = ?, updated_at = NOW()
+                WHERE id = ?
+            ");
+
+            $approvedStatus = 'approved';
+            $updateStmt->bind_param("ssddds", $approvedStatus, $b2cId, $commission, $netAmount, $payoutRequestId);
+            $updateStmt->execute();
+            $updateStmt->close();
+
+            logEvent('payout_request_approved', [
+                'payout_request_id' => $payoutRequestId,
+                'trainer_id' => $trainerId,
+                'b2c_payment_id' => $b2cId,
+                'net_amount' => $netAmount,
+                'commission' => $commission
+            ]);
+
+            respond("success", "Payout request approved. B2C payment created.", [
+                "b2c_payment_id" => $b2cId,
+                "reference_id" => $referenceId,
+                "net_amount" => $netAmount,
+                "commission" => $commission
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to approve payout: " . $conn->error, null, 500);
+        }
+        break;
+
+    // INITIATE B2C PAYMENT
+    case 'b2c_payment_initiate':
+        if (!isset($input['b2c_payment_id']) || !isset($input['phone_number']) || !isset($input['amount'])) {
+            respond("error", "Missing required fields: b2c_payment_id, phone_number, amount.", null, 400);
+        }
+
+        $b2cPaymentId = $conn->real_escape_string($input['b2c_payment_id']);
+        $phoneNumber = $conn->real_escape_string($input['phone_number']);
+        $amount = floatval($input['amount']);
+
+        // Get reference ID for this B2C payment
+        $refQuery = $conn->query("SELECT reference_id FROM b2c_payments WHERE id = '$b2cPaymentId'");
+        if (!$refQuery || $refQuery->num_rows === 0) {
+            respond("error", "B2C payment not found.", null, 404);
+        }
+
+        $refData = $refQuery->fetch_assoc();
+        $referenceId = $refData['reference_id'];
+
+        // Prepare M-Pesa B2C API call (would be done via external service)
+        // For now, just update status to "initiated"
+        $updateStmt = $conn->prepare("
+            UPDATE b2c_payments
+            SET status = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $initiatedStatus = 'initiated';
+        $updateStmt->bind_param("ss", $initiatedStatus, $b2cPaymentId);
+
+        if ($updateStmt->execute()) {
+            $updateStmt->close();
+            logEvent('b2c_payment_initiated', [
+                'b2c_payment_id' => $b2cPaymentId,
+                'reference_id' => $referenceId,
+                'amount' => $amount,
+                'phone' => $phoneNumber
+            ]);
+
+            respond("success", "B2C payment initiated. Waiting for M-Pesa callback.", [
+                "b2c_payment_id" => $b2cPaymentId,
+                "reference_id" => $referenceId,
+                "status" => "initiated"
+            ]);
+        } else {
+            $updateStmt->close();
+            respond("error", "Failed to initiate B2C payment: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET B2C PAYMENT STATUS
+    case 'b2c_payment_status':
+        if (!isset($input['b2c_payment_id'])) {
+            respond("error", "Missing b2c_payment_id.", null, 400);
+        }
+
+        $b2cPaymentId = $conn->real_escape_string($input['b2c_payment_id']);
+        $sql = "SELECT bp.*, bc.result_code, bc.result_description, bc.transaction_id
+                FROM b2c_payments bp
+                LEFT JOIN b2c_payment_callbacks bc ON bp.reference_id = bc.reference_id
+                WHERE bp.id = '$b2cPaymentId' LIMIT 1";
+
+        $result = $conn->query($sql);
+
+        if (!$result || $result->num_rows === 0) {
+            respond("error", "B2C payment not found.", null, 404);
+        }
+
+        $payment = $result->fetch_assoc();
+        respond("success", "B2C payment status fetched.", ["data" => $payment]);
+        break;
+
+    // GET B2C PAYMENTS (for admin or trainer)
+    case 'b2c_payments_get':
+        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : null;
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : null;
+
+        $where = "1=1";
+        if ($trainerId) {
+            $where .= " AND bp.user_id = '$trainerId'";
+        }
+        if ($status) {
+            $where .= " AND bp.status = '$status'";
+        }
+
+        $sql = "SELECT bp.*, bc.result_code, bc.result_description, bc.transaction_id
+                FROM b2c_payments bp
+                LEFT JOIN b2c_payment_callbacks bc ON bp.reference_id = bc.reference_id
+                WHERE $where
+                ORDER BY bp.initiated_at DESC LIMIT 100";
+
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $payments = [];
+        while ($row = $result->fetch_assoc()) {
+            $payments[] = $row;
+        }
+
+        respond("success", "B2C payments fetched.", ["data" => $payments]);
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
