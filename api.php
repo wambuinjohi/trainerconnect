@@ -1737,6 +1737,7 @@ switch ($action) {
 
     // UPDATE SERVICE
     case 'services_update':
+    case 'service_update':
         if (!isset($input['id'])) {
             respond("error", "Missing service id.", null, 400);
         }
