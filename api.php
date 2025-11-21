@@ -2410,8 +2410,8 @@ switch ($action) {
             respond("error", "Invalid phone number format.", null, 400);
         }
 
-        if ($amount < 10 || $amount > 150000) {
-            respond("error", "Amount must be between 10 and 150000.", null, 400);
+        if ($amount < 5 || $amount > 150000) {
+            respond("error", "Amount must be between 5 and 150000.", null, 400);
         }
 
         // Get server-side credentials (NOT from request body)
