@@ -100,7 +100,13 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     }
   }
 
-  const disabled = saving || loading
+  const disabled = saving || loading || geoLoading
+
+  useEffect(() => {
+    if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
+      setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
+    }
+  }, [geoLocation])
 
   const canSave = useMemo(() => (location || '').trim().length > 0, [location])
 
