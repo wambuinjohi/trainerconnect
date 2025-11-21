@@ -125,7 +125,8 @@ export function saveSettings(s: PlatformSettings) {
 // Attempt to load settings from PHP API
 export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
   try {
-    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'settings_get' })
