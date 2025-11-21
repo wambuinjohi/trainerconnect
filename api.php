@@ -2414,10 +2414,10 @@ switch ($action) {
             respond("error", "M-Pesa credentials not properly configured.", null, 500);
         }
 
-        // Determine callback URL
-        $callbackUrl = $mpesaCreds['result_url'] ?? getenv('MPESA_RESULT_URL');
-        if (empty($callbackUrl)) {
-            respond("error", "M-Pesa callback URL not configured.", null, 500);
+        // Determine callback URL (uses default from mpesa_helper if not in credentials)
+        $callbackUrl = null;
+        if (!empty($mpesaCreds['result_url'])) {
+            $callbackUrl = $mpesaCreds['result_url'];
         }
 
         // Call M-Pesa API to initiate STK Push
