@@ -104,27 +104,32 @@ function getMpesaAccessToken($credentials) {
 }
 
 // Initiate STK Push payment
-function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url) {
+function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
     $access_token = getMpesaAccessToken($credentials);
-    
+
     if (!$access_token) {
         return [
             'success' => false,
             'error' => 'Failed to obtain M-Pesa access token'
         ];
     }
-    
+
     $environment = $credentials['environment'] ?? 'sandbox';
     $shortcode = $credentials['shortcode'];
     $passkey = $credentials['passkey'];
-    
+
+    // Use default C2B callback URL if not provided
+    if (empty($callback_url)) {
+        $callback_url = 'https://trainer.skatryk.co.ke/c2b_callback.php';
+    }
+
     $stk_url = ($environment === 'production')
         ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
-    
+
     $timestamp = date('YmdHis');
     $password = base64_encode($shortcode . $passkey . $timestamp);
-    
+
     $payload = [
         'BusinessShortCode' => $shortcode,
         'Password' => $password,
@@ -384,7 +389,7 @@ function getMpesaCredentialsForAdmin() {
 // Mask secrets for display (show only first and last 3 chars)
 function maskSecret($secret) {
     if (empty($secret) || strlen($secret) < 8) {
-        return '•••••��••';
+        return '••••••••';
     }
     $visible = strlen($secret) <= 6 ? 3 : 3;
     return substr($secret, 0, $visible) . '...' . substr($secret, -3);
