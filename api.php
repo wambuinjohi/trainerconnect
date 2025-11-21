@@ -69,7 +69,7 @@ function logEvent($eventType, $details = []) {
 
     $logEntry = array_merge($logEntry, $details);
 
-    error_log(json_encode($logEntry));
+    @error_log(json_encode($logEntry));
 
     $logFile = __DIR__ . '/api_events.log';
     $logLine = json_encode($logEntry) . PHP_EOL;
