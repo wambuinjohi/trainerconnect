@@ -118,7 +118,7 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     $shortcode = $credentials['shortcode'];
     $passkey = $credentials['passkey'];
 
-    // Use default C2B callback URL if not provided
+    // Use default C2B callback URL if not provided (for STK Push payments)
     if (empty($callback_url)) {
         $callback_url = 'https://trainer.skatryk.co.ke/c2b_callback.php';
     }
