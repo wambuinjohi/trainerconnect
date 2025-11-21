@@ -7,6 +7,7 @@ import { MapPin, Loader2 } from 'lucide-react'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { useGeolocation } from '@/hooks/use-geolocation'
 
 const RECENTS_KEY = 'recent_localities'
 
