@@ -125,9 +125,15 @@ export function saveSettings(s: PlatformSettings) {
 // Attempt to load settings from PHP API
 export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
   try {
-    const data = await apiRequest('settings_get', {}, { headers: withAuth() })
-    if (!data?.settings) return null
-    const merged = { ...defaultSettings, ...(data.settings as any) }
+    const response = await fetch('/api.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'settings_get' })
+    })
+    const data = await response.json()
+    if (!data?.data?.mpesa) return null
+
+    const merged = { ...defaultSettings, mpesa: data.data.mpesa }
     return merged
   } catch {
     return null
@@ -136,10 +142,18 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
 
 export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
   try {
-    const payload = { settings: s }
-    await apiRequest('settings_save', payload, { headers: withAuth() })
-    return true
-  } catch {
+    const response = await fetch('/api.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'settings_save',
+        settings: s
+      })
+    })
+    const data = await response.json()
+    return data?.status === 'success'
+  } catch (err) {
+    console.error('Failed to save settings to DB:', err)
     return false
   }
 }
