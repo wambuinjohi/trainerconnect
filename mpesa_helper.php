@@ -244,25 +244,33 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
 }
 
 // Initiate B2C payment (payout)
-function initiateB2CPayment($credentials, $phone, $amount, $command_id, $remarks, $queue_timeout_url, $result_url) {
+function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $remarks = null, $queue_timeout_url = null, $result_url = null) {
     $access_token = getMpesaAccessToken($credentials);
-    
+
     if (!$access_token) {
         return [
             'success' => false,
             'error' => 'Failed to obtain M-Pesa access token'
         ];
     }
-    
+
     $environment = $credentials['environment'] ?? 'sandbox';
     $shortcode = $credentials['shortcode'];
     $initiator_name = $credentials['initiator_name'];
     $security_credential = $credentials['security_credential'];
-    
+
+    // Use default callback URLs if not provided
+    if (empty($queue_timeout_url)) {
+        $queue_timeout_url = 'https://trainer.skatryk.co.ke/clientpaymentcallback.php';
+    }
+    if (empty($result_url)) {
+        $result_url = 'https://trainer.skatryk.co.ke/clientpaymentcallback.php';
+    }
+
     $b2c_url = ($environment === 'production')
         ? 'https://api.safaricom.co.ke/mpesa/b2c/v1/paymentrequest'
         : 'https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest';
-    
+
     $payload = [
         'InitiatorName' => $initiator_name,
         'SecurityCredential' => $security_credential,
@@ -270,7 +278,7 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id, $remarks
         'Amount' => intval($amount),
         'PartyA' => $shortcode,
         'PartyB' => $phone,
-        'Remarks' => $remarks ?? 'Payment',
+        'Remarks' => $remarks ?? 'Payout',
         'QueueTimeOutURL' => $queue_timeout_url,
         'ResultURL' => $result_url
     ];
