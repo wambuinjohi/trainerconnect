@@ -150,6 +150,13 @@ export const AdminDashboard: React.FC = () => {
     loadSettingsFromDb().then((db) => { if (db) setSettings(db) }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    // Navigate to dedicated migration page for better UX
+    if (activeTab === 'mpesamigration') {
+      navigate('/admin/mpesamigration')
+    }
+  }, [activeTab, navigate])
+
   const revenueSeries = useMemo(() => {
     if (!analyticsPoints.length) return []
 
@@ -1696,6 +1703,7 @@ export const AdminDashboard: React.FC = () => {
                 <TabsContent value="promotions">{renderPromotions()}</TabsContent>
                 <TabsContent value="payouts">{renderPayouts()}</TabsContent>
                 <TabsContent value="categories">{renderCategories()}</TabsContent>
+                <TabsContent value="mpesamigration"><MpesaMigration /></TabsContent>
                 <TabsContent value="settings">{renderSettings()}</TabsContent>
               </div>
             </main>
