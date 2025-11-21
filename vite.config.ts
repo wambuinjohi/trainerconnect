@@ -78,6 +78,23 @@ function adminApiPlugin() {
             return;
           }
 
+          // Settings endpoints
+          if (url.startsWith("/__admin/get-settings")) {
+            try {
+              // In production, this would come from a database
+              // For now, we return a note that settings are managed via localStorage
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({
+                ok: true,
+                message: "Settings managed via localStorage on client. Use admin dashboard to configure M-Pesa."
+              }));
+            } catch (e: any) {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ ok: false, error: e.message }));
+            }
+            return;
+          }
+
           // Add other admin routes here as needed (no Supabase dependency)
 
           res.statusCode = 404;
@@ -107,14 +124,25 @@ function paymentsApiPlugin() {
           const raw = Buffer.concat(chunks).toString() || "{}";
           const body = JSON.parse(raw);
 
+          // Get M-Pesa credentials from request body (passed by frontend) or environment variables
+          // Frontend should pass credentials from admin settings when available
+          const clientCreds = body.mpesa_creds || {};
+
           const creds = {
-            consumer_key: process.env.MPESA_CONSUMER_KEY,
-            consumer_secret: process.env.MPESA_CONSUMER_SECRET,
-            shortcode: process.env.MPESA_SHORTCODE,
-            passkey: process.env.MPESA_PASSKEY,
-            environment: process.env.MPESA_ENVIRONMENT || "sandbox",
-            result_url: process.env.MPESA_RESULT_URL,
+            consumer_key: clientCreds.consumerKey || process.env.MPESA_CONSUMER_KEY,
+            consumer_secret: clientCreds.consumerSecret || process.env.MPESA_CONSUMER_SECRET,
+            shortcode: clientCreds.shortcode || process.env.MPESA_SHORTCODE,
+            passkey: clientCreds.passkey || process.env.MPESA_PASSKEY,
+            environment: clientCreds.environment || process.env.MPESA_ENVIRONMENT || "sandbox",
+            result_url: clientCreds.resultUrl || process.env.MPESA_RESULT_URL,
           };
+
+          // Validate that credentials are present
+          if (!creds.consumer_key || !creds.consumer_secret) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ ok: false, error: "M-Pesa credentials not configured. Please check admin settings." }));
+            return;
+          }
 
           const envMode = creds.environment;
           const tokenUrl =
