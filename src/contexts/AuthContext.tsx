@@ -199,36 +199,63 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           ...profile,
         };
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          signal: controller.signal,
         });
 
-        const responseText = await response.text();
-        const contentType = response.headers.get('content-type');
-        const isHtml = contentType?.includes('text/html');
+        clearTimeout(timeoutId);
 
-        if (isHtml) {
-          console.error(`Signup attempt ${attempt}: Server returned HTML instead of JSON`);
-          console.error('Response:', responseText.substring(0, 500));
+        if (!response.ok) {
+          console.error(`Signup attempt ${attempt}: HTTP ${response.status}`);
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
           }
-          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+          throw new Error(`Server error: HTTP ${response.status}`);
+        }
+
+        let responseText: string;
+        try {
+          responseText = await response.text();
+        } catch (err) {
+          console.error(`Signup attempt ${attempt}: Failed to read response body`, err);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+          throw new Error('Failed to read server response. Please try again or contact support.');
+        }
+
+        const contentType = response.headers.get('content-type');
+        const isHtml = contentType?.includes('text/html') || responseText.trim().startsWith('<');
+
+        if (isHtml) {
+          console.error(`Signup attempt ${attempt}: Server returned HTML instead of JSON`);
+          console.error('Response preview:', responseText.substring(0, 500));
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+          throw new Error('Server error: API returned invalid response format');
         }
 
         let result;
         try {
           result = JSON.parse(responseText);
-        } catch {
-          console.error(`Signup attempt ${attempt}: Invalid JSON response`);
+        } catch (err) {
+          console.error(`Signup attempt ${attempt}: Invalid JSON response`, err);
+          console.error('Response text:', responseText.substring(0, 200));
           if (attempt < maxRetries) {
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
           }
-          throw new Error('Server error: API returned invalid response. Please try again or contact support.');
+          throw new Error('Server error: Invalid response format. Please try again or contact support.');
         }
 
         if (result.status === 'error') {
@@ -241,6 +268,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const access_token = userData?.session?.access_token || sessionData?.access_token;
 
         if (!user_id || !access_token) {
+          console.error('Signup attempt: Missing user_id or access_token in response', { userData });
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
           throw new Error('Invalid response from server');
         }
 
