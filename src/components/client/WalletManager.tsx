@@ -92,17 +92,16 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
 
     setProcessingTopUp(true)
     try {
-      const settings = loadSettings()
       // Initiate STK push for wallet top-up
-      const response = await fetch('/payments/mpesa/stk-initiate', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'stk_push_initiate',
           phone: user?.phone || '',
           amount: amount,
           account_reference: `wallet_topup_${user?.id}`,
-          transaction_description: `Wallet Top-up: Ksh ${amount}`,
-          mpesa_creds: settings.mpesa
+          transaction_description: `Wallet Top-up: Ksh ${amount}`
         })
       })
 
