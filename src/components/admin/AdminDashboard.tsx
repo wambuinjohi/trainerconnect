@@ -564,6 +564,12 @@ export const AdminDashboard: React.FC = () => {
   const [smtp, setSmtp] = useState<{ host: string; port: string | number; user?: string; pass?: string; from?: string }>({ host:'', port:'', user:'', pass:'', from:'' })
   const [mpesa, setMpesa] = useState<MpesaSettings>(defaultMpesaSettings)
 
+  // M-Pesa STK Push test form state
+  const [testStkPhone, setTestStkPhone] = useState('254722241745')
+  const [testStkAmount, setTestStkAmount] = useState('5')
+  const [testStkLoading, setTestStkLoading] = useState(false)
+  const [testStkResult, setTestStkResult] = useState<any>(null)
+
   useEffect(() => {
     const loadAdmin = async () => {
       try {
