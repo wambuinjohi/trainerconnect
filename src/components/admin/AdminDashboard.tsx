@@ -1607,7 +1607,7 @@ export const AdminDashboard: React.FC = () => {
           <CardTitle className="text-foreground">M-Pesa STK Push Test</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Test M-Pesa STK Push payment initiation. This will send a prompt to the specified phone number. <span className="font-medium">Minimum amount: 10 KES</span></p>
+          <p className="text-sm text-muted-foreground">Test M-Pesa STK Push payment initiation. This will send a prompt to the specified phone number. <span className="font-medium">Minimum amount: 5 KES</span></p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
