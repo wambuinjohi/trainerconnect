@@ -130,7 +130,20 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'settings_get' })
     })
+
+    if (!response.ok) {
+      console.error('Failed to load settings: HTTP', response.status)
+      return null
+    }
+
     const responseText = await response.text()
+    const contentType = response.headers.get('content-type')
+
+    if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {
+      console.error('API returned HTML instead of JSON:', responseText.substring(0, 500))
+      return null
+    }
+
     const data = JSON.parse(responseText)
     if (!data?.data?.mpesa) return null
 
