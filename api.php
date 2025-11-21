@@ -2393,6 +2393,12 @@ switch ($action) {
             respond("error", "Missing checkout_request_id.", null, 400);
         }
 
+        // Validate M-Pesa credentials are configured
+        $credValidation = validateMpesaCredentialsConfigured();
+        if (!$credValidation['valid']) {
+            respond("error", $credValidation['error'], null, 500);
+        }
+
         $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
 
         // Query the session
@@ -2414,13 +2420,37 @@ switch ($action) {
 
         $session = $result->fetch_assoc();
 
-        // In production, query M-Pesa Daraja API for actual status
-        // For now, return the stored status
+        // Query M-Pesa for actual status
+        $mpesaCreds = getMpesaCredentials();
+        if (!$mpesaCreds) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $queryResult = querySTKPushStatus($mpesaCreds, $checkoutRequestId);
+
+        if (!$queryResult['success']) {
+            // If M-Pesa query fails, return cached status from DB
+            logPaymentEvent('stk_push_query_failed', [
+                'checkout_request_id' => $checkoutRequestId,
+                'error' => $queryResult['error']
+            ]);
+
+            respond("success", "STK push status retrieved (cached).", [
+                "session_id" => $session['id'],
+                "status" => $session['status'],
+                "result_code" => $session['result_code'],
+                "result_description" => $session['result_description'],
+                "amount" => $session['amount'],
+                "phone" => $session['phone_number'],
+                "cached" => true
+            ]);
+        }
+
         respond("success", "STK push status retrieved.", [
             "session_id" => $session['id'],
-            "status" => $session['status'],
-            "result_code" => $session['result_code'],
-            "result_description" => $session['result_description'],
+            "status" => $queryResult['result_code'] === '0' ? 'success' : 'pending',
+            "result_code" => $queryResult['result_code'],
+            "result_description" => $queryResult['result_description'],
             "amount" => $session['amount'],
             "phone" => $session['phone_number']
         ]);
