@@ -1704,6 +1704,7 @@ switch ($action) {
 
     // INSERT SERVICE
     case 'services_insert':
+    case 'service_insert':
         if (!isset($input['trainer_id']) || !isset($input['title']) || !isset($input['price'])) {
             respond("error", "Missing trainer_id, title, or price.", null, 400);
         }
