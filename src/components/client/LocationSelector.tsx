@@ -87,30 +87,17 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     } finally { setSaving(false) }
   }
 
-  const useGPS = () => {
-    if (!navigator.geolocation) {
-      toast({ title: 'Location not supported', description: 'Your browser does not support geolocation' })
-      return
-    }
+  const useGPS = async () => {
     setSaving(true)
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const lat = pos.coords.latitude
-      const lng = pos.coords.longitude
-      setCoords({ lat, lng })
-      save({ lat, lng }, location || 'My location')
-    }, (err) => {
-      console.warn('GPS error', err)
-      let description = 'Unable to fetch GPS position'
-      if (err.code === 1) {
-        description = 'Please enable location permissions for this app'
-      } else if (err.code === 2) {
-        description = 'Location is temporarily unavailable. Please try again'
-      } else if (err.code === 3) {
-        description = 'Location request timed out. Please try again'
+    try {
+      await requestLocation()
+      if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
+        setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
+        await save({ lat: geoLocation.lat, lng: geoLocation.lng }, location || 'My location')
       }
-      toast({ title: 'Location error', description, variant: 'destructive' })
+    } finally {
       setSaving(false)
-    }, { timeout: 10000 })
+    }
   }
 
   const disabled = saving || loading
