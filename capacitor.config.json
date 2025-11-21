@@ -2,5 +2,13 @@
   "appId": "co.skatryk.trainer",
   "appName": "Skatryk Trainer",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "plugins": {
+    "Geolocation": {
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    }
+  }
 }
