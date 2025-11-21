@@ -570,6 +570,68 @@ export const AdminDashboard: React.FC = () => {
   const [testStkLoading, setTestStkLoading] = useState(false)
   const [testStkResult, setTestStkResult] = useState<any>(null)
 
+  // Function to initiate STK push test
+  const handleTestStkPush = async () => {
+    if (!testStkPhone.trim()) {
+      toast({ title: 'Error', description: 'Please enter a phone number', variant: 'destructive' })
+      return
+    }
+    if (!testStkAmount.trim() || isNaN(Number(testStkAmount)) || Number(testStkAmount) <= 0) {
+      toast({ title: 'Error', description: 'Please enter a valid amount', variant: 'destructive' })
+      return
+    }
+    if (!mpesa.consumerKey || !mpesa.consumerSecret || !mpesa.shortcode || !mpesa.passkey) {
+      toast({ title: 'Error', description: 'M-Pesa credentials are not configured. Please configure them first.', variant: 'destructive' })
+      return
+    }
+
+    setTestStkLoading(true)
+    setTestStkResult(null)
+
+    try {
+      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'initiate_stk_push',
+          phone_number: testStkPhone,
+          amount: Number(testStkAmount),
+          account_reference: 'AdminTest',
+        }),
+      })
+
+      let responseText = ''
+      try {
+        responseText = await response.text()
+      } catch (err) {
+        throw new Error('Failed to read response body')
+      }
+
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (err) {
+        console.error('Failed to parse JSON:', responseText.substring(0, 500))
+        throw new Error('Server returned invalid response')
+      }
+
+      if (result.status === 'error') {
+        setTestStkResult({ success: false, error: result.message })
+        toast({ title: 'Error', description: result.message, variant: 'destructive' })
+        return
+      }
+
+      setTestStkResult({ success: true, data: result.data })
+      toast({ title: 'Success', description: 'STK Push initiated successfully' })
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to initiate STK Push'
+      setTestStkResult({ success: false, error: errorMessage })
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+    } finally {
+      setTestStkLoading(false)
+    }
+  }
+
   useEffect(() => {
     const loadAdmin = async () => {
       try {
