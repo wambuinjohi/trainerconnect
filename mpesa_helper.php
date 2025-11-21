@@ -259,12 +259,12 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
     $initiator_name = $credentials['initiator_name'];
     $security_credential = $credentials['security_credential'];
 
-    // Use default callback URLs if not provided
+    // Use default B2C callback URLs if not provided (for payouts)
     if (empty($queue_timeout_url)) {
-        $queue_timeout_url = 'https://trainer.skatryk.co.ke/clientpaymentcallback.php';
+        $queue_timeout_url = 'https://trainer.skatryk.co.ke/b2c_callback.php';
     }
     if (empty($result_url)) {
-        $result_url = 'https://trainer.skatryk.co.ke/clientpaymentcallback.php';
+        $result_url = 'https://trainer.skatryk.co.ke/b2c_callback.php';
     }
 
     $b2c_url = ($environment === 'production')
