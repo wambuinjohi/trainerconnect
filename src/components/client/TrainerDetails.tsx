@@ -97,6 +97,24 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                 )}
               </div>
 
+              {Array.isArray(profile?.pricing_packages) && profile.pricing_packages.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Packages</h4>
+                  <div className="space-y-2 text-sm">
+                    {profile.pricing_packages.map((pkg: any, i: number) => (
+                      <div key={i} className="flex justify-between border-b border-border pb-2">
+                        <div>
+                          <div className="font-medium">{pkg.name}</div>
+                          {pkg.sessions && <div className="text-xs text-muted-foreground">{pkg.sessions} sessions</div>}
+                          {pkg.description && <div className="text-xs text-muted-foreground">{pkg.description}</div>}
+                        </div>
+                        <div className="font-semibold text-foreground">Ksh {Number(pkg.price)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {profile?.availability && (
                 <div>
                   <h4 className="font-semibold mb-2">Availability</h4>
