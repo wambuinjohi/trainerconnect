@@ -30,6 +30,7 @@ const writeRecents = (value: string) => {
 export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { label: string; lat?: number; lng?: number }) => void }>
   = ({ className, onSaved }) => {
   const { user } = useAuth()
+  const { requestLocation, location: geoLocation, loading: geoLoading } = useGeolocation()
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [location, setLocation] = useState('')
