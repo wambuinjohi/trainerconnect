@@ -33,12 +33,11 @@ export const TrainerTopUp: React.FC<{ onClose?: () => void }> = ({ onClose }) =>
 
     setLoading(true)
     try {
-      const settings = loadSettings()
       toast({ title: 'M-Pesa STK', description: 'Check your phone and enter PIN to approve.' })
-      const initRes = await fetch('/payments/mpesa/stk-initiate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: phone.trim(), amount: amt, booking_id: null, account_reference: 'wallet-topup', transaction_desc: 'Wallet top up', mpesa_creds: settings.mpesa }) })
+      const initRes = await fetch('/api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stk_push_initiate', phone: phone.trim(), amount: amt, account_reference: 'wallet-topup', transaction_description: 'Wallet top up' }) })
       const initJson = await initRes.json().catch(() => null)
-      if (!initRes.ok || !initJson?.ok) throw new Error(initJson?.error || 'Failed to initiate STK')
-      const checkoutId = String(initJson.checkout_request_id || initJson.CheckoutRequestID || '')
+      if (!initRes.ok || initJson?.status !== 'success') throw new Error(initJson?.message || 'Failed to initiate STK')
+      const checkoutId = String(initJson.data?.CheckoutRequestID || '')
       if (!checkoutId) throw new Error('Missing checkout id')
 
       // poll for result
@@ -48,16 +47,15 @@ export const TrainerTopUp: React.FC<{ onClose?: () => void }> = ({ onClose }) =>
         await new Promise(r => setTimeout(r, 3000))
         attempts += 1
         try {
-          const settings = loadSettings()
-          const qRes = await fetch('/payments/mpesa/stk-query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId, mpesa_creds: settings.mpesa }) })
+          const qRes = await fetch('/api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stk_push_query', checkout_request_id: checkoutId }) })
           const qJson = await qRes.json().catch(() => null)
-          if (qRes.ok && qJson?.ok && qJson.result && qJson.result.resultCode === '0') {
+          if (qRes.ok && qJson?.status === 'success' && qJson.data?.result_code === '0') {
             success = true
             // record payment
             try { await apiRequest('payment_insert', { trainer_id: userId, amount: amt, status: 'completed', method: 'mpesa', created_at: new Date().toISOString() }, { headers: withAuth() }) } catch {}
             break
           }
-          if (qJson && qJson.result && qJson.result.resultCode && qJson.result.resultCode !== '0') {
+          if (qJson?.data?.result_code && qJson.data.result_code !== '0') {
             // failed
             break
           }

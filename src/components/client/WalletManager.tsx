@@ -92,24 +92,23 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
 
     setProcessingTopUp(true)
     try {
-      const settings = loadSettings()
       // Initiate STK push for wallet top-up
-      const response = await fetch('/payments/mpesa/stk-initiate', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'stk_push_initiate',
           phone: user?.phone || '',
           amount: amount,
           account_reference: `wallet_topup_${user?.id}`,
-          transaction_description: `Wallet Top-up: Ksh ${amount}`,
-          mpesa_creds: settings.mpesa
+          transaction_description: `Wallet Top-up: Ksh ${amount}`
         })
       })
 
       const result = await response.json()
-      const checkoutId = result.CheckoutRequestID || result.result?.CheckoutRequestID
+      const checkoutId = result.data?.CheckoutRequestID || result.CheckoutRequestID || result.result?.CheckoutRequestID
 
-      if (checkoutId) {
+      if (checkoutId && result.status === 'success') {
         toast({ title: 'STK Prompt Sent', description: 'Check your phone to complete the top-up' })
         setTopUpAmount('')
 
@@ -118,17 +117,16 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
         const pollInterval = setInterval(async () => {
           checkAttempts++
           try {
-            const settings = loadSettings()
-            const queryResponse = await fetch('/payments/mpesa/stk-query', {
+            const queryResponse = await fetch('/api.php', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                checkout_request_id: checkoutId,
-                mpesa_creds: settings.mpesa
+                action: 'stk_push_query',
+                checkout_request_id: checkoutId
               })
             })
             const queryResult = await queryResponse.json()
-            const resultCode = queryResult.resultCode || queryResult.result?.ResultCode
+            const resultCode = queryResult.data?.result_code || queryResult.resultCode || queryResult.result?.ResultCode
 
             if (resultCode === '0' || resultCode === 0) {
               clearInterval(pollInterval)

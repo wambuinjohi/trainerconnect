@@ -51,6 +51,9 @@ register_shutdown_function(function() {
 // Include the database connection
 include('connection.php');
 
+// Include M-Pesa helper functions
+include('mpesa_helper.php');
+
 // Utility function for logging API events
 function logEvent($eventType, $details = []) {
     $timestamp = date('Y-m-d H:i:s');
@@ -2154,15 +2157,81 @@ switch ($action) {
         }
         break;
 
+    // SAVE ADMIN SETTINGS (including M-Pesa credentials)
+    case 'settings_save':
+        // Verify admin token if required
+        $adminToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+        // For now, allow saving if properly structured
+
+        if (isset($input['settings']) && is_array($input['settings'])) {
+            $settings = $input['settings'];
+
+            // Extract and save M-Pesa credentials if present
+            if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
+                $mpesaCreds = $settings['mpesa'];
+
+                // Validate required fields
+                if (empty($mpesaCreds['consumerKey']) || empty($mpesaCreds['consumerSecret'])) {
+                    respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
+                }
+
+                // Save M-Pesa credentials to database
+                $saveResult = saveMpesaCredentials($mpesaCreds);
+                if (!$saveResult) {
+                    respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
+                }
+
+                logEvent('admin_settings_updated', [
+                    'setting' => 'mpesa_credentials',
+                    'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                ]);
+            }
+
+            respond("success", "Settings saved successfully.", [
+                "saved_at" => date('Y-m-d H:i:s'),
+                "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
+            ]);
+        } else {
+            respond("error", "Invalid settings format.", null, 400);
+        }
+        break;
+
+    // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
+    case 'settings_get':
+        // Retrieve M-Pesa credentials
+        $mpesaCreds = getMpesaCredentialsForAdmin();
+
+        respond("success", "Settings retrieved.", [
+            "mpesa" => $mpesaCreds,
+            "mpesa_source" => $mpesaCreds ? $mpesaCreds['source'] : null
+        ]);
+        break;
+
     // INITIATE B2C PAYMENT
     case 'b2c_payment_initiate':
         if (!isset($input['b2c_payment_id']) || !isset($input['phone_number']) || !isset($input['amount'])) {
             respond("error", "Missing required fields: b2c_payment_id, phone_number, amount.", null, 400);
         }
 
+        // Validate M-Pesa credentials are configured
+        $credValidation = validateMpesaCredentialsConfigured();
+        if (!$credValidation['valid']) {
+            respond("error", $credValidation['error'], null, 500);
+        }
+
         $b2cPaymentId = $conn->real_escape_string($input['b2c_payment_id']);
         $phoneNumber = $conn->real_escape_string($input['phone_number']);
         $amount = floatval($input['amount']);
+
+        // Normalize phone number
+        $phoneNumber = str_replace(['+', ' ', '-'], '', $phoneNumber);
+        if (substr($phoneNumber, 0, 1) !== '2') {
+            $phoneNumber = '254' . substr($phoneNumber, -9);
+        }
+
+        if (strlen($phoneNumber) !== 12 || !is_numeric($phoneNumber)) {
+            respond("error", "Invalid phone number format.", null, 400);
+        }
 
         // Get reference ID for this B2C payment
         $refQuery = $conn->query("SELECT reference_id FROM b2c_payments WHERE id = '$b2cPaymentId'");
@@ -2173,35 +2242,75 @@ switch ($action) {
         $refData = $refQuery->fetch_assoc();
         $referenceId = $refData['reference_id'];
 
-        // Prepare M-Pesa B2C API call (would be done via external service)
-        // For now, just update status to "initiated"
+        // Get server-side credentials (NOT from request body)
+        $mpesaCreds = getMpesaCredentials();
+        if (!$mpesaCreds) {
+            respond("error", "M-Pesa credentials not properly configured.", null, 500);
+        }
+
+        // Determine callback URLs (uses defaults from mpesa_helper if not configured)
+        $resultUrl = $mpesaCreds['result_url'] ?? null;
+        $queueTimeoutUrl = $mpesaCreds['result_url'] ?? null;
+
+        // Call M-Pesa API to initiate B2C payment
+        $b2cResult = initiateB2CPayment(
+            $mpesaCreds,
+            $phoneNumber,
+            $amount,
+            'BusinessPayment',
+            'Payout: ' . $referenceId,
+            $queueTimeoutUrl,
+            $resultUrl
+        );
+
+        if (!$b2cResult['success']) {
+            logPaymentEvent('b2c_payment_failed', [
+                'b2c_payment_id' => $b2cPaymentId,
+                'phone' => $phoneNumber,
+                'amount' => $amount,
+                'error' => $b2cResult['error']
+            ]);
+            respond("error", $b2cResult['error'], null, 500);
+        }
+
+        // Update B2C payment with M-Pesa transaction IDs
+        $conversationId = $b2cResult['conversation_id'];
+        $originatorConversationId = $b2cResult['originator_conversation_id'];
+        $initiatedStatus = 'initiated';
+
         $updateStmt = $conn->prepare("
             UPDATE b2c_payments
-            SET status = ?, updated_at = NOW()
+            SET status = ?, conversation_id = ?, originator_conversation_id = ?, updated_at = NOW()
             WHERE id = ?
         ");
 
-        $initiatedStatus = 'initiated';
-        $updateStmt->bind_param("ss", $initiatedStatus, $b2cPaymentId);
-
-        if ($updateStmt->execute()) {
-            $updateStmt->close();
-            logEvent('b2c_payment_initiated', [
-                'b2c_payment_id' => $b2cPaymentId,
-                'reference_id' => $referenceId,
-                'amount' => $amount,
-                'phone' => $phoneNumber
-            ]);
-
-            respond("success", "B2C payment initiated. Waiting for M-Pesa callback.", [
-                "b2c_payment_id" => $b2cPaymentId,
-                "reference_id" => $referenceId,
-                "status" => "initiated"
-            ]);
-        } else {
-            $updateStmt->close();
-            respond("error", "Failed to initiate B2C payment: " . $conn->error, null, 500);
+        if (!$updateStmt) {
+            respond("error", "Failed to update payment: " . $conn->error, null, 500);
         }
+
+        $updateStmt->bind_param("ssss", $initiatedStatus, $conversationId, $originatorConversationId, $b2cPaymentId);
+
+        if (!$updateStmt->execute()) {
+            $updateStmt->close();
+            respond("error", "Failed to update B2C payment status: " . $conn->error, null, 500);
+        }
+        $updateStmt->close();
+
+        logPaymentEvent('b2c_payment_initiated', [
+            'b2c_payment_id' => $b2cPaymentId,
+            'reference_id' => $referenceId,
+            'amount' => $amount,
+            'phone' => $phoneNumber,
+            'conversation_id' => $conversationId,
+            'credentials_source' => $mpesaCreds['source']
+        ]);
+
+        respond("success", "B2C payment initiated successfully. Waiting for M-Pesa callback.", [
+            "b2c_payment_id" => $b2cPaymentId,
+            "reference_id" => $referenceId,
+            "conversation_id" => $conversationId,
+            "status" => "initiated"
+        ]);
         break;
 
     // GET B2C PAYMENT STATUS
@@ -2269,6 +2378,12 @@ switch ($action) {
             respond("error", "Missing required fields: phone, amount.", null, 400);
         }
 
+        // Validate M-Pesa credentials are configured
+        $credValidation = validateMpesaCredentialsConfigured();
+        if (!$credValidation['valid']) {
+            respond("error", $credValidation['error'], null, 500);
+        }
+
         $phone = $conn->real_escape_string($input['phone']);
         $amount = floatval($input['amount']);
         $bookingId = isset($input['booking_id']) ? $conn->real_escape_string($input['booking_id']) : null;
@@ -2289,86 +2404,105 @@ switch ($action) {
             respond("error", "Amount must be between 10 and 150000.", null, 400);
         }
 
+        // Get server-side credentials (NOT from request body)
+        $mpesaCreds = getMpesaCredentials();
+        if (!$mpesaCreds) {
+            respond("error", "M-Pesa credentials not properly configured.", null, 500);
+        }
+
+        // Determine callback URL (uses default from mpesa_helper if not in credentials)
+        $callbackUrl = null;
+        if (!empty($mpesaCreds['result_url'])) {
+            $callbackUrl = $mpesaCreds['result_url'];
+        }
+
+        // Call M-Pesa API to initiate STK Push
+        $stkResult = initiateSTKPush($mpesaCreds, $phone, $amount, $accountReference, $callbackUrl);
+
+        if (!$stkResult['success']) {
+            logPaymentEvent('stk_push_failed', [
+                'phone' => $phone,
+                'amount' => $amount,
+                'error' => $stkResult['error']
+            ]);
+            respond("error", $stkResult['error'], null, 500);
+        }
+
         // Create STK push session record
         $sessionId = 'stk_' . uniqid();
         $now = date('Y-m-d H:i:s');
+        $checkoutRequestId = $stkResult['checkout_request_id'];
+        $initStatus = 'initiated';
+
+        $createTableSql = "
+            CREATE TABLE IF NOT EXISTS `stk_push_sessions` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `phone_number` VARCHAR(20) NOT NULL,
+                `amount` DECIMAL(15, 2) NOT NULL,
+                `booking_id` VARCHAR(36),
+                `account_reference` VARCHAR(255) NOT NULL,
+                `description` TEXT,
+                `checkout_request_id` VARCHAR(255) UNIQUE,
+                `merchant_request_id` VARCHAR(255),
+                `status` VARCHAR(50) DEFAULT 'initiated',
+                `result_code` VARCHAR(10),
+                `result_description` TEXT,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX `idx_phone` (`phone_number`),
+                INDEX `idx_status` (`status`),
+                INDEX `idx_checkout` (`checkout_request_id`),
+                INDEX `idx_booking_id` (`booking_id`),
+                INDEX `idx_created_at` (`created_at` DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createTableSql);
 
         $stmt = $conn->prepare("
             INSERT INTO stk_push_sessions (
-                id, phone_number, amount, booking_id, account_reference, description, status, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, phone_number, amount, booking_id, account_reference, description, checkout_request_id, merchant_request_id, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         if (!$stmt) {
-            // Create table if it doesn't exist
-            $createTableSql = "
-                CREATE TABLE IF NOT EXISTS `stk_push_sessions` (
-                    `id` VARCHAR(36) PRIMARY KEY,
-                    `phone_number` VARCHAR(20) NOT NULL,
-                    `amount` DECIMAL(15, 2) NOT NULL,
-                    `booking_id` VARCHAR(36),
-                    `account_reference` VARCHAR(255) NOT NULL,
-                    `description` TEXT,
-                    `checkout_request_id` VARCHAR(255) UNIQUE,
-                    `status` VARCHAR(50) DEFAULT 'initiated',
-                    `result_code` VARCHAR(10),
-                    `result_description` TEXT,
-                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX `idx_phone` (`phone_number`),
-                    INDEX `idx_status` (`status`),
-                    INDEX `idx_booking_id` (`booking_id`),
-                    INDEX `idx_created_at` (`created_at` DESC)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            ";
-            $conn->query($createTableSql);
-
-            $stmt = $conn->prepare("
-                INSERT INTO stk_push_sessions (
-                    id, phone_number, amount, booking_id, account_reference, description, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+            respond("error", "Failed to create session record: " . $conn->error, null, 500);
         }
 
-        $status = 'initiated';
-        $stmt->bind_param("ssdsssss", $sessionId, $phone, $amount, $bookingId, $accountReference, $description, $status, $now, $now);
+        $merchantRequestId = $stkResult['merchant_request_id'] ?? '';
+        $stmt->bind_param("ssdsssssss", $sessionId, $phone, $amount, $bookingId, $accountReference, $description, $checkoutRequestId, $merchantRequestId, $initStatus, $now, $now);
 
-        if ($stmt->execute()) {
+        if (!$stmt->execute()) {
             $stmt->close();
-
-            // Simulate STK Push initiation (in production, integrate with M-Pesa Daraja API)
-            // For testing, return a mock checkout ID
-            $checkoutRequestId = 'WS_CO_' . uniqid();
-
-            // Update session with checkout request ID
-            $updateStmt = $conn->prepare("UPDATE stk_push_sessions SET checkout_request_id = ? WHERE id = ?");
-            $updateStmt->bind_param("ss", $checkoutRequestId, $sessionId);
-            $updateStmt->execute();
-            $updateStmt->close();
-
-            logEvent('stk_push_initiated', [
-                'session_id' => $sessionId,
-                'phone' => $phone,
-                'amount' => $amount,
-                'checkout_request_id' => $checkoutRequestId
-            ]);
-
-            respond("success", "STK push initiated successfully.", [
-                "session_id" => $sessionId,
-                "CheckoutRequestID" => $checkoutRequestId,
-                "phone" => $phone,
-                "amount" => $amount
-            ]);
-        } else {
-            $stmt->close();
-            respond("error", "Failed to initiate STK push: " . $conn->error, null, 500);
+            respond("error", "Failed to save session: " . $conn->error, null, 500);
         }
+        $stmt->close();
+
+        logPaymentEvent('stk_push_initiated', [
+            'session_id' => $sessionId,
+            'phone' => $phone,
+            'amount' => $amount,
+            'checkout_request_id' => $checkoutRequestId,
+            'credentials_source' => $mpesaCreds['source']
+        ]);
+
+        respond("success", "STK push initiated successfully.", [
+            "session_id" => $sessionId,
+            "CheckoutRequestID" => $checkoutRequestId,
+            "phone" => $phone,
+            "amount" => $amount
+        ]);
         break;
 
     // QUERY STK PUSH STATUS
     case 'stk_push_query':
         if (!isset($input['checkout_request_id'])) {
             respond("error", "Missing checkout_request_id.", null, 400);
+        }
+
+        // Validate M-Pesa credentials are configured
+        $credValidation = validateMpesaCredentialsConfigured();
+        if (!$credValidation['valid']) {
+            respond("error", $credValidation['error'], null, 500);
         }
 
         $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
@@ -2392,13 +2526,37 @@ switch ($action) {
 
         $session = $result->fetch_assoc();
 
-        // In production, query M-Pesa Daraja API for actual status
-        // For now, return the stored status
+        // Query M-Pesa for actual status
+        $mpesaCreds = getMpesaCredentials();
+        if (!$mpesaCreds) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $queryResult = querySTKPushStatus($mpesaCreds, $checkoutRequestId);
+
+        if (!$queryResult['success']) {
+            // If M-Pesa query fails, return cached status from DB
+            logPaymentEvent('stk_push_query_failed', [
+                'checkout_request_id' => $checkoutRequestId,
+                'error' => $queryResult['error']
+            ]);
+
+            respond("success", "STK push status retrieved (cached).", [
+                "session_id" => $session['id'],
+                "status" => $session['status'],
+                "result_code" => $session['result_code'],
+                "result_description" => $session['result_description'],
+                "amount" => $session['amount'],
+                "phone" => $session['phone_number'],
+                "cached" => true
+            ]);
+        }
+
         respond("success", "STK push status retrieved.", [
             "session_id" => $session['id'],
-            "status" => $session['status'],
-            "result_code" => $session['result_code'],
-            "result_description" => $session['result_description'],
+            "status" => $queryResult['result_code'] === '0' ? 'success' : 'pending',
+            "result_code" => $queryResult['result_code'],
+            "result_description" => $queryResult['result_description'],
             "amount" => $session['amount'],
             "phone" => $session['phone_number']
         ]);

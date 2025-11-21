@@ -56,18 +56,17 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
 
     const pollWithCreds = async () => {
       try {
-        const settings = loadSettings()
-        const response = await fetch('/payments/mpesa/stk-query', {
+        const response = await fetch('/api.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            checkout_request_id: paymentSession.checkoutRequestId,
-            mpesa_creds: settings.mpesa
+            action: 'stk_push_query',
+            checkout_request_id: paymentSession.checkoutRequestId
           })
         })
 
         const result = await response.json()
-        const resultCode = result.resultCode || result.result?.ResultCode
+        const resultCode = result.data?.result_code || result.resultCode || result.result?.ResultCode
 
         let newStatus: 'pending' | 'success' | 'failed' | 'timeout' = paymentSession.status
         if (resultCode === '0') {
@@ -116,24 +115,23 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
 
     setLoading(true)
     try {
-      const settings = loadSettings()
-      const response = await fetch('/payments/mpesa/stk-initiate', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'stk_push_initiate',
           phone: phoneNum,
           amount: amount,
           booking_id: bookingId,
           account_reference: bookingId ? `booking_${bookingId}` : 'service_payment',
-          transaction_description: 'Service Payment',
-          mpesa_creds: settings.mpesa
+          transaction_description: 'Service Payment'
         })
       })
 
       const result = await response.json()
-      const checkoutId = result.CheckoutRequestID || result.result?.CheckoutRequestID
+      const checkoutId = result.data?.CheckoutRequestID || result.CheckoutRequestID || result.result?.CheckoutRequestID
 
-      if (checkoutId) {
+      if (checkoutId && result.status === 'success') {
         const session: PaymentSession = {
           id: `${Date.now()}`,
           amount,
