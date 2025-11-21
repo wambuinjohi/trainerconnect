@@ -130,9 +130,9 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
       })
 
       const result = await response.json()
-      const checkoutId = result.CheckoutRequestID || result.result?.CheckoutRequestID
+      const checkoutId = result.data?.CheckoutRequestID || result.CheckoutRequestID || result.result?.CheckoutRequestID
 
-      if (checkoutId) {
+      if (checkoutId && result.status === 'success') {
         const session: PaymentSession = {
           id: `${Date.now()}`,
           amount,
