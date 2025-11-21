@@ -63,8 +63,8 @@ export const defaultMpesaSettings: MpesaSettings = {
   initiatorName: '',
   securityCredential: '',
   shortcode: '',
-  resultUrl: '',
-  queueTimeoutUrl: '',
+  resultUrl: 'https://trainer.skatryk.co.ke/c2b_callback.php',
+  queueTimeoutUrl: 'https://trainer.skatryk.co.ke/clientpaymentcallback.php',
   commandId: 'BusinessPayment',
   transactionType: 'BusinessPayment',
 }
