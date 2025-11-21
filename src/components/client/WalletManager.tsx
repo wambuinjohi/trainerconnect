@@ -106,9 +106,9 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
       })
 
       const result = await response.json()
-      const checkoutId = result.CheckoutRequestID || result.result?.CheckoutRequestID
+      const checkoutId = result.data?.CheckoutRequestID || result.CheckoutRequestID || result.result?.CheckoutRequestID
 
-      if (checkoutId) {
+      if (checkoutId && result.status === 'success') {
         toast({ title: 'STK Prompt Sent', description: 'Check your phone to complete the top-up' })
         setTopUpAmount('')
 
