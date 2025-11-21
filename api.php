@@ -51,6 +51,9 @@ register_shutdown_function(function() {
 // Include the database connection
 include('connection.php');
 
+// Include M-Pesa helper functions
+include('mpesa_helper.php');
+
 // Utility function for logging API events
 function logEvent($eventType, $details = []) {
     $timestamp = date('Y-m-d H:i:s');
