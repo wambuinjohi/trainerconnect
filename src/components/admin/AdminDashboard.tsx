@@ -593,8 +593,8 @@ export const AdminDashboard: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'initiate_stk_push',
-          phone_number: testStkPhone,
+          action: 'stk_push_initiate',
+          phone: testStkPhone,
           amount: Number(testStkAmount),
           account_reference: 'AdminTest',
         }),
