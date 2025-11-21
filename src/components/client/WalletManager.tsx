@@ -9,6 +9,7 @@ import { AlertCircle, DollarSign, TrendingUp, TrendingDown, Loader2, History } f
 import { toast } from '@/hooks/use-toast'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { loadSettings } from '@/lib/settings'
 
 interface Wallet {
   id: string
@@ -91,6 +92,7 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
 
     setProcessingTopUp(true)
     try {
+      const settings = loadSettings()
       // Initiate STK push for wallet top-up
       const response = await fetch('/payments/mpesa/stk-initiate', {
         method: 'POST',
@@ -99,7 +101,8 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
           phone: user?.phone || '',
           amount: amount,
           account_reference: `wallet_topup_${user?.id}`,
-          transaction_description: `Wallet Top-up: Ksh ${amount}`
+          transaction_description: `Wallet Top-up: Ksh ${amount}`,
+          mpesa_creds: settings.mpesa
         })
       })
 
@@ -109,16 +112,20 @@ export const WalletManager: React.FC<{ onClose?: () => void }> = ({ onClose }) =
       if (checkoutId) {
         toast({ title: 'STK Prompt Sent', description: 'Check your phone to complete the top-up' })
         setTopUpAmount('')
-        
+
         // Poll for payment completion
         let checkAttempts = 0
         const pollInterval = setInterval(async () => {
           checkAttempts++
           try {
+            const settings = loadSettings()
             const queryResponse = await fetch('/payments/mpesa/stk-query', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ checkout_request_id: checkoutId })
+              body: JSON.stringify({
+                checkout_request_id: checkoutId,
+                mpesa_creds: settings.mpesa
+              })
             })
             const queryResult = await queryResponse.json()
             const resultCode = queryResult.resultCode || queryResult.result?.ResultCode

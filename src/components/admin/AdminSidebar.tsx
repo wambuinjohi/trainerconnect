@@ -23,7 +23,6 @@ const ITEMS: MenuItem[] = [
   { key: 'promotions', label: 'Promotions', icon: <MessageSquare className="h-4 w-4" /> },
   { key: 'payouts', label: 'Payouts', icon: <DollarSign className="h-4 w-4" /> },
   { key: 'categories', label: 'Categories', icon: <Plus className="h-4 w-4" /> },
-  { key: 'mpesamigration', label: 'M-Pesa Migration', icon: <Database className="h-4 w-4" /> },
   { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ]
 

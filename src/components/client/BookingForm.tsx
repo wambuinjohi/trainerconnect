@@ -112,7 +112,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
       if (payMethod === 'mpesa') {
         if (!mpesaPhone.trim()) { toast({ title: 'Phone required', description: 'Enter your M-Pesa phone number (e.g., 2547XXXXXXX)', variant: 'destructive' }); throw new Error('phone required') }
         toast({ title: 'M-Pesa STK', description: 'Check your phone and enter PIN to approve.' })
-        const initRes = await fetch('/payments/mpesa/stk-initiate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: mpesaPhone.trim(), amount: clientTotal, booking_id: bookingData?.id, account_reference: bookingData?.id || 'booking', transaction_desc: 'Training session payment' }) })
+        const mpesaSettings = loadSettings().mpesa
+        const initRes = await fetch('/payments/mpesa/stk-initiate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: mpesaPhone.trim(), amount: clientTotal, booking_id: bookingData?.id, account_reference: bookingData?.id || 'booking', transaction_desc: 'Training session payment', mpesa_creds: mpesaSettings }) })
         const initJson = await initRes.json().catch(()=>null)
         if (!initRes.ok || !initJson?.ok) { toast({ title: 'Payment failed', description: initJson?.error || 'Failed to initiate STK push', variant: 'destructive' }); throw new Error(initJson?.error || 'init failed') }
         const checkoutId = initJson?.result?.CheckoutRequestID || ''
@@ -124,7 +125,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
         let lastResult: any = null
         while (attempts < 20) {
           await new Promise(r => setTimeout(r, 3000))
-          const qRes = await fetch('/payments/mpesa/stk-query', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId }) })
+          const mpesaSettings = loadSettings().mpesa
+          const qRes = await fetch('/payments/mpesa/stk-query', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId, mpesa_creds: mpesaSettings }) })
           const qJson = await qRes.json().catch(()=>null)
           lastResult = qJson?.result || null
           const rc = Number((lastResult?.ResultCode ?? lastResult?.ResponseCode) || -1)

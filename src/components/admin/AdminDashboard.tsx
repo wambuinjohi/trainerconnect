@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { loadSettings, saveSettings, defaultSettings, type PlatformSettings, loadSettingsFromDb, saveSettingsToDb } from '@/lib/settings'
+import { loadSettings, saveSettings, defaultSettings, defaultMpesaSettings, type PlatformSettings, type MpesaSettings, loadSettingsFromDb, saveSettingsToDb } from '@/lib/settings'
 import { useTheme } from 'next-themes'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -145,9 +145,11 @@ export const AdminDashboard: React.FC = () => {
   const [adminApiAvailable, setAdminApiAvailable] = useState(false)
 
   useEffect(() => {
-    setSettings(loadSettings())
+    const loaded = loadSettings()
+    setSettings(loaded)
+    if (loaded.mpesa) setMpesa(loaded.mpesa)
     // Try to hydrate from DB if available
-    loadSettingsFromDb().then((db) => { if (db) setSettings(db) }).catch(() => {})
+    loadSettingsFromDb().then((db) => { if (db) { setSettings(db); if (db.mpesa) setMpesa(db.mpesa) } }).catch(() => {})
   }, [])
 
   const revenueSeries = useMemo(() => {
@@ -560,7 +562,7 @@ export const AdminDashboard: React.FC = () => {
 
   // SMTP & MPesa settings (admin)
   const [smtp, setSmtp] = useState<{ host: string; port: string | number; user?: string; pass?: string; from?: string }>({ host:'', port:'', user:'', pass:'', from:'' })
-  const [mpesa, setMpesa] = useState<any>({ environment:'sandbox', consumer_key:'', consumer_secret:'', passkey:'', initiator_name:'', security_credential:'', shortcode:'', result_url:'', queue_timeout_url:'', command_id:'BusinessPayment', transaction_type:'CustomerPayBillOnline' })
+  const [mpesa, setMpesa] = useState<MpesaSettings>(defaultMpesaSettings)
 
   useEffect(() => {
     const loadAdmin = async () => {
@@ -1472,23 +1474,23 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div>
             <Label>Consumer Key</Label>
-            <Input value={mpesa.consumer_key} onChange={(e)=>setMpesa({...mpesa, consumer_key:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.consumerKey} onChange={(e)=>setMpesa({...mpesa, consumerKey:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Consumer Secret</Label>
-            <Input value={mpesa.consumer_secret} onChange={(e)=>setMpesa({...mpesa, consumer_secret:e.target.value})} className="bg-input border-border" />
+            <Input type="password" value={mpesa.consumerSecret} onChange={(e)=>setMpesa({...mpesa, consumerSecret:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Passkey</Label>
-            <Input value={mpesa.passkey} onChange={(e)=>setMpesa({...mpesa, passkey:e.target.value})} className="bg-input border-border" />
+            <Input type="password" value={mpesa.passkey} onChange={(e)=>setMpesa({...mpesa, passkey:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Initiator Name</Label>
-            <Input value={mpesa.initiator_name} onChange={(e)=>setMpesa({...mpesa, initiator_name:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.initiatorName} onChange={(e)=>setMpesa({...mpesa, initiatorName:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Security Credential</Label>
-            <Input value={mpesa.security_credential} onChange={(e)=>setMpesa({...mpesa, security_credential:e.target.value})} className="bg-input border-border" />
+            <Input type="password" value={mpesa.securityCredential} onChange={(e)=>setMpesa({...mpesa, securityCredential:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Shortcode</Label>
@@ -1496,24 +1498,38 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div>
             <Label>Result URL</Label>
-            <Input value={mpesa.result_url} onChange={(e)=>setMpesa({...mpesa, result_url:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.resultUrl} onChange={(e)=>setMpesa({...mpesa, resultUrl:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
             <Label>Queue Timeout URL</Label>
-            <Input value={mpesa.queue_timeout_url} onChange={(e)=>setMpesa({...mpesa, queue_timeout_url:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.queueTimeoutUrl} onChange={(e)=>setMpesa({...mpesa, queueTimeoutUrl:e.target.value})} className="bg-input border-border" />
           </div>
           <div className="md:col-span-2">
             <Label>Command ID</Label>
-            <Input value={mpesa.command_id} onChange={(e)=>setMpesa({...mpesa, command_id:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.commandId} onChange={(e)=>setMpesa({...mpesa, commandId:e.target.value})} className="bg-input border-border" />
           </div>
           <div className="md:col-span-2">
             <Label>Transaction Type</Label>
-            <Input value={mpesa.transaction_type} onChange={(e)=>setMpesa({...mpesa, transaction_type:e.target.value})} className="bg-input border-border" />
+            <Input value={mpesa.transactionType} onChange={(e)=>setMpesa({...mpesa, transactionType:e.target.value})} className="bg-input border-border" />
           </div>
-          <div className="md:col-span-2 flex justify-end">
+          <div className="md:col-span-2 flex justify-end gap-2">
             <Button variant="outline" onClick={async ()=>{
-              toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-            }}>Save MPesa</Button>
+              setMpesa(settings.mpesa || defaultMpesaSettings)
+            }}>Reset</Button>
+            <Button onClick={async ()=>{
+              setSaving(true)
+              try {
+                const updated = { ...settings, mpesa }
+                setSettings(updated)
+                saveSettings(updated)
+                await saveSettingsToDb(updated)
+                toast({ title: 'Success', description: 'M-Pesa settings saved successfully' })
+              } catch (err: any) {
+                toast({ title: 'Error', description: err?.message || 'Failed to save settings', variant: 'destructive' })
+              } finally {
+                setSaving(false)
+              }
+            }} disabled={saving}>Save M-Pesa Settings</Button>
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,19 @@
 import { apiRequest, withAuth } from '@/lib/api'
 
+export type MpesaSettings = {
+  environment: 'sandbox' | 'production'
+  consumerKey: string
+  consumerSecret: string
+  passkey: string
+  initiatorName: string
+  securityCredential: string
+  shortcode: string
+  resultUrl: string
+  queueTimeoutUrl: string
+  commandId: string
+  transactionType: string
+}
+
 export type PlatformSettings = {
   // Finance
   commissionRate: number
@@ -35,9 +49,25 @@ export type PlatformSettings = {
   cancellationHours: number
   rescheduleHours: number
   maxDailySessionsPerTrainer: number
+  // M-Pesa Settings
+  mpesa?: MpesaSettings
 }
 
 const KEY = 'platform_settings_v1'
+
+export const defaultMpesaSettings: MpesaSettings = {
+  environment: 'sandbox',
+  consumerKey: '',
+  consumerSecret: '',
+  passkey: '',
+  initiatorName: '',
+  securityCredential: '',
+  shortcode: '',
+  resultUrl: '',
+  queueTimeoutUrl: '',
+  commandId: 'BusinessPayment',
+  transactionType: 'BusinessPayment',
+}
 
 export const defaultSettings: PlatformSettings = {
   // Finance
@@ -73,6 +103,8 @@ export const defaultSettings: PlatformSettings = {
   cancellationHours: 24,
   rescheduleHours: 24,
   maxDailySessionsPerTrainer: 8,
+  // M-Pesa Settings
+  mpesa: { ...defaultMpesaSettings },
 }
 
 export function loadSettings(): PlatformSettings {
