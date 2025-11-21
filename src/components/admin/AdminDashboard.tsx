@@ -564,6 +564,74 @@ export const AdminDashboard: React.FC = () => {
   const [smtp, setSmtp] = useState<{ host: string; port: string | number; user?: string; pass?: string; from?: string }>({ host:'', port:'', user:'', pass:'', from:'' })
   const [mpesa, setMpesa] = useState<MpesaSettings>(defaultMpesaSettings)
 
+  // M-Pesa STK Push test form state
+  const [testStkPhone, setTestStkPhone] = useState('254722241745')
+  const [testStkAmount, setTestStkAmount] = useState('10')
+  const [testStkLoading, setTestStkLoading] = useState(false)
+  const [testStkResult, setTestStkResult] = useState<any>(null)
+
+  // Function to initiate STK push test
+  const handleTestStkPush = async () => {
+    if (!testStkPhone.trim()) {
+      toast({ title: 'Error', description: 'Please enter a phone number', variant: 'destructive' })
+      return
+    }
+    if (!testStkAmount.trim() || isNaN(Number(testStkAmount)) || Number(testStkAmount) <= 0) {
+      toast({ title: 'Error', description: 'Please enter a valid amount', variant: 'destructive' })
+      return
+    }
+    if (!mpesa.consumerKey || !mpesa.consumerSecret || !mpesa.shortcode || !mpesa.passkey) {
+      toast({ title: 'Error', description: 'M-Pesa credentials are not configured. Please configure them first.', variant: 'destructive' })
+      return
+    }
+
+    setTestStkLoading(true)
+    setTestStkResult(null)
+
+    try {
+      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'stk_push_initiate',
+          phone: testStkPhone,
+          amount: Number(testStkAmount),
+          account_reference: 'AdminTest',
+        }),
+      })
+
+      let responseText = ''
+      try {
+        responseText = await response.text()
+      } catch (err) {
+        throw new Error('Failed to read response body')
+      }
+
+      let result
+      try {
+        result = JSON.parse(responseText)
+      } catch (err) {
+        console.error('Failed to parse JSON:', responseText.substring(0, 500))
+        throw new Error('Server returned invalid response')
+      }
+
+      if (result.status === 'error') {
+        setTestStkResult({ success: false, error: result.message })
+        toast({ title: 'Error', description: result.message, variant: 'destructive' })
+        return
+      }
+
+      setTestStkResult({ success: true, data: result.data })
+      toast({ title: 'Success', description: 'STK Push initiated successfully' })
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to initiate STK Push'
+      setTestStkResult({ success: false, error: errorMessage })
+      toast({ title: 'Error', description: errorMessage, variant: 'destructive' })
+    } finally {
+      setTestStkLoading(false)
+    }
+  }
+
   useEffect(() => {
     const loadAdmin = async () => {
       try {
@@ -1531,6 +1599,72 @@ export const AdminDashboard: React.FC = () => {
               }
             }} disabled={saving}>Save M-Pesa Settings</Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader>
+          <CardTitle className="text-foreground">M-Pesa STK Push Test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Test M-Pesa STK Push payment initiation. This will send a prompt to the specified phone number. <span className="font-medium">Minimum amount: 10 KES</span></p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="testPhone">Phone Number</Label>
+              <Input
+                id="testPhone"
+                placeholder="254722241745"
+                value={testStkPhone}
+                onChange={(e) => setTestStkPhone(e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            <div>
+              <Label htmlFor="testAmount">Amount (KES)</Label>
+              <Input
+                id="testAmount"
+                type="number"
+                placeholder="10"
+                value={testStkAmount}
+                onChange={(e) => setTestStkAmount(e.target.value)}
+                className="bg-input border-border"
+                min="10"
+                max="150000"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleTestStkPush}
+            disabled={testStkLoading}
+            className="w-full"
+          >
+            {testStkLoading ? 'Initiating...' : 'Send STK Push'}
+          </Button>
+
+          {testStkResult && (
+            <div className={`p-4 rounded-md border ${testStkResult.success ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'}`}>
+              <p className={`font-semibold mb-2 ${testStkResult.success ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
+                {testStkResult.success ? '✓ Success' : '✗ Error'}
+              </p>
+              {testStkResult.success ? (
+                <div className="text-sm text-green-800 dark:text-green-200 space-y-2">
+                  <p><strong>Phone:</strong> {testStkPhone}</p>
+                  <p><strong>Amount:</strong> KES {testStkAmount}</p>
+                  <p><strong>Checkout Request ID:</strong> {testStkResult.data?.checkout_request_id || 'N/A'}</p>
+                  <p><strong>Merchant Request ID:</strong> {testStkResult.data?.merchant_request_id || 'N/A'}</p>
+                  <p><strong>Response Code:</strong> {testStkResult.data?.response_code || 'N/A'}</p>
+                  {testStkResult.data?.response_description && (
+                    <p><strong>Description:</strong> {testStkResult.data.response_description}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-red-800 dark:text-red-200">{testStkResult.error}</p>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
