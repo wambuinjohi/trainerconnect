@@ -2259,6 +2259,410 @@ switch ($action) {
         respond("success", "B2C payments fetched.", ["data" => $payments]);
         break;
 
+    // ============================================================================
+    // STK PUSH PAYMENT ENDPOINTS
+    // ============================================================================
+
+    // INITIATE STK PUSH PAYMENT
+    case 'stk_push_initiate':
+        if (!isset($input['phone']) || !isset($input['amount'])) {
+            respond("error", "Missing required fields: phone, amount.", null, 400);
+        }
+
+        $phone = $conn->real_escape_string($input['phone']);
+        $amount = floatval($input['amount']);
+        $bookingId = isset($input['booking_id']) ? $conn->real_escape_string($input['booking_id']) : null;
+        $accountReference = isset($input['account_reference']) ? $conn->real_escape_string($input['account_reference']) : 'payment_' . uniqid();
+        $description = isset($input['transaction_description']) ? $conn->real_escape_string($input['transaction_description']) : 'Service Payment';
+
+        // Normalize phone number
+        $phone = str_replace(['+', ' ', '-'], '', $phone);
+        if (substr($phone, 0, 1) !== '2') {
+            $phone = '254' . substr($phone, -9);
+        }
+
+        if (strlen($phone) !== 12 || !is_numeric($phone)) {
+            respond("error", "Invalid phone number format.", null, 400);
+        }
+
+        if ($amount < 10 || $amount > 150000) {
+            respond("error", "Amount must be between 10 and 150000.", null, 400);
+        }
+
+        // Create STK push session record
+        $sessionId = 'stk_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO stk_push_sessions (
+                id, phone_number, amount, booking_id, account_reference, description, status, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            // Create table if it doesn't exist
+            $createTableSql = "
+                CREATE TABLE IF NOT EXISTS `stk_push_sessions` (
+                    `id` VARCHAR(36) PRIMARY KEY,
+                    `phone_number` VARCHAR(20) NOT NULL,
+                    `amount` DECIMAL(15, 2) NOT NULL,
+                    `booking_id` VARCHAR(36),
+                    `account_reference` VARCHAR(255) NOT NULL,
+                    `description` TEXT,
+                    `checkout_request_id` VARCHAR(255) UNIQUE,
+                    `status` VARCHAR(50) DEFAULT 'initiated',
+                    `result_code` VARCHAR(10),
+                    `result_description` TEXT,
+                    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    INDEX `idx_phone` (`phone_number`),
+                    INDEX `idx_status` (`status`),
+                    INDEX `idx_booking_id` (`booking_id`),
+                    INDEX `idx_created_at` (`created_at` DESC)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ";
+            $conn->query($createTableSql);
+
+            $stmt = $conn->prepare("
+                INSERT INTO stk_push_sessions (
+                    id, phone_number, amount, booking_id, account_reference, description, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+        }
+
+        $status = 'initiated';
+        $stmt->bind_param("ssdsssss", $sessionId, $phone, $amount, $bookingId, $accountReference, $description, $status, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            // Simulate STK Push initiation (in production, integrate with M-Pesa Daraja API)
+            // For testing, return a mock checkout ID
+            $checkoutRequestId = 'WS_CO_' . uniqid();
+
+            // Update session with checkout request ID
+            $updateStmt = $conn->prepare("UPDATE stk_push_sessions SET checkout_request_id = ? WHERE id = ?");
+            $updateStmt->bind_param("ss", $checkoutRequestId, $sessionId);
+            $updateStmt->execute();
+            $updateStmt->close();
+
+            logEvent('stk_push_initiated', [
+                'session_id' => $sessionId,
+                'phone' => $phone,
+                'amount' => $amount,
+                'checkout_request_id' => $checkoutRequestId
+            ]);
+
+            respond("success", "STK push initiated successfully.", [
+                "session_id" => $sessionId,
+                "CheckoutRequestID" => $checkoutRequestId,
+                "phone" => $phone,
+                "amount" => $amount
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to initiate STK push: " . $conn->error, null, 500);
+        }
+        break;
+
+    // QUERY STK PUSH STATUS
+    case 'stk_push_query':
+        if (!isset($input['checkout_request_id'])) {
+            respond("error", "Missing checkout_request_id.", null, 400);
+        }
+
+        $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
+
+        // Query the session
+        $sql = "SELECT * FROM stk_push_sessions WHERE checkout_request_id = ? LIMIT 1";
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            respond("error", "Table does not exist yet. Initialize payments first.", null, 500);
+        }
+
+        $stmt->bind_param("s", $checkoutRequestId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        if ($result->num_rows === 0) {
+            respond("error", "Session not found.", null, 404);
+        }
+
+        $session = $result->fetch_assoc();
+
+        // In production, query M-Pesa Daraja API for actual status
+        // For now, return the stored status
+        respond("success", "STK push status retrieved.", [
+            "session_id" => $session['id'],
+            "status" => $session['status'],
+            "result_code" => $session['result_code'],
+            "result_description" => $session['result_description'],
+            "amount" => $session['amount'],
+            "phone" => $session['phone_number']
+        ]);
+        break;
+
+    // COMPLETE STK PUSH PAYMENT (callback from M-Pesa)
+    case 'stk_push_callback':
+        if (!isset($input['checkout_request_id'])) {
+            respond("error", "Missing checkout_request_id.", null, 400);
+        }
+
+        $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
+        $resultCode = isset($input['result_code']) ? $conn->real_escape_string($input['result_code']) : null;
+        $resultDescription = isset($input['result_description']) ? $conn->real_escape_string($input['result_description']) : null;
+        $merchantRequestId = isset($input['merchant_request_id']) ? $conn->real_escape_string($input['merchant_request_id']) : null;
+
+        // Determine status based on result code
+        $status = 'failed';
+        if ($resultCode === '0' || $resultCode === 0) {
+            $status = 'success';
+        } elseif ($resultCode === '1032' || $resultCode === 1032) {
+            $status = 'timeout';
+        }
+
+        // Update the session
+        $stmt = $conn->prepare("
+            UPDATE stk_push_sessions
+            SET status = ?, result_code = ?, result_description = ?, updated_at = NOW()
+            WHERE checkout_request_id = ?
+        ");
+
+        $stmt->bind_param("ssss", $status, $resultCode, $resultDescription, $checkoutRequestId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            logEvent('stk_push_completed', [
+                'checkout_request_id' => $checkoutRequestId,
+                'status' => $status,
+                'result_code' => $resultCode
+            ]);
+
+            respond("success", "STK push status updated.", [
+                "status" => $status,
+                "checkout_request_id" => $checkoutRequestId
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update STK push: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET STK PUSH HISTORY
+    case 'stk_push_history':
+        $limit = isset($input['limit']) ? intval($input['limit']) : 50;
+        $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+
+        if ($limit > 100) $limit = 100;
+        if ($offset < 0) $offset = 0;
+
+        $sql = "SELECT * FROM stk_push_sessions ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $stmt = $conn->prepare($sql);
+
+        if (!$stmt) {
+            respond("error", "Table does not exist yet.", null, 500);
+        }
+
+        $stmt->bind_param("ii", $limit, $offset);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        $sessions = [];
+        while ($row = $result->fetch_assoc()) {
+            $sessions[] = $row;
+        }
+
+        respond("success", "STK push history retrieved.", ["data" => $sessions]);
+        break;
+
+    // ============================================================================
+    // WALLET MANAGEMENT ENDPOINTS
+    // ============================================================================
+
+    // GET WALLET BALANCE
+    case 'wallet_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+
+        // Ensure wallet table exists
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `user_wallets` (
+                `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                `user_id` VARCHAR(36) NOT NULL UNIQUE,
+                `balance` DECIMAL(15, 2) DEFAULT 0,
+                `available_balance` DECIMAL(15, 2) DEFAULT 0,
+                `pending_balance` DECIMAL(15, 2) DEFAULT 0,
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_wallet_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        // Get or create wallet
+        $sql = "SELECT * FROM user_wallets WHERE user_id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("s", $userId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        if ($result->num_rows === 0) {
+            // Create new wallet
+            $walletId = uniqid();
+            $now = date('Y-m-d H:i:s');
+            $stmt = $conn->prepare("
+                INSERT INTO user_wallets (id, user_id, balance, available_balance, pending_balance, created_at, updated_at)
+                VALUES (?, ?, 0, 0, 0, ?, ?)
+            ");
+            $stmt->bind_param("ssss", $walletId, $userId, $now, $now);
+            $stmt->execute();
+            $stmt->close();
+
+            $wallet = [
+                'id' => $walletId,
+                'user_id' => $userId,
+                'balance' => 0,
+                'available_balance' => 0,
+                'pending_balance' => 0,
+                'created_at' => $now,
+                'updated_at' => $now
+            ];
+        } else {
+            $wallet = $result->fetch_assoc();
+        }
+
+        respond("success", "Wallet fetched successfully.", ["data" => $wallet]);
+        break;
+
+    // UPDATE WALLET BALANCE
+    case 'wallet_update':
+        if (!isset($input['user_id']) || !isset($input['amount']) || !isset($input['transaction_type'])) {
+            respond("error", "Missing user_id, amount, or transaction_type.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $amount = floatval($input['amount']);
+        $transactionType = $conn->real_escape_string($input['transaction_type']); // 'deposit', 'withdrawal', 'commission'
+        $reference = isset($input['reference']) ? $conn->real_escape_string($input['reference']) : null;
+        $description = isset($input['description']) ? $conn->real_escape_string($input['description']) : null;
+
+        // Get current wallet
+        $walletQuery = $conn->query("SELECT * FROM user_wallets WHERE user_id = '$userId'");
+        if ($walletQuery->num_rows === 0) {
+            respond("error", "Wallet not found. Create wallet first.", null, 404);
+        }
+
+        $wallet = $walletQuery->fetch_assoc();
+        $currentBalance = floatval($wallet['balance']);
+        $newBalance = $currentBalance + $amount;
+
+        if ($newBalance < 0 && $transactionType === 'withdrawal') {
+            respond("error", "Insufficient balance.", null, 400);
+        }
+
+        // Update wallet
+        $stmt = $conn->prepare("
+            UPDATE user_wallets
+            SET balance = ?, available_balance = ?, updated_at = NOW()
+            WHERE user_id = ?
+        ");
+
+        $stmt->bind_param("dss", $newBalance, $newBalance, $userId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+
+            // Create transaction record
+            $transactionId = 'txn_' . uniqid();
+            $now = date('Y-m-d H:i:s');
+
+            $txnStmt = $conn->prepare("
+                INSERT INTO wallet_transactions (id, user_id, type, amount, reference, description, balance_after, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            $txnStmt->bind_param("sssdsssss", $transactionId, $userId, $transactionType, $amount, $reference, $description, $newBalance, $now);
+            $txnStmt->execute();
+            $txnStmt->close();
+
+            logEvent('wallet_updated', [
+                'user_id' => $userId,
+                'transaction_type' => $transactionType,
+                'amount' => $amount,
+                'new_balance' => $newBalance
+            ]);
+
+            respond("success", "Wallet updated successfully.", [
+                "user_id" => $userId,
+                "old_balance" => $currentBalance,
+                "amount" => $amount,
+                "new_balance" => $newBalance,
+                "transaction_id" => $transactionId
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update wallet: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET WALLET TRANSACTIONS
+    case 'wallet_transactions_get':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $limit = isset($input['limit']) ? intval($input['limit']) : 50;
+        $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+
+        if ($limit > 100) $limit = 100;
+
+        // Ensure table exists
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `wallet_transactions` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `user_id` VARCHAR(36) NOT NULL,
+                `type` VARCHAR(50) NOT NULL,
+                `amount` DECIMAL(15, 2) NOT NULL,
+                `reference` VARCHAR(255),
+                `description` TEXT,
+                `balance_after` DECIMAL(15, 2),
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_wallet_txn_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`),
+                INDEX `idx_created_at` (`created_at` DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+
+        $sql = "SELECT * FROM wallet_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sii", $userId, $limit, $offset);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        $transactions = [];
+        while ($row = $result->fetch_assoc()) {
+            $transactions[] = $row;
+        }
+
+        respond("success", "Wallet transactions retrieved.", ["data" => $transactions]);
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
