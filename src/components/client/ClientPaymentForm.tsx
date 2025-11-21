@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { AlertCircle, PhoneOff, Loader2, AlertTriangle, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import { loadSettings } from '@/lib/settings'
 
 interface PaymentSession {
   id: string
@@ -53,12 +54,16 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
   useEffect(() => {
     if (!pollingActive || !paymentSession) return
 
-    const poll = async () => {
+    const pollWithCreds = async () => {
       try {
+        const settings = loadSettings()
         const response = await fetch('/payments/mpesa/stk-query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkout_request_id: paymentSession.checkoutRequestId })
+          body: JSON.stringify({
+            checkout_request_id: paymentSession.checkoutRequestId,
+            mpesa_creds: settings.mpesa
+          })
         })
 
         const result = await response.json()
@@ -93,8 +98,7 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
       }
     }
 
-    // Poll every 2 seconds
-    pollingIntervalRef.current = setInterval(poll, 2000)
+    pollingIntervalRef.current = setInterval(pollWithCreds, 2000)
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
@@ -112,6 +116,7 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
 
     setLoading(true)
     try {
+      const settings = loadSettings()
       const response = await fetch('/payments/mpesa/stk-initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,7 +125,8 @@ export const ClientPaymentForm: React.FC<{ bookingId?: string; amount: number; o
           amount: amount,
           booking_id: bookingId,
           account_reference: bookingId ? `booking_${bookingId}` : 'service_payment',
-          transaction_description: 'Service Payment'
+          transaction_description: 'Service Payment',
+          mpesa_creds: settings.mpesa
         })
       })
 
