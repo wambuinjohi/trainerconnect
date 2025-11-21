@@ -206,6 +206,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           hourly_rate: hourlyRateNum,
           service_radius: serviceRadiusNum,
           availability: JSON.stringify(availabilityVal),
+          timezone: profile.timezone || 'UTC',
           profile_image: profile.profile_image || null,
           bio: profile.bio || null,
           payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
