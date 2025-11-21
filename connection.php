@@ -34,15 +34,15 @@ if (getenv('DB_NAME')) $database = getenv('DB_NAME');
 if (getenv('DB_PORT')) $port = (int)getenv('DB_PORT');
 
 // Suppress mysqli errors and handle them ourselves
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+@mysqli_report(MYSQLI_REPORT_OFF);
 
 try {
     // Create connection with explicit error handling
-    $conn = new mysqli($server, $username, $password, $database, $port);
-    
+    $conn = @new mysqli($server, $username, $password, $database, $port);
+
     // Check connection
-    if ($conn->connect_error) {
-        error_log("Database connection failed: " . $conn->connect_error);
+    if (!$conn || $conn->connect_error) {
+        error_log("Database connection failed: " . ($conn ? $conn->connect_error : "Connection object creation failed"));
         http_response_code(500);
         die(json_encode([
             "status" => "error",
