@@ -39,6 +39,7 @@ import {
 } from 'recharts'
 import { toast } from '@/hooks/use-toast'
 import * as apiService from '@/lib/api-service'
+import MpesaMigration from '@/pages/MpesaMigration'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
