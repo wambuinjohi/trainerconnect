@@ -11,6 +11,7 @@ require_once(__DIR__ . '/../connection.php');
 $columns = [
     'hourly_rate_by_radius' => "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS `hourly_rate_by_radius` JSON",
     'payout_details' => "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS `payout_details` JSON",
+    'timezone' => "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS `timezone` VARCHAR(255) DEFAULT 'UTC'",
 ];
 
 $successCount = 0;
