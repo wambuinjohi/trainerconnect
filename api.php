@@ -1540,7 +1540,7 @@ switch ($action) {
                 id, trainer_id, amount, status, requested_at, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssdsssss", $payoutId, $trainerId, $amount, $status, $now, $now, $now);
+        $stmt->bind_param("sdsssss", $payoutId, $trainerId, $amount, $status, $now, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -2120,7 +2120,7 @@ switch ($action) {
         $userType = 'trainer';
         $status = 'pending';
 
-        $stmt->bind_param("ssssdsssss", $b2cId, $trainerId, $userType, $phoneNumber, $netAmount, $referenceId, $status, $now, $now);
+        $stmt->bind_param("ssssdssss", $b2cId, $trainerId, $userType, $phoneNumber, $netAmount, $referenceId, $status, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -2133,7 +2133,7 @@ switch ($action) {
             ");
 
             $approvedStatus = 'approved';
-            $updateStmt->bind_param("ssddds", $approvedStatus, $b2cId, $commission, $netAmount, $payoutRequestId);
+            $updateStmt->bind_param("ssdds", $approvedStatus, $b2cId, $commission, $netAmount, $payoutRequestId);
             $updateStmt->execute();
             $updateStmt->close();
 
@@ -2479,7 +2479,7 @@ switch ($action) {
         }
 
         $merchantRequestId = $stkResult['merchant_request_id'] ?? '';
-        $stmt->bind_param("ssdsssssss", $sessionId, $phone, $amount, $bookingId, $accountReference, $description, $checkoutRequestId, $merchantRequestId, $initStatus, $now, $now);
+        $stmt->bind_param("ssdssssssss", $sessionId, $phone, $amount, $bookingId, $accountReference, $description, $checkoutRequestId, $merchantRequestId, $initStatus, $now, $now);
 
         if (!$stmt->execute()) {
             $stmt->close();
