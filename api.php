@@ -1943,7 +1943,7 @@ switch ($action) {
                 client_location_lat, client_location_lng, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("sssssiiisdddss", $bookingId, $clientId, $trainerId, $sessionDate, $sessionTime, $durationHours, $totalSessions, $status, $totalAmount, $notes, $clientLocationLabel, $clientLocationLat, $clientLocationLng, $now, $now);
+        $stmt->bind_param("sssssiiisddsss", $bookingId, $clientId, $trainerId, $sessionDate, $sessionTime, $durationHours, $totalSessions, $status, $totalAmount, $notes, $clientLocationLabel, $clientLocationLat, $clientLocationLng, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
