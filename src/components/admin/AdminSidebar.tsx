@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Users, Calendar, BarChart3, UserCheck, AlertCircle, Settings, TrendingUp, CheckCircle, MessageSquare, DollarSign, Plus, Trash2 } from 'lucide-react'
+import { Users, Calendar, BarChart3, UserCheck, AlertCircle, Settings, TrendingUp, CheckCircle, MessageSquare, DollarSign, Plus, Trash2, Database } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_LOGO_URL, APP_LOGO_DARK_URL, APP_LOGO_ALT } from '@/lib/branding'
 import { useTheme } from 'next-themes'
@@ -23,6 +23,7 @@ const ITEMS: MenuItem[] = [
   { key: 'promotions', label: 'Promotions', icon: <MessageSquare className="h-4 w-4" /> },
   { key: 'payouts', label: 'Payouts', icon: <DollarSign className="h-4 w-4" /> },
   { key: 'categories', label: 'Categories', icon: <Plus className="h-4 w-4" /> },
+  { key: 'mpesamigration', label: 'M-Pesa Migration', icon: <Database className="h-4 w-4" /> },
   { key: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
 ]
 
