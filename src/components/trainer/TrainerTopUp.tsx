@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { loadSettings } from '@/lib/settings'
 
 export const TrainerTopUp: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
@@ -31,8 +33,9 @@ export const TrainerTopUp: React.FC<{ onClose?: () => void }> = ({ onClose }) =>
 
     setLoading(true)
     try {
+      const settings = loadSettings()
       toast({ title: 'M-Pesa STK', description: 'Check your phone and enter PIN to approve.' })
-      const initRes = await fetch('/payments/mpesa/stk-initiate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: phone.trim(), amount: amt, booking_id: null, account_reference: 'wallet-topup', transaction_desc: 'Wallet top up' }) })
+      const initRes = await fetch('/payments/mpesa/stk-initiate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: phone.trim(), amount: amt, booking_id: null, account_reference: 'wallet-topup', transaction_desc: 'Wallet top up', mpesa_creds: settings.mpesa }) })
       const initJson = await initRes.json().catch(() => null)
       if (!initRes.ok || !initJson?.ok) throw new Error(initJson?.error || 'Failed to initiate STK')
       const checkoutId = String(initJson.checkout_request_id || initJson.CheckoutRequestID || '')
@@ -45,7 +48,8 @@ export const TrainerTopUp: React.FC<{ onClose?: () => void }> = ({ onClose }) =>
         await new Promise(r => setTimeout(r, 3000))
         attempts += 1
         try {
-          const qRes = await fetch('/payments/mpesa/stk-query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId }) })
+          const settings = loadSettings()
+          const qRes = await fetch('/payments/mpesa/stk-query', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId, mpesa_creds: settings.mpesa }) })
           const qJson = await qRes.json().catch(() => null)
           if (qRes.ok && qJson?.ok && qJson.result && qJson.result.resultCode === '0') {
             success = true
