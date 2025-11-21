@@ -2198,13 +2198,18 @@ switch ($action) {
 
     // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
     case 'settings_get':
-        // Retrieve M-Pesa credentials
-        $mpesaCreds = getMpesaCredentialsForAdmin();
+        try {
+            // Retrieve M-Pesa credentials
+            $mpesaCreds = getMpesaCredentialsForAdmin();
 
-        respond("success", "Settings retrieved.", [
-            "mpesa" => $mpesaCreds,
-            "mpesa_source" => $mpesaCreds ? $mpesaCreds['source'] : null
-        ]);
+            respond("success", "Settings retrieved.", [
+                "mpesa" => $mpesaCreds,
+                "mpesa_source" => $mpesaCreds ? $mpesaCreds['source'] : null
+            ]);
+        } catch (Exception $e) {
+            logEvent('settings_get_error', ['error' => $e->getMessage()]);
+            respond("error", "Failed to retrieve settings: " . $e->getMessage(), null, 500);
+        }
         break;
 
     // INITIATE B2C PAYMENT
