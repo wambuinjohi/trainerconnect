@@ -1681,6 +1681,7 @@ switch ($action) {
 
     // GET SERVICES
     case 'services_get':
+    case 'service_get':
         if (!isset($input['trainer_id'])) {
             respond("error", "Missing trainer_id.", null, 400);
         }
