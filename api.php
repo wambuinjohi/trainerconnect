@@ -1679,6 +1679,135 @@ switch ($action) {
         }
         break;
 
+    // GET SERVICES
+    case 'services_get':
+    case 'service_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $sql = "SELECT * FROM services WHERE trainer_id = '$trainerId' ORDER BY created_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $services = [];
+        while ($row = $result->fetch_assoc()) {
+            $services[] = $row;
+        }
+
+        respond("success", "Services fetched successfully.", $services);
+        break;
+
+    // INSERT SERVICE
+    case 'services_insert':
+    case 'service_insert':
+        if (!isset($input['trainer_id']) || !isset($input['title']) || !isset($input['price'])) {
+            respond("error", "Missing trainer_id, title, or price.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $title = $conn->real_escape_string($input['title']);
+        $description = isset($input['description']) ? $conn->real_escape_string($input['description']) : NULL;
+        $price = floatval($input['price']);
+        $durationMinutes = isset($input['duration_minutes']) ? intval($input['duration_minutes']) : NULL;
+        $isActive = isset($input['is_active']) ? intval($input['is_active']) : 1;
+        $serviceId = 'service_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO services (
+                id, trainer_id, title, description, price, duration_minutes, is_active, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssssdiii", $serviceId, $trainerId, $title, $description, $price, $durationMinutes, $isActive, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('service_created', ['service_id' => $serviceId, 'trainer_id' => $trainerId]);
+            respond("success", "Service created successfully.", ["id" => $serviceId]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to create service: " . $conn->error, null, 500);
+        }
+        break;
+
+    // UPDATE SERVICE
+    case 'services_update':
+    case 'service_update':
+        if (!isset($input['id'])) {
+            respond("error", "Missing service id.", null, 400);
+        }
+
+        $serviceId = $conn->real_escape_string($input['id']);
+        $updates = [];
+        $params = [];
+        $types = "";
+
+        foreach ($input as $key => $value) {
+            if ($key === 'id' || $key === 'action') continue;
+            if ($value === null) continue;
+
+            $safeKey = $conn->real_escape_string($key);
+            $updates[] = "`$safeKey` = ?";
+
+            if (in_array($key, ['price', 'duration_minutes', 'is_active'])) {
+                if ($key === 'price') {
+                    $params[] = floatval($value);
+                    $types .= "d";
+                } else {
+                    $params[] = intval($value);
+                    $types .= "i";
+                }
+            } else {
+                $params[] = $value;
+                $types .= "s";
+            }
+        }
+
+        if (empty($updates)) {
+            respond("error", "No fields to update.", null, 400);
+        }
+
+        $params[] = $serviceId;
+        $types .= "s";
+        $updates[] = "`updated_at` = NOW()";
+
+        $sql = "UPDATE services SET " . implode(", ", $updates) . " WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param($types, ...$params);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('service_updated', ['service_id' => $serviceId]);
+            respond("success", "Service updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update service: " . $conn->error, null, 500);
+        }
+        break;
+
+    // DELETE SERVICE
+    case 'services_delete':
+    case 'service_delete':
+        if (!isset($input['id'])) {
+            respond("error", "Missing service id.", null, 400);
+        }
+
+        $serviceId = $conn->real_escape_string($input['id']);
+        $sql = "DELETE FROM services WHERE id = '$serviceId'";
+
+        if ($conn->query($sql)) {
+            logEvent('service_deleted', ['service_id' => $serviceId]);
+            respond("success", "Service deleted successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            respond("error", "Failed to delete service: " . $conn->error, null, 500);
+        }
+        break;
+
     // GET PAYMENT METHODS
     case 'payment_methods_get':
         if (!isset($input['user_id'])) {
@@ -1933,8 +2062,53 @@ switch ($action) {
         $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
         $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
         $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+        $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
         $bookingId = 'booking_' . uniqid();
         $now = date('Y-m-d H:i:s');
+
+        // Validate availability unless explicitly skipped (e.g., for admin bookings)
+        if (!$skipValidation) {
+            $profileSql = "SELECT availability, timezone FROM user_profiles WHERE user_id = '$trainerId' LIMIT 1";
+            $profileResult = $conn->query($profileSql);
+            if ($profileResult && $profileResult->num_rows > 0) {
+                $profile = $profileResult->fetch_assoc();
+                $availabilityJson = $profile['availability'];
+
+                if (!empty($availabilityJson)) {
+                    $availability = json_decode($availabilityJson, true);
+                    if (is_array($availability)) {
+                        $bookingDateTime = new DateTime($sessionDate . ' ' . $sessionTime);
+                        $dayName = strtolower($bookingDateTime->format('l'));
+                        $bookingTime = $bookingDateTime->format('H:i');
+
+                        $dayAvailable = false;
+                        $timeSlotAvailable = false;
+
+                        if (isset($availability[$dayName]) && is_array($availability[$dayName])) {
+                            $dayAvailable = true;
+                            foreach ($availability[$dayName] as $slot) {
+                                if (is_string($slot)) {
+                                    $parts = explode('-', $slot);
+                                    if (count($parts) === 2) {
+                                        $slotStart = trim($parts[0]);
+                                        $slotEnd = trim($parts[1]);
+                                        if ($bookingTime >= $slotStart && $bookingTime < $slotEnd) {
+                                            $timeSlotAvailable = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!$timeSlotAvailable) {
+                            $dayLabel = $bookingDateTime->format('l');
+                            respond("error", "The trainer is not available on $dayLabel at $bookingTime. Please choose a different time from their availability.", null, 400);
+                        }
+                    }
+                }
+            }
+        }
 
         $stmt = $conn->prepare("
             INSERT INTO bookings (

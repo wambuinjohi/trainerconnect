@@ -223,18 +223,16 @@ export const TrainerDashboard: React.FC = () => {
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
-      <div className="text-center py-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl mx-auto mb-4 overflow-hidden">
-          {profileData.profile_image ? (
-            <img
-              src={profileData.profile_image}
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span>💪</span>
-          )}
+      {profileData.profile_image && (
+        <div className="mb-6 rounded-lg overflow-hidden h-48 w-full">
+          <img
+            src={profileData.profile_image}
+            alt="Profile"
+            className="w-full h-full object-cover"
+          />
         </div>
+      )}
+      <div className="text-center py-4">
         <h1 className="text-2xl font-bold text-foreground">Welcome back!</h1>
         <p className="text-muted-foreground">Ready to inspire and train today?</p>
       </div>
@@ -372,10 +370,20 @@ export const TrainerDashboard: React.FC = () => {
             <p className="text-xs text-muted-foreground">Hourly Rate</p>
             <p className="text-lg font-semibold text-foreground">Ksh {profileData.hourly_rate}</p>
           </div>
-          {profileData.availability && profileData.availability.length > 0 && (
+          {profileData.availability && typeof profileData.availability === 'object' && Object.keys(profileData.availability).length > 0 && (
             <div>
               <p className="text-xs text-muted-foreground">Availability</p>
-              <p className="text-sm text-foreground">{typeof profileData.availability === 'object' ? Object.keys(profileData.availability).join(', ') : 'Check schedule'}</p>
+              <div className="text-sm text-foreground space-y-1">
+                {Object.entries(profileData.availability as any).map(([day, slots]: any) => {
+                  const hasSlotsToday = Array.isArray(slots) && slots.length > 0
+                  return hasSlotsToday ? (
+                    <div key={day} className="flex justify-between text-xs">
+                      <span className="text-muted-foreground capitalize">{day}</span>
+                      <span className="text-foreground">{slots.join(', ')}</span>
+                    </div>
+                  ) : null
+                })}
+              </div>
             </div>
           )}
         </CardContent>
