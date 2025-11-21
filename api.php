@@ -1792,6 +1792,7 @@ switch ($action) {
 
     // DELETE SERVICE
     case 'services_delete':
+    case 'service_delete':
         if (!isset($input['id'])) {
             respond("error", "Missing service id.", null, 400);
         }
