@@ -1933,8 +1933,53 @@ switch ($action) {
         $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
         $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
         $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+        $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
         $bookingId = 'booking_' . uniqid();
         $now = date('Y-m-d H:i:s');
+
+        // Validate availability unless explicitly skipped (e.g., for admin bookings)
+        if (!$skipValidation) {
+            $profileSql = "SELECT availability, timezone FROM user_profiles WHERE user_id = '$trainerId' LIMIT 1";
+            $profileResult = $conn->query($profileSql);
+            if ($profileResult && $profileResult->num_rows > 0) {
+                $profile = $profileResult->fetch_assoc();
+                $availabilityJson = $profile['availability'];
+
+                if (!empty($availabilityJson)) {
+                    $availability = json_decode($availabilityJson, true);
+                    if (is_array($availability)) {
+                        $bookingDateTime = new DateTime($sessionDate . ' ' . $sessionTime);
+                        $dayName = strtolower($bookingDateTime->format('l'));
+                        $bookingTime = $bookingDateTime->format('H:i');
+
+                        $dayAvailable = false;
+                        $timeSlotAvailable = false;
+
+                        if (isset($availability[$dayName]) && is_array($availability[$dayName])) {
+                            $dayAvailable = true;
+                            foreach ($availability[$dayName] as $slot) {
+                                if (is_string($slot)) {
+                                    $parts = explode('-', $slot);
+                                    if (count($parts) === 2) {
+                                        $slotStart = trim($parts[0]);
+                                        $slotEnd = trim($parts[1]);
+                                        if ($bookingTime >= $slotStart && $bookingTime < $slotEnd) {
+                                            $timeSlotAvailable = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (!$timeSlotAvailable) {
+                            $dayLabel = $bookingDateTime->format('l');
+                            respond("error", "The trainer is not available on $dayLabel at $bookingTime. Please choose a different time from their availability.", null, 400);
+                        }
+                    }
+                }
+            }
+        }
 
         $stmt = $conn->prepare("
             INSERT INTO bookings (
