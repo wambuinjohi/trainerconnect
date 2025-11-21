@@ -165,10 +165,16 @@ export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
         settings: s
       })
     })
+
+    if (!response.ok) {
+      console.error('Failed to save settings: HTTP', response.status)
+      return false
+    }
+
     const responseText = await response.text()
     const contentType = response.headers.get('content-type')
 
-    if (contentType?.includes('text/html')) {
+    if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {
       console.error('API returned HTML instead of JSON:', responseText.substring(0, 500))
       return false
     }
