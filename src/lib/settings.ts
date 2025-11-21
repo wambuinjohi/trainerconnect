@@ -158,7 +158,8 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
 
 export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
   try {
-    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
