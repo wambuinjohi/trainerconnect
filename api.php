@@ -2157,6 +2157,56 @@ switch ($action) {
         }
         break;
 
+    // SAVE ADMIN SETTINGS (including M-Pesa credentials)
+    case 'settings_save':
+        // Verify admin token if required
+        $adminToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
+        // For now, allow saving if properly structured
+
+        if (isset($input['settings']) && is_array($input['settings'])) {
+            $settings = $input['settings'];
+
+            // Extract and save M-Pesa credentials if present
+            if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
+                $mpesaCreds = $settings['mpesa'];
+
+                // Validate required fields
+                if (empty($mpesaCreds['consumerKey']) || empty($mpesaCreds['consumerSecret'])) {
+                    respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
+                }
+
+                // Save M-Pesa credentials to database
+                $saveResult = saveMpesaCredentials($mpesaCreds);
+                if (!$saveResult) {
+                    respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
+                }
+
+                logEvent('admin_settings_updated', [
+                    'setting' => 'mpesa_credentials',
+                    'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                ]);
+            }
+
+            respond("success", "Settings saved successfully.", [
+                "saved_at" => date('Y-m-d H:i:s'),
+                "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
+            ]);
+        } else {
+            respond("error", "Invalid settings format.", null, 400);
+        }
+        break;
+
+    // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
+    case 'settings_get':
+        // Retrieve M-Pesa credentials
+        $mpesaCreds = getMpesaCredentialsForAdmin();
+
+        respond("success", "Settings retrieved.", [
+            "mpesa" => $mpesaCreds,
+            "mpesa_source" => $mpesaCreds ? $mpesaCreds['source'] : null
+        ]);
+        break;
+
     // INITIATE B2C PAYMENT
     case 'b2c_payment_initiate':
         if (!isset($input['b2c_payment_id']) || !isset($input['phone_number']) || !isset($input['amount'])) {
