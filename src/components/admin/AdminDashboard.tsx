@@ -1604,6 +1604,71 @@ export const AdminDashboard: React.FC = () => {
 
       <Card className="bg-card border-border">
         <CardHeader>
+          <CardTitle className="text-foreground">M-Pesa STK Push Test</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Test M-Pesa STK Push payment initiation. This will send a prompt to the specified phone number.</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="testPhone">Phone Number</Label>
+              <Input
+                id="testPhone"
+                placeholder="254722241745"
+                value={testStkPhone}
+                onChange={(e) => setTestStkPhone(e.target.value)}
+                className="bg-input border-border"
+              />
+            </div>
+            <div>
+              <Label htmlFor="testAmount">Amount (KES)</Label>
+              <Input
+                id="testAmount"
+                type="number"
+                placeholder="5"
+                value={testStkAmount}
+                onChange={(e) => setTestStkAmount(e.target.value)}
+                className="bg-input border-border"
+                min="1"
+                step="1"
+              />
+            </div>
+          </div>
+
+          <Button
+            onClick={handleTestStkPush}
+            disabled={testStkLoading}
+            className="w-full"
+          >
+            {testStkLoading ? 'Initiating...' : 'Send STK Push'}
+          </Button>
+
+          {testStkResult && (
+            <div className={`p-4 rounded-md border ${testStkResult.success ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'}`}>
+              <p className={`font-semibold mb-2 ${testStkResult.success ? 'text-green-900 dark:text-green-100' : 'text-red-900 dark:text-red-100'}`}>
+                {testStkResult.success ? '✓ Success' : '✗ Error'}
+              </p>
+              {testStkResult.success ? (
+                <div className="text-sm text-green-800 dark:text-green-200 space-y-2">
+                  <p><strong>Phone:</strong> {testStkPhone}</p>
+                  <p><strong>Amount:</strong> KES {testStkAmount}</p>
+                  <p><strong>Checkout Request ID:</strong> {testStkResult.data?.checkout_request_id || 'N/A'}</p>
+                  <p><strong>Merchant Request ID:</strong> {testStkResult.data?.merchant_request_id || 'N/A'}</p>
+                  <p><strong>Response Code:</strong> {testStkResult.data?.response_code || 'N/A'}</p>
+                  {testStkResult.data?.response_description && (
+                    <p><strong>Description:</strong> {testStkResult.data.response_description}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-red-800 dark:text-red-200">{testStkResult.error}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader>
           <CardTitle className="text-foreground">Feature Flags</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
