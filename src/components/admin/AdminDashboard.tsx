@@ -1625,11 +1625,11 @@ export const AdminDashboard: React.FC = () => {
               <Input
                 id="testAmount"
                 type="number"
-                placeholder="10"
+                placeholder="5"
                 value={testStkAmount}
                 onChange={(e) => setTestStkAmount(e.target.value)}
                 className="bg-input border-border"
-                min="10"
+                min="5"
                 max="150000"
                 step="1"
               />
