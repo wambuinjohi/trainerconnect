@@ -2760,7 +2760,7 @@ switch ($action) {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
 
-            $txnStmt->bind_param("sssdsssss", $transactionId, $userId, $transactionType, $amount, $reference, $description, $newBalance, $now);
+            $txnStmt->bind_param("sssdssss", $transactionId, $userId, $transactionType, $amount, $reference, $description, $newBalance, $now);
             $txnStmt->execute();
             $txnStmt->close();
 
