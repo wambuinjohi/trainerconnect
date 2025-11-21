@@ -1,4 +1,4 @@
-import { apiRequest, withAuth } from '@/lib/api'
+import { apiRequest, withAuth, getApiUrl } from '@/lib/api'
 
 export type MpesaSettings = {
   environment: 'sandbox' | 'production'
@@ -63,8 +63,8 @@ export const defaultMpesaSettings: MpesaSettings = {
   initiatorName: '',
   securityCredential: '',
   shortcode: '',
-  resultUrl: 'https://trainer.skatryk.co.ke/c2b_callback.php',
-  queueTimeoutUrl: 'https://trainer.skatryk.co.ke/clientpaymentcallback.php',
+  resultUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
+  queueTimeoutUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
   commandId: 'BusinessPayment',
   transactionType: 'BusinessPayment',
 }
@@ -125,7 +125,8 @@ export function saveSettings(s: PlatformSettings) {
 // Attempt to load settings from PHP API
 export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
   try {
-    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'settings_get' })
@@ -157,7 +158,8 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
 
 export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
   try {
-    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

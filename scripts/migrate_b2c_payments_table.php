@@ -110,7 +110,7 @@ if ($failureCount === 0) {
     echo "\nUsage:\n";
     echo "- b2c_payments: Stores B2C payment requests\n";
     echo "- b2c_payment_callbacks: Stores M-Pesa callback responses\n";
-    echo "\nCallback Handler: /clientpaymentcallback.php\n";
+    echo "\nCallback Handler: /b2c_callback.php\n";
     exit(0);
 } else {
     echo "\n⚠ Some operations failed. Review the errors above.\n";
