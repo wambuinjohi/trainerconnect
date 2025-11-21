@@ -125,24 +125,26 @@ export function saveSettings(s: PlatformSettings) {
 // Attempt to load settings from PHP API
 export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
   try {
-    const response = await fetch('/api.php', {
+    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'settings_get' })
     })
-    const data = await response.json()
+    const responseText = await response.text()
+    const data = JSON.parse(responseText)
     if (!data?.data?.mpesa) return null
 
     const merged = { ...defaultSettings, mpesa: data.data.mpesa }
     return merged
-  } catch {
+  } catch (err) {
+    console.error('Failed to load settings from DB:', err)
     return null
   }
 }
 
 export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
   try {
-    const response = await fetch('/api.php', {
+    const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -150,7 +152,15 @@ export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
         settings: s
       })
     })
-    const data = await response.json()
+    const responseText = await response.text()
+    const contentType = response.headers.get('content-type')
+
+    if (contentType?.includes('text/html')) {
+      console.error('API returned HTML instead of JSON:', responseText.substring(0, 500))
+      return false
+    }
+
+    const data = JSON.parse(responseText)
     return data?.status === 'success'
   } catch (err) {
     console.error('Failed to save settings to DB:', err)
