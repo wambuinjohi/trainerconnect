@@ -8,6 +8,11 @@ function validateCoordinates(
   lat: any,
   lng: any
 ): { lat: number; lng: number } | null {
+  // Handle empty/null values
+  if (lat == null || lng == null || lat === '' || lng === '') {
+    return null
+  }
+
   // Convert to numbers
   const numLat = Number(lat)
   const numLng = Number(lng)
@@ -21,12 +26,6 @@ function validateCoordinates(
   // Latitude: -90 to 90
   // Longitude: -180 to 180
   if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
-    return null
-  }
-
-  // Reject (0, 0) as it's typically a placeholder/unset value
-  // (0, 0) is in the Atlantic Ocean and almost never a real location
-  if (numLat === 0 && numLng === 0) {
     return null
   }
 
