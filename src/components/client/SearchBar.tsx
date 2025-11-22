@@ -101,6 +101,20 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   const showSuggestions = isFocused && allSuggestions.length > 0
 
+  const renderSuggestionText = (text: string) => {
+    if (!value) return text
+    const parts = highlightQuery(text, value)
+    return parts.map((part, idx) =>
+      part.highlighted ? (
+        <mark key={idx} className="bg-primary/20 font-semibold">
+          {part.text}
+        </mark>
+      ) : (
+        <span key={idx}>{part.text}</span>
+      )
+    )
+  }
+
   return (
     <div className={`relative ${className}`}>
       {/* Input Container */}
