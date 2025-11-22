@@ -9,6 +9,7 @@ import { MediaUploadSection } from './MediaUploadSection'
 import { useFileUpload } from '@/hooks/use-file-upload'
 import { Upload, X } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
+import { apiRequest, withAuth } from '@/lib/api'
 
 interface TrainerProfile {
   user_id?: string
