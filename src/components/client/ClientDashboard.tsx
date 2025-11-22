@@ -88,6 +88,28 @@ export const ClientDashboard: React.FC = () => {
     }
   }
 
+  const checkPendingRatings = async () => {
+    if (!user?.id) return
+    try {
+      const notifData = await apiRequest('notifications_get', { user_id: user.id }, { headers: withAuth() })
+      const notifs = Array.isArray(notifData) ? notifData : (notifData?.data || [])
+
+      // Find pending rate action notifications
+      const pendingRateNotif = notifs.find((n: any) => n.action_type === 'rate' && !n.read && n.booking_id)
+
+      if (pendingRateNotif && bookings.length > 0) {
+        // Find the associated booking
+        const targetBooking = bookings.find(b => b.id === pendingRateNotif.booking_id)
+        if (targetBooking && targetBooking.status === 'completed' && !reviewsByBooking[targetBooking.id]) {
+          // Auto-open the review modal
+          setReviewBooking(targetBooking)
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to check pending ratings', err)
+    }
+  }
+
   useEffect(() => {
     const loadCategories = async () => {
       try {
