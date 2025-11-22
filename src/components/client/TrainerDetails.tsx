@@ -87,17 +87,6 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                 <p className="text-sm text-muted-foreground">{profile?.bio || 'Experienced trainer in ' + trainer.discipline + '.'}</p>
               </div>
 
-              {(Array.isArray(profile?.disciplines) && profile.disciplines.length > 0) && (
-                <div>
-                  <h4 className="font-semibold mb-2">Disciplines</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {profile.disciplines.map((d:any,i:number)=>(
-                      <Badge key={i}>{d}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {categories.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Service Categories</h4>
