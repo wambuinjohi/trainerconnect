@@ -355,6 +355,22 @@ switch ($action) {
         $rows = [];
         while ($row = $result->fetch_assoc()) $rows[] = $row;
 
+        // Parse JSON fields for user_profiles table
+        if ($table === 'user_profiles') {
+            $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
+            foreach ($rows as &$row) {
+                foreach ($jsonFields as $field) {
+                    if (isset($row[$field]) && is_string($row[$field]) && !empty($row[$field])) {
+                        $parsed = json_decode($row[$field], true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $row[$field] = $parsed;
+                        }
+                    }
+                }
+            }
+            unset($row);
+        }
+
         $count = null;
         if (isset($input['count']) && $input['count'] === 'exact') {
             $countSql = "SELECT COUNT(*) as cnt FROM `$table` $where";
