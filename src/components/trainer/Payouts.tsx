@@ -54,8 +54,8 @@ export const Payouts: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
           <CardContent>
             <div className="space-y-3">
               {earnings.length === 0 && <div className="text-sm text-muted-foreground">No earnings yet</div>}
-              {earnings.map((e, i) => (
-                <div key={i} className="p-2 border border-border rounded-md bg-card flex justify-between items-center">
+              {earnings.map((e) => (
+                <div key={e.id || `${e.amount}-${e.created_at}`} className="p-2 border border-border rounded-md bg-card flex justify-between items-center">
                   <div>
                     <div className="font-semibold">Ksh {e.amount}</div>
                     <div className="text-sm text-muted-foreground">{new Date(e.created_at || Date.now()).toLocaleDateString()}</div>
