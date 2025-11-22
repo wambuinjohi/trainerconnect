@@ -213,8 +213,8 @@ const Home: React.FC = () => {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card 
-                key={index} 
+              <Card
+                key={index}
                 className="p-6 hover:shadow-glow transition-all duration-300 hover:-translate-y-1 bg-card"
               >
                 <CardContent className="p-0 space-y-4">
@@ -227,6 +227,56 @@ const Home: React.FC = () => {
               </Card>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="py-20 lg:py-32">
+        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              Find Trainers by Service
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Browse certified trainers specialized in various fitness disciplines
+            </p>
+          </div>
+
+          {categoriesLoading ? (
+            <div className="text-center text-muted-foreground py-8">Loading categories...</div>
+          ) : categories.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-muted-foreground">
+                No categories available at the moment
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {categories.map((category) => (
+                <Link key={category.id} to={`/explore?category=${category.id}`}>
+                  <Card className="h-full hover:shadow-glow transition-all duration-300 hover:-translate-y-1 cursor-pointer bg-card">
+                    <CardContent className="p-6 flex flex-col items-center text-center space-y-4 h-full justify-between">
+                      <div className="flex-1 flex items-center justify-center">
+                        <div className="text-3xl">
+                          {category.icon || '🏋️'}
+                        </div>
+                      </div>
+                      <div className="space-y-2 flex-1">
+                        <h3 className="text-lg font-semibold text-foreground">{category.name}</h3>
+                        {category.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2">{category.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-trainer-primary text-sm font-medium">
+                        View trainers
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
