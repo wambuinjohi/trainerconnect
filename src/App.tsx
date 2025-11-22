@@ -1,4 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
 import React, { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -72,7 +71,6 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="system">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
           <Sonner />
           <ApiConfigProvider>
             <AuthProvider>
