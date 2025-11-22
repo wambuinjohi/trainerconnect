@@ -32,6 +32,7 @@ import { LocationSelector } from './LocationSelector'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import * as apiService from '@/lib/api-service'
+import { enrichTrainersWithDistance } from '@/lib/distance-utils'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -137,9 +138,14 @@ export const ClientDashboard: React.FC = () => {
 
   const applyFilters = (list: any[]) => {
     return list.filter(t => {
+      // Handle category filter from selectedCategory (sidebar) or from filters (modal)
       if (selectedCategory) {
         const selectedCategoryId = dbCategories.find(c => c.name === selectedCategory)?.id
         const match = selectedCategoryId && t.categoryIds && t.categoryIds.includes(selectedCategoryId)
+        if (!match) return false
+      } else if (filters.categoryId !== null && filters.categoryId !== undefined) {
+        // Category filter from modal
+        const match = t.categoryIds && t.categoryIds.includes(filters.categoryId)
         if (!match) return false
       }
       if (filters.minRating && (t.rating || 0) < filters.minRating) return false
@@ -151,32 +157,10 @@ export const ClientDashboard: React.FC = () => {
     })
   }
 
-  // Haversine formula to calculate distance between two coordinates
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371 // Earth's radius in km
-    const dLat = ((lat2 - lat1) * Math.PI) / 180
-    const dLon = ((lon2 - lon1) * Math.PI) / 180
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-    return R * c
-  }
-
   // Update distances when user location changes
   useEffect(() => {
     if (userLocation && trainers.length > 0) {
-      const updatedTrainers = trainers.map(trainer => {
-        if (trainer.location_lat && trainer.location_lng) {
-          const distKm = calculateDistance(userLocation.lat, userLocation.lng, trainer.location_lat, trainer.location_lng)
-          return {
-            ...trainer,
-            distanceKm: distKm,
-            distance: distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)}km`
-          }
-        }
-        return trainer
-      }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      const updatedTrainers = enrichTrainersWithDistance(trainers, userLocation)
       setTrainers(updatedTrainers)
     }
   }, [userLocation])

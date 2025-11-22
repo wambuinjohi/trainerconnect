@@ -1313,13 +1313,11 @@ switch ($action) {
 
         $userId = $conn->real_escape_string($input['user_id']);
 
-        // Delete from user_profiles
         $stmt = $conn->prepare("DELETE FROM user_profiles WHERE user_id = ?");
         $stmt->bind_param("s", $userId);
         $stmt->execute();
         $stmt->close();
 
-        // Delete from users
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
         $stmt->bind_param("s", $userId);
 
@@ -1341,13 +1339,11 @@ switch ($action) {
 
         $userId = $conn->real_escape_string($input['user_id']);
 
-        // Delete from user_profiles
         $stmt = $conn->prepare("DELETE FROM user_profiles WHERE user_id = ?");
         $stmt->bind_param("s", $userId);
         $stmt->execute();
         $stmt->close();
 
-        // Delete from users
         $stmt = $conn->prepare("DELETE FROM users WHERE id = ?");
         $stmt->bind_param("s", $userId);
 
@@ -1619,6 +1615,68 @@ switch ($action) {
         } else {
             $stmt->close();
             respond("error", "Failed to fetch trainers: " . $conn->error, null, 500);
+        }
+        break;
+
+    // SET TRAINER CATEGORY PRICING
+    case 'trainer_category_pricing_set':
+        if (!isset($input['trainer_id']) || !isset($input['category_id']) || !isset($input['hourly_rate'])) {
+            respond("error", "Missing trainer_id, category_id, or hourly_rate.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+        $hourlyRate = floatval($input['hourly_rate']);
+
+        if ($hourlyRate < 0) {
+            respond("error", "Hourly rate cannot be negative.", null, 400);
+        }
+
+        $stmt = $conn->prepare("
+            UPDATE trainer_categories
+            SET hourly_rate = ?
+            WHERE trainer_id = ? AND category_id = ?
+        ");
+        $stmt->bind_param("dsi", $hourlyRate, $trainerId, $categoryId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_category_pricing_set', ['trainer_id' => $trainerId, 'category_id' => $categoryId, 'hourly_rate' => $hourlyRate]);
+            respond("success", "Trainer category pricing updated successfully.", ["trainer_id" => $trainerId, "category_id" => $categoryId, "hourly_rate" => $hourlyRate]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update trainer category pricing: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET TRAINER CATEGORY PRICING
+    case 'trainer_category_pricing_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $stmt = $conn->prepare("
+            SELECT tc.id, tc.trainer_id, tc.category_id, c.id as cat_id, c.name, c.icon, c.description,
+                   tc.hourly_rate, tc.created_at
+            FROM trainer_categories tc
+            LEFT JOIN categories c ON tc.category_id = c.id
+            WHERE tc.trainer_id = ?
+            ORDER BY c.name ASC
+        ");
+        $stmt->bind_param("s", $trainerId);
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $categories = [];
+            while ($row = $result->fetch_assoc()) {
+                $categories[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Trainer category pricing fetched successfully.", ["data" => $categories]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch trainer category pricing: " . $conn->error, null, 500);
         }
         break;
 
@@ -2231,11 +2289,11 @@ switch ($action) {
         $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
         $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
         $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : NULL;
         $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
         $bookingId = 'booking_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        // Validate availability unless explicitly skipped (e.g., for admin bookings)
         if (!$skipValidation) {
             $profileSql = "SELECT availability, timezone FROM user_profiles WHERE user_id = '$trainerId' LIMIT 1";
             $profileResult = $conn->query($profileSql);
@@ -2281,16 +2339,20 @@ switch ($action) {
 
         $stmt = $conn->prepare("
             INSERT INTO bookings (
-                id, client_id, trainer_id, session_date, session_time, duration_hours,
+                id, client_id, trainer_id, category_id, session_date, session_time, duration_hours,
                 total_sessions, status, total_amount, notes, client_location_label,
                 client_location_lat, client_location_lng, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("sssssiiisddsss", $bookingId, $clientId, $trainerId, $sessionDate, $sessionTime, $durationHours, $totalSessions, $status, $totalAmount, $notes, $clientLocationLabel, $clientLocationLat, $clientLocationLng, $now, $now);
+        $stmt->bind_param("sssisiiisddsss", $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours, $totalSessions, $status, $totalAmount, $notes, $clientLocationLabel, $clientLocationLat, $clientLocationLng, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
-            logEvent('booking_created', ['booking_id' => $bookingId, 'client_id' => $clientId, 'trainer_id' => $trainerId]);
+            $eventData = ['booking_id' => $bookingId, 'client_id' => $clientId, 'trainer_id' => $trainerId];
+            if ($categoryId) {
+                $eventData['category_id'] = $categoryId;
+            }
+            logEvent('booking_created', $eventData);
             respond("success", "Booking created successfully.", ["id" => $bookingId]);
         } else {
             $stmt->close();
@@ -2424,7 +2486,6 @@ switch ($action) {
         $payoutRequestId = $conn->real_escape_string($input['payout_request_id']);
         $commissionPercentage = isset($input['commission_percentage']) ? floatval($input['commission_percentage']) : 0;
 
-        // Get the payout request
         $sql = "SELECT * FROM payout_requests WHERE id = '$payoutRequestId' LIMIT 1";
         $result = $conn->query($sql);
 
@@ -2436,11 +2497,9 @@ switch ($action) {
         $trainerId = $request['trainer_id'];
         $requestedAmount = floatval($request['amount']);
 
-        // Calculate net amount after commission
         $commission = ($requestedAmount * $commissionPercentage) / 100;
         $netAmount = $requestedAmount - $commission;
 
-        // Get trainer's phone number
         $phoneQuery = $conn->query("SELECT phone FROM user_profiles WHERE user_id = '$trainerId'");
         if (!$phoneQuery || $phoneQuery->num_rows === 0) {
             respond("error", "Trainer phone not found.", null, 404);
@@ -2449,7 +2508,6 @@ switch ($action) {
         $trainerData = $phoneQuery->fetch_assoc();
         $phoneNumber = $trainerData['phone'];
 
-        // Create B2C payment record
         $b2cId = 'b2c_' . uniqid();
         $referenceId = 'payout_' . uniqid();
         $now = date('Y-m-d H:i:s');
@@ -2468,7 +2526,6 @@ switch ($action) {
         if ($stmt->execute()) {
             $stmt->close();
 
-            // Update payout request status
             $updateStmt = $conn->prepare("
                 UPDATE payout_requests
                 SET status = ?, b2c_payment_id = ?, commission = ?, net_amount = ?, updated_at = NOW()
@@ -2503,23 +2560,18 @@ switch ($action) {
     // SAVE ADMIN SETTINGS (including M-Pesa credentials)
     case 'settings_save':
         try {
-            // Verify admin token if required
             $adminToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? null;
-            // For now, allow saving if properly structured
 
             if (isset($input['settings']) && is_array($input['settings'])) {
                 $settings = $input['settings'];
 
-                // Extract and save M-Pesa credentials if present
                 if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
                     $mpesaCreds = $settings['mpesa'];
 
-                    // Validate required fields
                     if (empty($mpesaCreds['consumerKey']) || empty($mpesaCreds['consumerSecret'])) {
                         respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
                     }
 
-                    // Save M-Pesa credentials to database
                     $saveResult = saveMpesaCredentials($mpesaCreds);
                     if (!$saveResult) {
                         respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
@@ -2547,14 +2599,12 @@ switch ($action) {
     // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
     case 'settings_get':
         try {
-            // Retrieve M-Pesa credentials safely
             $mpesaCreds = null;
 
             if (function_exists('getMpesaCredentialsForAdmin')) {
                 $mpesaCreds = @getMpesaCredentialsForAdmin();
             }
 
-            // Handle null or invalid credentials gracefully
             if (!is_array($mpesaCreds)) {
                 $mpesaCreds = null;
             }
@@ -2565,8 +2615,6 @@ switch ($action) {
             ]);
         } catch (Exception $e) {
             logEvent('settings_get_error', ['error' => $e->getMessage()]);
-            // Return a success response with null credentials instead of error
-            // This prevents the admin dashboard from failing to load
             respond("success", "Settings retrieved (with defaults).", [
                 "mpesa" => null,
                 "mpesa_source" => null
@@ -2580,7 +2628,6 @@ switch ($action) {
             respond("error", "Missing required fields: b2c_payment_id, phone_number, amount.", null, 400);
         }
 
-        // Validate M-Pesa credentials are configured
         $credValidation = validateMpesaCredentialsConfigured();
         if (!$credValidation['valid']) {
             respond("error", $credValidation['error'], null, 500);
@@ -2590,7 +2637,6 @@ switch ($action) {
         $phoneNumber = $conn->real_escape_string($input['phone_number']);
         $amount = floatval($input['amount']);
 
-        // Normalize phone number
         $phoneNumber = str_replace(['+', ' ', '-'], '', $phoneNumber);
         if (substr($phoneNumber, 0, 1) !== '2') {
             $phoneNumber = '254' . substr($phoneNumber, -9);
@@ -2600,7 +2646,6 @@ switch ($action) {
             respond("error", "Invalid phone number format.", null, 400);
         }
 
-        // Get reference ID for this B2C payment
         $refQuery = $conn->query("SELECT reference_id FROM b2c_payments WHERE id = '$b2cPaymentId'");
         if (!$refQuery || $refQuery->num_rows === 0) {
             respond("error", "B2C payment not found.", null, 404);
@@ -2609,17 +2654,14 @@ switch ($action) {
         $refData = $refQuery->fetch_assoc();
         $referenceId = $refData['reference_id'];
 
-        // Get server-side credentials (NOT from request body)
         $mpesaCreds = getMpesaCredentials();
         if (!$mpesaCreds) {
             respond("error", "M-Pesa credentials not properly configured.", null, 500);
         }
 
-        // Determine callback URLs (uses defaults from mpesa_helper if not configured)
         $resultUrl = $mpesaCreds['result_url'] ?? null;
         $queueTimeoutUrl = $mpesaCreds['result_url'] ?? null;
 
-        // Call M-Pesa API to initiate B2C payment
         $b2cResult = initiateB2CPayment(
             $mpesaCreds,
             $phoneNumber,
@@ -2640,7 +2682,6 @@ switch ($action) {
             respond("error", $b2cResult['error'], null, 500);
         }
 
-        // Update B2C payment with M-Pesa transaction IDs
         $conversationId = $b2cResult['conversation_id'];
         $originatorConversationId = $b2cResult['originator_conversation_id'];
         $initiatedStatus = 'initiated';
@@ -2745,7 +2786,6 @@ switch ($action) {
             respond("error", "Missing required fields: phone, amount.", null, 400);
         }
 
-        // Validate M-Pesa credentials are configured
         $credValidation = validateMpesaCredentialsConfigured();
         if (!$credValidation['valid']) {
             respond("error", $credValidation['error'], null, 500);
@@ -2757,7 +2797,6 @@ switch ($action) {
         $accountReference = isset($input['account_reference']) ? $conn->real_escape_string($input['account_reference']) : 'payment_' . uniqid();
         $description = isset($input['transaction_description']) ? $conn->real_escape_string($input['transaction_description']) : 'Service Payment';
 
-        // Normalize phone number
         $phone = str_replace(['+', ' ', '-'], '', $phone);
         if (substr($phone, 0, 1) !== '2') {
             $phone = '254' . substr($phone, -9);
@@ -2771,19 +2810,16 @@ switch ($action) {
             respond("error", "Amount must be between 5 and 150000.", null, 400);
         }
 
-        // Get server-side credentials (NOT from request body)
         $mpesaCreds = getMpesaCredentials();
         if (!$mpesaCreds) {
             respond("error", "M-Pesa credentials not properly configured.", null, 500);
         }
 
-        // Determine callback URL (uses default from mpesa_helper if not in credentials)
         $callbackUrl = null;
         if (!empty($mpesaCreds['result_url'])) {
             $callbackUrl = $mpesaCreds['result_url'];
         }
 
-        // Call M-Pesa API to initiate STK Push
         $stkResult = initiateSTKPush($mpesaCreds, $phone, $amount, $accountReference, $callbackUrl);
 
         if (!$stkResult['success']) {
@@ -2795,7 +2831,6 @@ switch ($action) {
             respond("error", $stkResult['error'], null, 500);
         }
 
-        // Create STK push session record
         $sessionId = 'stk_' . uniqid();
         $now = date('Y-m-d H:i:s');
         $checkoutRequestId = $stkResult['checkout_request_id'];
@@ -2866,7 +2901,6 @@ switch ($action) {
             respond("error", "Missing checkout_request_id.", null, 400);
         }
 
-        // Validate M-Pesa credentials are configured
         $credValidation = validateMpesaCredentialsConfigured();
         if (!$credValidation['valid']) {
             respond("error", $credValidation['error'], null, 500);
@@ -2874,7 +2908,6 @@ switch ($action) {
 
         $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
 
-        // Query the session
         $sql = "SELECT * FROM stk_push_sessions WHERE checkout_request_id = ? LIMIT 1";
         $stmt = $conn->prepare($sql);
 
@@ -2893,7 +2926,6 @@ switch ($action) {
 
         $session = $result->fetch_assoc();
 
-        // Query M-Pesa for actual status
         $mpesaCreds = getMpesaCredentials();
         if (!$mpesaCreds) {
             respond("error", "M-Pesa credentials not configured.", null, 500);
@@ -2902,7 +2934,6 @@ switch ($action) {
         $queryResult = querySTKPushStatus($mpesaCreds, $checkoutRequestId);
 
         if (!$queryResult['success']) {
-            // If M-Pesa query fails, return cached status from DB
             logPaymentEvent('stk_push_query_failed', [
                 'checkout_request_id' => $checkoutRequestId,
                 'error' => $queryResult['error']
@@ -2940,7 +2971,6 @@ switch ($action) {
         $resultDescription = isset($input['result_description']) ? $conn->real_escape_string($input['result_description']) : null;
         $merchantRequestId = isset($input['merchant_request_id']) ? $conn->real_escape_string($input['merchant_request_id']) : null;
 
-        // Determine status based on result code
         $status = 'failed';
         if ($resultCode === '0' || $resultCode === 0) {
             $status = 'success';
@@ -2948,7 +2978,6 @@ switch ($action) {
             $status = 'timeout';
         }
 
-        // Update the session
         $stmt = $conn->prepare("
             UPDATE stk_push_sessions
             SET status = ?, result_code = ?, result_description = ?, updated_at = NOW()
@@ -3016,7 +3045,6 @@ switch ($action) {
 
         $userId = $conn->real_escape_string($input['user_id']);
 
-        // Ensure wallet table exists
         $conn->query("
             CREATE TABLE IF NOT EXISTS `user_wallets` (
                 `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
@@ -3034,7 +3062,6 @@ switch ($action) {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ");
 
-        // Get or create wallet
         $sql = "SELECT * FROM user_wallets WHERE user_id = ?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("s", $userId);
@@ -3043,7 +3070,6 @@ switch ($action) {
         $stmt->close();
 
         if ($result->num_rows === 0) {
-            // Create new wallet
             $walletId = uniqid();
             $now = date('Y-m-d H:i:s');
             $stmt = $conn->prepare("
@@ -3078,11 +3104,10 @@ switch ($action) {
 
         $userId = $conn->real_escape_string($input['user_id']);
         $amount = floatval($input['amount']);
-        $transactionType = $conn->real_escape_string($input['transaction_type']); // 'deposit', 'withdrawal', 'commission'
+        $transactionType = $conn->real_escape_string($input['transaction_type']);
         $reference = isset($input['reference']) ? $conn->real_escape_string($input['reference']) : null;
         $description = isset($input['description']) ? $conn->real_escape_string($input['description']) : null;
 
-        // Get current wallet
         $walletQuery = $conn->query("SELECT * FROM user_wallets WHERE user_id = '$userId'");
         if ($walletQuery->num_rows === 0) {
             respond("error", "Wallet not found. Create wallet first.", null, 404);
@@ -3096,7 +3121,6 @@ switch ($action) {
             respond("error", "Insufficient balance.", null, 400);
         }
 
-        // Update wallet
         $stmt = $conn->prepare("
             UPDATE user_wallets
             SET balance = ?, available_balance = ?, updated_at = NOW()
@@ -3108,7 +3132,6 @@ switch ($action) {
         if ($stmt->execute()) {
             $stmt->close();
 
-            // Create transaction record
             $transactionId = 'txn_' . uniqid();
             $now = date('Y-m-d H:i:s');
 
@@ -3153,7 +3176,6 @@ switch ($action) {
 
         if ($limit > 100) $limit = 100;
 
-        // Ensure table exists
         $conn->query("
             CREATE TABLE IF NOT EXISTS `wallet_transactions` (
                 `id` VARCHAR(36) PRIMARY KEY,
