@@ -103,27 +103,41 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
         // Load trainer categories
         const categoriesData = await apiService.getTrainerCategories(userId)
-        console.log('Trainer categories loaded:', categoriesData)
+        console.log('Raw trainer categories response:', categoriesData)
+
+        // Handle different API response formats
+        let categoriesList: any[] = []
         if (categoriesData?.data && Array.isArray(categoriesData.data)) {
-          const ids = categoriesData.data.map((cat: any) => {
+          categoriesList = categoriesData.data
+        } else if (Array.isArray(categoriesData)) {
+          categoriesList = categoriesData
+        }
+
+        console.log('Parsed categories list:', categoriesList)
+
+        if (categoriesList.length > 0) {
+          const ids = categoriesList.map((cat: any) => {
             const catId = cat.category_id || cat.cat_id || cat.id
-            console.log('Processing category:', cat, 'ID:', catId)
+            console.log('Processing category:', cat, 'Extracted ID:', catId)
             return catId
-          })
-          console.log('Selected category IDs:', ids)
+          }).filter((id): id is number => typeof id === 'number' && id > 0)
+
+          console.log('Final selected category IDs:', ids)
           setSelectedCategoryIds(ids)
 
           // Load category pricing
           const pricing: Record<number, number> = {}
           const baseRate = profileData?.hourly_rate || 1000
-          for (const cat of categoriesData.data) {
+          for (const cat of categoriesList) {
             const catId = cat.category_id || cat.cat_id || cat.id
-            pricing[catId] = cat.hourly_rate || baseRate
+            if (typeof catId === 'number' && catId > 0) {
+              pricing[catId] = cat.hourly_rate || baseRate
+            }
           }
           console.log('Category pricing:', pricing)
           setCategoryPricing(pricing)
         } else {
-          console.log('No trainer categories found or invalid response:', categoriesData)
+          console.log('No trainer categories found, response was:', categoriesData)
           setSelectedCategoryIds([])
           setCategoryPricing({})
         }
