@@ -1583,7 +1583,7 @@ switch ($action) {
             INSERT INTO trainer_categories (id, trainer_id, category_id, created_at)
             VALUES (?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssiss", $assignmentId, $trainerId, $categoryId, $now);
+        $stmt->bind_param("ssis", $assignmentId, $trainerId, $categoryId, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
