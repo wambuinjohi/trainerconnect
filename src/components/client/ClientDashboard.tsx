@@ -274,7 +274,20 @@ export const ClientDashboard: React.FC = () => {
 
   const openTrainer = (trainer: any) => setSelectedTrainer(trainer)
   const closeTrainer = () => setSelectedTrainer(null)
-  const handleCategorySelect = (category: string) => { setSelectedCategory(category); setActiveTab('explore') }
+
+  const handleCategorySelect = (category: string) => {
+    if (!userLocation) {
+      toast({
+        title: 'Location required',
+        description: 'Please enable GPS to find trainers near you',
+        variant: 'destructive'
+      })
+      requestLocation()
+      return
+    }
+    setSelectedCategory(category)
+    setActiveTab('explore')
+  }
 
   const handleLogout = async () => {
     await signOut()
