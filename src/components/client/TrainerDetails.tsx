@@ -22,34 +22,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
     const fetchProfile = async () => {
       try {
         const data = await apiRequest('profile_get', { user_id: trainer.id }, { headers: withAuth() })
-        if (data) {
-          // Parse JSON fields if they are strings
-          const parsed = {
-            ...data,
-            availability: (() => {
-              try {
-                return typeof data.availability === 'string' ? JSON.parse(data.availability) : data.availability
-              } catch {
-                return null
-              }
-            })(),
-            hourly_rate_by_radius: (() => {
-              try {
-                return typeof data.hourly_rate_by_radius === 'string' ? JSON.parse(data.hourly_rate_by_radius) : data.hourly_rate_by_radius
-              } catch {
-                return []
-              }
-            })(),
-            pricing_packages: (() => {
-              try {
-                return typeof data.pricing_packages === 'string' ? JSON.parse(data.pricing_packages) : data.pricing_packages
-              } catch {
-                return []
-              }
-            })()
-          }
-          setProfile(parsed)
-        }
+        if (data) setProfile(data)
       } catch (err) {
         // ignore
       }
