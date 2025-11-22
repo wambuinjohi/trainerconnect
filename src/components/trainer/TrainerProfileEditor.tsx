@@ -25,6 +25,13 @@ interface TrainerProfile {
   bio?: string
 }
 
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
+
 export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
   const userId = user?.id
