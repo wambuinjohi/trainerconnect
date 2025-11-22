@@ -65,12 +65,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   useEffect(() => {
     const loadCategories = async () => {
       try {
+        console.log('Loading all categories...')
         const categoriesData = await apiService.getCategories()
-        if (categoriesData?.data) {
+        console.log('All categories response:', categoriesData)
+
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          console.log('Categories loaded:', categoriesData.data)
           setCategories(categoriesData.data)
+        } else {
+          console.warn('Invalid categories response format:', categoriesData)
         }
       } catch (error) {
         console.error('Failed to fetch categories', error)
+        toast({
+          title: 'Failed to load categories',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
       } finally {
         setCategoriesLoading(false)
       }
@@ -82,40 +93,74 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   useEffect(() => {
     if (!userId) return
     setLoading(true)
+    setSelectedCategoryIds([])
+    setCategoryPricing({})
     const loadProfile = async () => {
       try {
         // Load profile from API
-        const profileData = await apiService.getUserProfile(userId)
-        if (profileData?.data && profileData.data.length > 0) {
-          const data = profileData.data[0]
-          setProfile(data)
-          setName(String(data.full_name || data.name || ''))
+        let profileData: any = null
+        const response = await apiService.getUserProfile(userId)
+        if (response?.data && response.data.length > 0) {
+          profileData = response.data[0]
+          setProfile(profileData)
+          setName(String(profileData.full_name || profileData.name || ''))
         } else {
           // Fallback to localStorage
           const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
           if (savedProfile) {
-            const data = JSON.parse(savedProfile)
-            setProfile(data)
-            setName(String(data.name || ''))
+            profileData = JSON.parse(savedProfile)
+            setProfile(profileData)
+            setName(String(profileData.name || ''))
           }
         }
 
         // Load trainer categories
         const categoriesData = await apiService.getTrainerCategories(userId)
-        if (categoriesData?.data) {
-          const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
+        console.log('Raw trainer categories response:', categoriesData)
+
+        // Handle different API response formats
+        let categoriesList: any[] = []
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          categoriesList = categoriesData.data
+        } else if (Array.isArray(categoriesData)) {
+          categoriesList = categoriesData
+        }
+
+        console.log('Parsed categories list:', categoriesList)
+
+        if (categoriesList.length > 0) {
+          const ids = categoriesList.map((cat: any) => {
+            const catId = cat.category_id || cat.cat_id || cat.id
+            console.log('Processing category:', cat, 'Extracted ID:', catId)
+            return catId
+          }).filter((id): id is number => typeof id === 'number' && id > 0)
+
+          console.log('Final selected category IDs:', ids)
           setSelectedCategoryIds(ids)
 
           // Load category pricing
           const pricing: Record<number, number> = {}
-          for (const cat of categoriesData.data) {
-            const catId = cat.category_id || cat.cat_id
-            pricing[catId] = cat.hourly_rate || profile?.hourly_rate || 1000
+          const baseRate = profileData?.hourly_rate || 1000
+          for (const cat of categoriesList) {
+            const catId = cat.category_id || cat.cat_id || cat.id
+            if (typeof catId === 'number' && catId > 0) {
+              pricing[catId] = cat.hourly_rate || baseRate
+            }
           }
+          console.log('Category pricing:', pricing)
           setCategoryPricing(pricing)
+        } else {
+          console.log('No trainer categories found, response was:', categoriesData)
+          setSelectedCategoryIds([])
+          setCategoryPricing({})
         }
       } catch (error) {
-        console.error('Failed to fetch profile', error)
+        console.error('Failed to fetch profile:', error)
+        toast({
+          title: 'Failed to load profile',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
         // Fallback to localStorage on error
         try {
           const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)

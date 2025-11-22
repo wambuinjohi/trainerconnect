@@ -1583,7 +1583,7 @@ switch ($action) {
             INSERT INTO trainer_categories (id, trainer_id, category_id, created_at)
             VALUES (?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssiss", $assignmentId, $trainerId, $categoryId, $now);
+        $stmt->bind_param("ssis", $assignmentId, $trainerId, $categoryId, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -1668,12 +1668,15 @@ switch ($action) {
             respond("error", "Hourly rate cannot be negative.", null, 400);
         }
 
+        $pricingId = $conn->real_escape_string(bin2hex(random_bytes(18)));
+        $now = date('Y-m-d H:i:s');
+
         $stmt = $conn->prepare("
-            UPDATE trainer_categories
-            SET hourly_rate = ?
-            WHERE trainer_id = ? AND category_id = ?
+            INSERT INTO trainer_category_pricing (id, trainer_id, category_id, hourly_rate, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE hourly_rate = ?, updated_at = NOW()
         ");
-        $stmt->bind_param("dsi", $hourlyRate, $trainerId, $categoryId);
+        $stmt->bind_param("ssidsd", $pricingId, $trainerId, $categoryId, $hourlyRate, $now, $hourlyRate);
 
         if ($stmt->execute()) {
             $stmt->close();
