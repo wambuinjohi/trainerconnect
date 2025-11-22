@@ -125,7 +125,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           console.log('No trainer categories found or invalid response:', categoriesData)
         }
       } catch (error) {
-        console.error('Failed to fetch profile', error)
+        console.error('Failed to fetch profile:', error)
+        toast({
+          title: 'Failed to load profile',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
         // Fallback to localStorage on error
         try {
           const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
