@@ -178,6 +178,11 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         ? profile.certifications
         : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
 
+      // Disciplines normalization
+      const disciplines = Array.isArray(profile.disciplines)
+        ? profile.disciplines
+        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
+
       // Hourly rate validation
       const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
       const hourlyRateNum = hourlyRateRaw === '' ? 0 : Number(hourlyRateRaw)
