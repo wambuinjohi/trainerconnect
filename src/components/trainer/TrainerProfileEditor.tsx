@@ -339,7 +339,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       <CardHeader>
         <CardTitle>Edit Trainer Profile</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pb-24">
         <div className="grid grid-cols-1 gap-4">
           <div>
             <Label htmlFor="name">Full name</Label>
