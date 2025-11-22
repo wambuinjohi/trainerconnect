@@ -108,6 +108,76 @@ function buildWhereClause($conditions) {
     return "WHERE " . implode(" AND ", $parts);
 }
 
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance($lat1, $lon1, $lat2, $lon2) {
+    $lat1 = floatval($lat1);
+    $lon1 = floatval($lon1);
+    $lat2 = floatval($lat2);
+    $lon2 = floatval($lon2);
+
+    // Validate coordinates
+    if (!is_finite($lat1) || !is_finite($lon1) || !is_finite($lat2) || !is_finite($lon2)) {
+        return null;
+    }
+    if ($lat1 < -90 || $lat1 > 90 || $lon1 < -180 || $lon1 > 180 ||
+        $lat2 < -90 || $lat2 > 90 || $lon2 < -180 || $lon2 > 180) {
+        return null;
+    }
+
+    $R = 6371; // Earth's radius in km
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    $distance = $R * $c;
+
+    // Sanity check: max distance between two points on Earth is ~20,000km
+    if ($distance > 20000) {
+        return null;
+    }
+
+    return round($distance, 2);
+}
+
+// Calculate transport fee based on distance and pricing tiers
+function calculateTransportFee($distanceKm, $hourlyRateByRadius) {
+    if ($distanceKm === null) {
+        return 0;
+    }
+
+    if (empty($hourlyRateByRadius) || !is_array($hourlyRateByRadius)) {
+        return 0;
+    }
+
+    // Sort tiers by radius_km in ascending order
+    usort($hourlyRateByRadius, function($a, $b) {
+        $radiusA = floatval($a['radius_km'] ?? $a['radius'] ?? 0);
+        $radiusB = floatval($b['radius_km'] ?? $b['radius'] ?? 0);
+        return $radiusA <=> $radiusB;
+    });
+
+    // Find the matching tier (first tier >= distance)
+    foreach ($hourlyRateByRadius as $tier) {
+        $tierRadius = floatval($tier['radius_km'] ?? $tier['radius'] ?? 0);
+        $tierRate = floatval($tier['rate'] ?? $tier['hourly_rate'] ?? 0);
+
+        if ($distanceKm <= $tierRadius) {
+            return round($tierRate, 2);
+        }
+    }
+
+    // If distance exceeds all tiers, use the highest tier rate
+    if (!empty($hourlyRateByRadius)) {
+        $lastTier = end($hourlyRateByRadius);
+        $rate = floatval($lastTier['rate'] ?? $lastTier['hourly_rate'] ?? 0);
+        return round($rate, 2);
+    }
+
+    return 0;
+}
+
 // =============================
 // HANDLE FILE UPLOADS (MULTIPART)
 // =============================
