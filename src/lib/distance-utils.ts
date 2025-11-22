@@ -96,7 +96,7 @@ export function enrichTrainersWithDistance(
 
   return trainers
     .map((trainer) => {
-      if (trainer.location_lat && trainer.location_lng) {
+      if (trainer.location_lat != null && trainer.location_lng != null) {
         const distKm = calculateDistance(
           userLocation.lat,
           userLocation.lng,
