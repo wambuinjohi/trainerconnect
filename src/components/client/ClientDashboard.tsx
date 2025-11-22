@@ -62,6 +62,17 @@ export const ClientDashboard: React.FC = () => {
   const [reviewBooking, setReviewBooking] = useState<any | null>(null)
   const [nextSessionBooking, setNextSessionBooking] = useState<any | null>(null)
 
+  const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Generate suggestions from trainer names
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return trainers
+      .filter(t => (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      .map(t => t.name)
+      .slice(0, 5)
+  }, [searchQuery, trainers])
+
   const modalOpen = Boolean(selectedTrainer || showEditProfile || showPaymentMethods || showNotifications || showHelpSupport || showFilters || reviewBooking || nextSessionBooking)
 
   useEffect(() => {
