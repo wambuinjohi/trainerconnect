@@ -85,18 +85,19 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     const loadProfile = async () => {
       try {
         // Load profile from API
-        const profileData = await apiService.getUserProfile(userId)
-        if (profileData?.data && profileData.data.length > 0) {
-          const data = profileData.data[0]
-          setProfile(data)
-          setName(String(data.full_name || data.name || ''))
+        let profileData: any = null
+        const response = await apiService.getUserProfile(userId)
+        if (response?.data && response.data.length > 0) {
+          profileData = response.data[0]
+          setProfile(profileData)
+          setName(String(profileData.full_name || profileData.name || ''))
         } else {
           // Fallback to localStorage
           const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
           if (savedProfile) {
-            const data = JSON.parse(savedProfile)
-            setProfile(data)
-            setName(String(data.name || ''))
+            profileData = JSON.parse(savedProfile)
+            setProfile(profileData)
+            setName(String(profileData.name || ''))
           }
         }
 
@@ -114,7 +115,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
           // Load category pricing
           const pricing: Record<number, number> = {}
-          const baseRate = data?.hourly_rate || profile?.hourly_rate || 1000
+          const baseRate = profileData?.hourly_rate || 1000
           for (const cat of categoriesData.data) {
             const catId = cat.category_id || cat.cat_id || cat.id
             pricing[catId] = cat.hourly_rate || baseRate
@@ -123,6 +124,8 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           setCategoryPricing(pricing)
         } else {
           console.log('No trainer categories found or invalid response:', categoriesData)
+          setSelectedCategoryIds([])
+          setCategoryPricing({})
         }
       } catch (error) {
         console.error('Failed to fetch profile:', error)
