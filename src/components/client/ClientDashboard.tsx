@@ -565,7 +565,7 @@ export const ClientDashboard: React.FC = () => {
       {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
       {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
       {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => { setReviewBooking(null); setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b)) }} />}
-      {nextSessionBooking && <NextSessionModal booking={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings?.() }} />}
+      {nextSessionBooking && <NextSessionModal previous={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings() }} />}
 
       {!modalOpen && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
