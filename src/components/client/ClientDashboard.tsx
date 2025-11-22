@@ -138,9 +138,14 @@ export const ClientDashboard: React.FC = () => {
 
   const applyFilters = (list: any[]) => {
     return list.filter(t => {
+      // Handle category filter from selectedCategory (sidebar) or from filters (modal)
       if (selectedCategory) {
         const selectedCategoryId = dbCategories.find(c => c.name === selectedCategory)?.id
         const match = selectedCategoryId && t.categoryIds && t.categoryIds.includes(selectedCategoryId)
+        if (!match) return false
+      } else if (filters.categoryId !== null && filters.categoryId !== undefined) {
+        // Category filter from modal
+        const match = t.categoryIds && t.categoryIds.includes(filters.categoryId)
         if (!match) return false
       }
       if (filters.minRating && (t.rating || 0) < filters.minRating) return false
