@@ -170,12 +170,6 @@ export async function getBookingDetails(bookingId: string) {
 // TRAINER SERVICES
 // ============================================================================
 
-export async function getTrainersByCategory(category: string) {
-  return apiRequest('select', {
-    table: 'user_profiles',
-    where: `user_type = 'trainer' AND is_approved = 1`,
-  })
-}
 
 export async function getAvailableTrainers(filters?: Record<string, any>) {
   let where = `user_type = 'trainer' AND is_approved = 1`
