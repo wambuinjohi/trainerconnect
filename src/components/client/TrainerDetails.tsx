@@ -33,7 +33,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
     const fetchProfile = async () => {
       try {
         const data = await apiRequest('profile_get', { user_id: trainer.id }, { headers: withAuth() })
-        if (data) setProfile(data)
+        if (data?.data) setProfile(data.data)
       } catch (err) {
         // ignore
       }
