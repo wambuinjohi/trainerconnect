@@ -88,7 +88,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                   </div>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="font-semibold">Ksh {formatHourlyRate(trainer.hourlyRate)}/hour</div>
+                  <div className="font-semibold">Ksh {formatHourlyRate(profile?.hourly_rate || trainer.hourlyRate)}/hour</div>
                   <Badge variant={trainer.available ? 'default' : 'secondary'}>{trainer.available ? 'Available' : 'Busy'}</Badge>
                 </div>
               </div>
@@ -124,7 +124,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                     ))}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Ksh {formatHourlyRate(trainer.hourlyRate)}/hour</div>
+                  <div className="text-sm text-muted-foreground">Ksh {formatHourlyRate(profile?.hourly_rate || trainer.hourlyRate)}/hour</div>
                 )}
               </div>
 
