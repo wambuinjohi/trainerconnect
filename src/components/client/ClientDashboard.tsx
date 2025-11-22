@@ -152,23 +152,10 @@ export const ClientDashboard: React.FC = () => {
     })
   }
 
-  // Import and use calculateDistance from distance-utils
-  // Already imported at the top of the file
-
   // Update distances when user location changes
   useEffect(() => {
     if (userLocation && trainers.length > 0) {
-      const updatedTrainers = trainers.map(trainer => {
-        if (trainer.location_lat && trainer.location_lng) {
-          const distKm = calculateDistance(userLocation.lat, userLocation.lng, trainer.location_lat, trainer.location_lng)
-          return {
-            ...trainer,
-            distanceKm: distKm,
-            distance: distKm < 1 ? `${(distKm * 1000).toFixed(0)}m` : `${distKm.toFixed(1)}km`
-          }
-        }
-        return trainer
-      }).sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+      const updatedTrainers = enrichTrainersWithDistance(trainers, userLocation)
       setTrainers(updatedTrainers)
     }
   }, [userLocation])
