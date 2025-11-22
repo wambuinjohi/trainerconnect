@@ -1,68 +1,105 @@
 import React, { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
+import { Star, MapPin } from 'lucide-react'
 import Header from '@/components/Header'
+import * as apiService from '@/lib/api-service'
+
+interface Trainer {
+  user_id: string
+  full_name: string
+  hourly_rate: number
+  location_label: string
+  is_available: boolean
+  rating: number
+  categoryIds?: number[]
+}
 
 // Trainer card component
-const TrainerRow: React.FC<{ t: any }> = ({ t }) => (
-  <Card className="mb-3">
-    <CardContent>
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="font-semibold text-foreground">{t.full_name || t.display_name || 'Trainer'}</div>
-          <div className="text-sm text-muted-foreground">
-            {t.disciplines ? (Array.isArray(t.disciplines) ? t.disciplines.join(', ') : t.disciplines) : (t.bio || '')}
+const TrainerRow: React.FC<{ t: Trainer, categories: any[] }> = ({ t, categories }) => {
+  const categoryNames = t.categoryIds
+    ? t.categoryIds.map(id => categories.find(c => c.id === id)?.name).filter(Boolean)
+    : []
+
+  return (
+    <Card className="mb-3">
+      <CardContent>
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="font-semibold text-foreground">{t.full_name || 'Trainer'}</div>
+            {categoryNames.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {categoryNames.map((name, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">
+                    {name}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="text-sm text-muted-foreground mt-2 flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
+              {t.location_label || 'Unknown'}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground mt-2">Location: {t.location_label || 'Unknown'}</div>
+          <div className="text-right">
+            <div className="font-semibold">Ksh {t.hourly_rate ?? '—'}/hr</div>
+            {t.rating && (
+              <div className="flex items-center gap-1 mt-1 justify-end text-sm">
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <span>{t.rating}</span>
+              </div>
+            )}
+            <div className="text-xs text-muted-foreground mt-2">{t.is_available ? 'Available' : 'Offline'}</div>
+          </div>
         </div>
-        <div className="text-right">
-          <div className="font-semibold">Ksh {t.hourly_rate ?? t.hourlyRate ?? '—'}/hr</div>
-          <div className="text-xs text-muted-foreground mt-2">{t.is_available ? 'Available' : 'Offline'}</div>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-)
+      </CardContent>
+    </Card>
+  )
+}
 
 // Main Explore page
 const Explore: React.FC = () => {
-  const [trainers, setTrainers] = useState<any[]>([])
+  const [trainers, setTrainers] = useState<Trainer[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let mounted = true
+    const fetchData = async () => {
+      try {
+        // Fetch categories first
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setCategories(categoriesData.data)
+        }
 
-    // Mock data to replace Supabase
-    const mockTrainers = [
-      {
-        id: 1,
-        full_name: 'John Doe',
-        disciplines: ['Yoga', 'Strength'],
-        location_label: 'Nairobi',
-        hourly_rate: 1200,
-        is_available: true,
-        bio: 'Certified personal trainer with 5 years experience'
-      },
-      {
-        id: 2,
-        full_name: 'Jane Smith',
-        disciplines: ['Pilates', 'Cardio'],
-        location_label: 'Mombasa',
-        hourly_rate: 1000,
-        is_available: false,
-        bio: 'Specializes in functional training and wellness'
-      }
-    ]
-
-    setTimeout(() => {
-      if (mounted) {
-        setTrainers(mockTrainers)
+        // Fetch available trainers
+        const trainersData = await apiService.getAvailableTrainers()
+        if (trainersData?.data) {
+          // Fetch categories for each trainer
+          const trainersWithCategories = await Promise.all(
+            trainersData.data.map(async (trainer: Trainer) => {
+              try {
+                const categoriesData = await apiService.getTrainerCategories(trainer.user_id)
+                const categoryIds = categoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
+                return { ...trainer, categoryIds }
+              } catch (err) {
+                console.warn('Failed to fetch categories for trainer', trainer.user_id)
+                return { ...trainer, categoryIds: [] }
+              }
+            })
+          )
+          setTrainers(trainersWithCategories)
+        }
+      } catch (err) {
+        console.error('Failed to load explore data:', err)
+      } finally {
         setLoading(false)
       }
-    }, 500) // simulate loading
+    }
 
-    return () => { mounted = false }
+    fetchData()
   }, [])
 
   return (
@@ -80,9 +117,9 @@ const Explore: React.FC = () => {
           ) : (
             <div>
               {trainers.length === 0 ? (
-                <Card><CardContent>No trainers found. Try again later.</CardContent></Card>
+                <Card><CardContent className="p-4">No trainers found. Try again later.</CardContent></Card>
               ) : (
-                trainers.map((t:any) => <TrainerRow key={t.id || Math.random()} t={t} />)
+                trainers.map((t) => <TrainerRow key={t.user_id} t={t} categories={categories} />)
               )}
             </div>
           )}
