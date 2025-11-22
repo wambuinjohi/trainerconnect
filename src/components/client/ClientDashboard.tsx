@@ -406,7 +406,7 @@ export const ClientDashboard: React.FC = () => {
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         {trainer.location_label}
-                        {trainer.distance !== '—' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
+                        {trainer.distance !== '��' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
@@ -594,7 +594,11 @@ export const ClientDashboard: React.FC = () => {
       {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
       {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
       {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
-      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => { setReviewBooking(null); setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b)) }} />}
+      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => {
+        setReviewByBooking(reviewBooking.id)
+        setReviewBooking(null)
+        setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b))
+      }} />}
       {nextSessionBooking && <NextSessionModal previous={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings() }} />}
 
       {!modalOpen && (
