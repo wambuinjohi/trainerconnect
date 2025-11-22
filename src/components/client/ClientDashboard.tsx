@@ -89,6 +89,10 @@ export const ClientDashboard: React.FC = () => {
     }
   }
 
+  const setReviewByBooking = (bookingId: string) => {
+    setReviewsByBooking(prev => ({ ...prev, [bookingId]: true }))
+  }
+
   const checkPendingRatings = async () => {
     if (!user?.id) return
     try {
@@ -101,7 +105,7 @@ export const ClientDashboard: React.FC = () => {
       if (pendingRateNotif && bookings.length > 0) {
         // Find the associated booking
         const targetBooking = bookings.find(b => b.id === pendingRateNotif.booking_id)
-        if (targetBooking && targetBooking.status === 'completed' && !reviewsByBooking[targetBooking.id]) {
+        if (targetBooking && targetBooking.status === 'completed' && !reviewsByBooking[targetBooking.id] && !targetBooking.rating_submitted) {
           // Auto-open the review modal
           setReviewBooking(targetBooking)
         }
@@ -406,7 +410,7 @@ export const ClientDashboard: React.FC = () => {
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
                         {trainer.location_label}
-                        {trainer.distance !== '��' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
+                        {trainer.distance !== '—' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
