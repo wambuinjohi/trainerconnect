@@ -98,6 +98,20 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                 </div>
               )}
 
+              {categories.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Service Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat:any,i:number)=>(
+                      <Badge key={i} variant="outline" className="gap-1">
+                        {cat.icon && <span>{cat.icon}</span>}
+                        <span>{cat.name}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h4 className="font-semibold mb-2">Pricing</h4>
                 {Array.isArray(profile?.hourly_rate_by_radius) && profile.hourly_rate_by_radius.length > 0 ? (
