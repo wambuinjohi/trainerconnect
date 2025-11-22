@@ -155,18 +155,42 @@ export const ClientDashboard: React.FC = () => {
               return {
                 id: trainer.user_id,
                 name: trainer.full_name || trainer.user_id,
+                discipline: trainer.disciplines || 'Training',
+                bio: trainer.bio || '',
+                profile_image: trainer.profile_image || null,
                 categoryIds: categoryIds,
                 rating: trainer.rating || 0,
                 reviews: trainer.total_reviews || 0,
                 hourlyRate: trainer.hourly_rate || 0,
-                available: true,
+                available: trainer.is_available !== false,
                 distance: '—',
                 distanceKm: null,
                 service_radius: trainer.service_radius || 10,
                 location_lat: trainer.location_lat || null,
                 location_lng: trainer.location_lng || null,
                 location_label: trainer.location_label || 'Unknown',
-                image: '👤'
+                image: trainer.profile_image ? null : '👤',
+                availability: (() => {
+                  try {
+                    return typeof trainer.availability === 'string' ? JSON.parse(trainer.availability) : trainer.availability
+                  } catch {
+                    return null
+                  }
+                })(),
+                hourly_rate_by_radius: (() => {
+                  try {
+                    return typeof trainer.hourly_rate_by_radius === 'string' ? JSON.parse(trainer.hourly_rate_by_radius) : trainer.hourly_rate_by_radius
+                  } catch {
+                    return []
+                  }
+                })(),
+                pricing_packages: (() => {
+                  try {
+                    return typeof trainer.pricing_packages === 'string' ? JSON.parse(trainer.pricing_packages) : trainer.pricing_packages
+                  } catch {
+                    return []
+                  }
+                })()
               }
             })
           )
