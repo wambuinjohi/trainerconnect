@@ -178,6 +178,11 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         ? profile.certifications
         : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
 
+      // Disciplines normalization
+      const disciplines = Array.isArray(profile.disciplines)
+        ? profile.disciplines
+        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
+
       // Hourly rate validation
       const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
       const hourlyRateNum = hourlyRateRaw === '' ? 0 : Number(hourlyRateRaw)
@@ -241,6 +246,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         user_id: userId,
         user_type: 'trainer',
         name: name || null,
+        disciplines,
         certifications,
         hourly_rate: hourlyRateNum,
         hourly_rate_by_radius: cleanedTiers.length ? cleanedTiers : null,
@@ -255,6 +261,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       try {
         const updatePayload = {
           full_name: name,
+          disciplines: JSON.stringify(disciplines),
           certifications: JSON.stringify(certifications),
           hourly_rate: hourlyRateNum,
           service_radius: serviceRadiusNum,
