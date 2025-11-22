@@ -218,15 +218,20 @@ export const ClientDashboard: React.FC = () => {
         <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
         <p className="text-muted-foreground">Connect with certified professionals in your area</p>
       </div>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-        <Input
-          placeholder="Search for services..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 h-12 rounded-full bg-input border-border text-foreground placeholder:text-muted-foreground"
-        />
-      </div>
+      <SearchBar
+        placeholder="Search trainers or services..."
+        value={searchQuery}
+        onChange={setSearchQuery}
+        onSubmit={(query) => {
+          if (query) {
+            addSearch(query)
+            setActiveTab('explore')
+          }
+        }}
+        suggestions={suggestions}
+        recentSearches={recentSearches}
+        popularSearches={popularSearches}
+      />
 
       <LocationSelector />
 
