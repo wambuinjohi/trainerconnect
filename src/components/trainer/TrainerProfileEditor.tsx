@@ -61,6 +61,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   })
 
   useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setCategories(categoriesData.data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories', error)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    loadCategories()
+  }, [])
+
+  useEffect(() => {
     if (!userId) return
     setLoading(true)
     const loadProfile = async () => {
@@ -79,6 +96,13 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             setProfile(data)
             setName(String(data.name || ''))
           }
+        }
+
+        // Load trainer categories
+        const categoriesData = await apiService.getTrainerCategories(userId)
+        if (categoriesData?.data) {
+          const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
+          setSelectedCategoryIds(ids)
         }
       } catch (error) {
         console.error('Failed to fetch profile', error)
