@@ -176,8 +176,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     aria-selected={selectedSuggestionIndex === idx}
                   >
                     <div className="flex items-center gap-2">
-                      <Search className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="truncate">{suggestion}</span>
+                      <Zap className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                      <span className="truncate">{renderSuggestionText(suggestion)}</span>
                     </div>
                   </button>
                 ))}
