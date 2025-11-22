@@ -2493,7 +2493,10 @@ switch ($action) {
         // Client surcharge (what client sees as platform fee)
         $clientSurcharge = $platformFee;
 
-        // Trainer net amount (base service + transport fee - platform fee)
+        // Trainer net amount = what trainer receives after platform deduction
+        // Includes both base service AND transport fee, minus only the platform commission
+        // Formula: base_service_amount + transport_fee - platform_fee
+        // Note: platform_fee is calculated ONLY on base_service_amount, never on transport_fee
         $trainerNetAmount = round($baseServiceAmount + $transportFee - $platformFee, 2);
 
         // Total amount client pays
