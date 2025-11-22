@@ -24,6 +24,12 @@ function validateCoordinates(
     return null
   }
 
+  // Reject (0, 0) as it's typically a placeholder/unset value
+  // (0, 0) is in the Atlantic Ocean and almost never a real location
+  if (numLat === 0 && numLng === 0) {
+    return null
+  }
+
   return { lat: numLat, lng: numLng }
 }
 
