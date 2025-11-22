@@ -473,14 +473,14 @@ export const TrainerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {showServicesManager && <ServicesManager onClose={() => setShowServicesManager(false)} />}
-      {editingProfile && <TrainerProfileEditor onClose={() => setEditingProfile(false)} />}
-      {editingAvailability && <AvailabilityEditor onClose={() => setEditingAvailability(false)} />}
-      {showServiceArea && <ServiceAreaEditor onClose={() => setShowServiceArea(false)} />}
-      {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
-      {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
-      {showReport && <TrainerReportIssue onClose={() => setShowReport(false)} />}
-      {chatBooking && <TrainerChat booking={chatBooking} onClose={closeChat} />}
+      {showServicesManager && <ServicesManager key="services-manager" onClose={() => setShowServicesManager(false)} />}
+      {editingProfile && <TrainerProfileEditor key="profile-editor" onClose={() => setEditingProfile(false)} />}
+      {editingAvailability && <AvailabilityEditor key="availability-editor" onClose={() => setEditingAvailability(false)} />}
+      {showServiceArea && <ServiceAreaEditor key="service-area-editor" onClose={() => setShowServiceArea(false)} />}
+      {showPayouts && <Payouts key="payouts" onClose={() => setShowPayouts(false)} />}
+      {showPromote && <PromoteProfile key="promote-profile" onClose={() => setShowPromote(false)} />}
+      {showReport && <TrainerReportIssue key="report-issue" onClose={() => setShowReport(false)} />}
+      {chatBooking && <TrainerChat key={`chat-${chatBooking.id}`} booking={chatBooking} onClose={closeChat} />}
     </div>
   )
 }
