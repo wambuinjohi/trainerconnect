@@ -1896,7 +1896,17 @@ switch ($action) {
 
         $trainerId = $conn->real_escape_string($input['trainer_id']);
 
-        $sql = "SELECT * FROM payments WHERE trainer_id = '$trainerId' ORDER BY created_at DESC";
+        // Get all completed payments for this trainer with fee breakdown
+        $sql = "
+            SELECT
+                id, booking_id, amount, trainer_net_amount,
+                base_service_amount, transport_fee, platform_fee, vat_amount,
+                status, method, transaction_reference, created_at, updated_at
+            FROM payments
+            WHERE trainer_id = '$trainerId'
+              AND status = 'completed'
+            ORDER BY created_at DESC
+        ";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -1908,7 +1918,30 @@ switch ($action) {
             $payments[] = $row;
         }
 
-        respond("success", "Payments fetched successfully.", ["data" => $payments]);
+        // Calculate total trainer earnings from completed payments
+        $sumSql = "
+            SELECT
+                SUM(trainer_net_amount) as total_earnings,
+                COUNT(*) as payment_count,
+                SUM(transport_fee) as total_transport_earned
+            FROM payments
+            WHERE trainer_id = '$trainerId'
+              AND status = 'completed'
+        ";
+        $sumResult = $conn->query($sumSql);
+        $summary = [];
+        if ($sumResult && $sumResult->num_rows > 0) {
+            $summary = $sumResult->fetch_assoc();
+        }
+
+        respond("success", "Payments fetched successfully.", [
+            "data" => $payments,
+            "summary" => [
+                "total_earnings" => floatval($summary['total_earnings'] ?? 0),
+                "payment_count" => intval($summary['payment_count'] ?? 0),
+                "total_transport_earned" => floatval($summary['total_transport_earned'] ?? 0)
+            ]
+        ]);
         break;
 
     // INSERT PAYMENT
