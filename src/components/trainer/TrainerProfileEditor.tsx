@@ -387,6 +387,43 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             <textarea id="bio" value={profile.bio || ''} onChange={(e) => handleChange('bio', e.target.value)} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
           </div>
 
+          <div className="space-y-3">
+            <Label>Service Categories (required)</Label>
+            <p className="text-sm text-muted-foreground">Select the categories of services you offer. These are defined by the platform administrator.</p>
+            {categoriesLoading ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No categories available. Please ask the administrator to create some.</div>
+            ) : (
+              <div className="space-y-2 border border-border rounded-md p-4">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id={`category_${category.id}`}
+                      checked={selectedCategoryIds.includes(category.id)}
+                      onChange={(e) => handleCategoryChange(category.id, e.target.checked)}
+                      disabled={loading}
+                      className="mt-1"
+                    />
+                    <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        {category.icon && <span className="text-xl">{category.icon}</span>}
+                        <span className="font-medium text-foreground">{category.name}</span>
+                      </div>
+                      {category.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                      )}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedCategoryIds.length === 0 && (
+              <p className="text-xs text-destructive">Please select at least one category</p>
+            )}
+          </div>
+
           <div>
             <Label htmlFor="disciplines">Disciplines (comma separated)</Label>
             <Input id="disciplines" value={(profile.disciplines && Array.isArray(profile.disciplines)) ? (profile.disciplines as string[]).join(', ') : (profile.disciplines as any) || ''} onChange={(e) => handleChange('disciplines', e.target.value)} />
