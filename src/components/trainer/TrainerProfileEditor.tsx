@@ -104,6 +104,14 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         if (categoriesData?.data) {
           const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
           setSelectedCategoryIds(ids)
+
+          // Load category pricing
+          const pricing: Record<number, number> = {}
+          for (const cat of categoriesData.data) {
+            const catId = cat.category_id || cat.cat_id
+            pricing[catId] = cat.hourly_rate || profile?.hourly_rate || 1000
+          }
+          setCategoryPricing(pricing)
         }
       } catch (error) {
         console.error('Failed to fetch profile', error)
