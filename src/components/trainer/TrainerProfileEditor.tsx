@@ -39,6 +39,9 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
   const [name, setName] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const { upload } = useFileUpload({
     maxFileSize: 5 * 1024 * 1024,
