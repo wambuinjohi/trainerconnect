@@ -127,6 +127,15 @@ export const TrainerPayoutRequest: React.FC = () => {
             </div>
           )}
           <p className="text-sm text-muted-foreground mt-2">From completed sessions</p>
+          {!loading && balance > 0 && (
+            <>
+              {requests && requests.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  This includes any client travel/transport fees you've earned
+                </p>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
