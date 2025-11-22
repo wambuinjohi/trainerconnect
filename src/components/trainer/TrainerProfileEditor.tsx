@@ -124,6 +124,14 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
   const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
 
+  const handleCategoryChange = (categoryId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedCategoryIds(prev => [...new Set([...prev, categoryId])])
+    } else {
+      setSelectedCategoryIds(prev => prev.filter(id => id !== categoryId))
+    }
+  }
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files
     if (files && files.length > 0) {
