@@ -65,12 +65,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   useEffect(() => {
     const loadCategories = async () => {
       try {
+        console.log('Loading all categories...')
         const categoriesData = await apiService.getCategories()
-        if (categoriesData?.data) {
+        console.log('All categories response:', categoriesData)
+
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          console.log('Categories loaded:', categoriesData.data)
           setCategories(categoriesData.data)
+        } else {
+          console.warn('Invalid categories response format:', categoriesData)
         }
       } catch (error) {
         console.error('Failed to fetch categories', error)
+        toast({
+          title: 'Failed to load categories',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
       } finally {
         setCategoriesLoading(false)
       }
