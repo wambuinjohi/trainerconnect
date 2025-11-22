@@ -298,7 +298,12 @@ switch ($action) {
                 $updates = [];
                 foreach ($data as $key => $value) {
                     if ($key === 'user_id') continue;
-                    $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($value) . "'";
+                    if ($value === null || $value === 'null') {
+                        $updates[] = "`" . $conn->real_escape_string($key) . "` = NULL";
+                    } else {
+                        $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                        $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                    }
                 }
                 $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "'";
                 if ($conn->query($sql)) {
@@ -310,8 +315,15 @@ switch ($action) {
         }
 
         $columns = implode("`, `", array_keys($data));
-        $values = implode("', '", array_map([$conn, 'real_escape_string'], array_values($data)));
-        $sql = "INSERT INTO `$table` (`$columns`) VALUES ('$values')";
+        $escapedValues = array_map(function($value) use ($conn) {
+            if ($value === null || $value === 'null') {
+                return 'NULL';
+            }
+            $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+            return "'" . $conn->real_escape_string($stringValue) . "'";
+        }, array_values($data));
+        $values = implode(", ", $escapedValues);
+        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($values)";
 
         if ($conn->query($sql)) {
             respond("success", "Record inserted successfully.", ["id" => $conn->insert_id]);
@@ -404,7 +416,8 @@ switch ($action) {
             if ($value === null || $value === 'null') {
                 $updates[] = "`$escapedKey` = NULL";
             } else {
-                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($value) . "'";
+                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($stringValue) . "'";
             }
         }
 
@@ -445,8 +458,15 @@ switch ($action) {
 
         foreach ($rows as $data) {
             $columns = implode("`, `", array_keys($data));
-            $values = implode("', '", array_map([$conn, 'real_escape_string'], array_values($data)));
-            $sql = "INSERT INTO `$table` (`$columns`) VALUES ('$values')";
+            $escapedValues = array_map(function($value) use ($conn) {
+                if ($value === null || $value === 'null') {
+                    return 'NULL';
+                }
+                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                return "'" . $conn->real_escape_string($stringValue) . "'";
+            }, array_values($data));
+            $values = implode(", ", $escapedValues);
+            $sql = "INSERT INTO `$table` (`$columns`) VALUES ($values)";
             if ($conn->query($sql)) $inserted++;
         }
 

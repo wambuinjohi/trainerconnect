@@ -4,10 +4,10 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import * as apiService from '@/lib/api-service'
 
 type TierRow = { id: string; radius: string; rate: string }
 type ServiceCategory = { id: number; name: string; icon?: string; description?: string }
@@ -37,49 +37,56 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
     const load = async () => {
       try {
         // Fetch all available categories
-        const categoriesData = await apiRequest('select', {
-          table: 'categories',
-          order: 'name ASC'
-        })
+        const categoriesData = await apiService.getCategories()
         if (active && categoriesData?.data) {
           setAllCategories(categoriesData.data)
         }
 
         // Fetch trainer profile
-        const profileData = await apiRequest('profile_get', { user_id: userId }, { headers: withAuth() }).catch(() => ({}))
+        const profileData = await apiService.getUserProfile(userId).catch(() => ({ data: [] }))
         if (!active) return
 
-        // Set base rate
-        setBaseRate(profileData?.hourly_rate != null ? String(profileData.hourly_rate) : '')
+        if (profileData?.data && profileData.data.length > 0) {
+          const profile = profileData.data[0]
 
-        // Load distance-based tiers
-        const profileTiers = Array.isArray(profileData?.hourly_rate_by_radius)
-          ? (profileData.hourly_rate_by_radius as any[])
-              .map((t) => ({ r: Number(t.radius_km), p: Number(t.rate) }))
-              .filter(x => Number.isFinite(x.r) && Number.isFinite(x.p))
-              .sort((a,b) => a.r - b.r)
-              .map((t, idx) => ({
-                id: createId(`tier-${idx}`),
-                radius: String(t.r),
-                rate: String(t.p)
-              }))
-          : []
-        setTiers(profileTiers)
+          // Set base rate
+          setBaseRate(profile?.hourly_rate != null ? String(profile.hourly_rate) : '')
+
+          // Load distance-based tiers - handle both JSON string and object formats
+          let tiers = profile?.hourly_rate_by_radius
+          if (typeof tiers === 'string') {
+            try {
+              tiers = JSON.parse(tiers)
+            } catch {
+              tiers = null
+            }
+          }
+
+          const profileTiers = Array.isArray(tiers)
+            ? (tiers as any[])
+                .map((t) => ({ r: Number(t.radius_km || t.radius), p: Number(t.rate) }))
+                .filter(x => Number.isFinite(x.r) && Number.isFinite(x.p))
+                .sort((a,b) => a.r - b.r)
+                .map((t, idx) => ({
+                  id: createId(`tier-${idx}`),
+                  radius: String(t.r),
+                  rate: String(t.p)
+                }))
+            : []
+          setTiers(profileTiers)
+        }
 
         // Load selected service categories
-        const selectedCats = await apiRequest('select', {
-          table: 'trainer_service_categories',
-          where: `trainer_id = '${userId}'`
-        }).catch(() => ({ data: [] }))
+        const selectedCats = await apiService.getTrainerCategories(userId).catch(() => ({ data: [] }))
 
         if (active && selectedCats?.data && Array.isArray(selectedCats.data)) {
-          const catIds = selectedCats.data.map((sc: any) => Number(sc.category_id))
+          const catIds = selectedCats.data.map((sc: any) => Number(sc.category_id || sc.cat_id))
           setSelectedCategoryIds(catIds)
-          
+
           const pricing: Record<number, string> = {}
           selectedCats.data.forEach((sc: any) => {
             if (sc.hourly_rate != null) {
-              pricing[Number(sc.category_id)] = String(sc.hourly_rate)
+              pricing[Number(sc.category_id || sc.cat_id)] = String(sc.hourly_rate)
             }
           })
           setCategoryPricing(pricing)
@@ -127,11 +134,13 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
       // Validate inputs
       if (!baseRate || isNaN(Number(baseRate))) {
         toast({ title: 'Invalid base rate', variant: 'destructive' })
+        setSaving(false)
         return
       }
 
       if (selectedCategoryIds.length === 0) {
         toast({ title: 'Select at least one service category', variant: 'destructive' })
+        setSaving(false)
         return
       }
 
@@ -139,41 +148,56 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
       for (const tier of tiers) {
         if (!tier.radius || !tier.rate || isNaN(Number(tier.radius)) || isNaN(Number(tier.rate))) {
           toast({ title: 'Invalid distance tier - fill all fields', variant: 'destructive' })
+          setSaving(false)
           return
         }
       }
 
-      // Save base rate
-      await apiRequest('profile_update', {
-        user_id: userId,
+      // Save base rate and tiers to profile
+      const cleanedTiers = tiers.length > 0
+        ? tiers.map(t => ({ radius_km: Number(t.radius), rate: Number(t.rate) }))
+        : null
+
+      await apiService.updateUserProfile(userId, {
         hourly_rate: Number(baseRate),
-        hourly_rate_by_radius: tiers.length > 0
-          ? tiers.map(t => ({ radius_km: Number(t.radius), rate: Number(t.rate) }))
-          : null
-      }, { headers: withAuth() })
+        hourly_rate_by_radius: cleanedTiers ? JSON.stringify(cleanedTiers) : null
+      })
 
-      // Save trainer service categories
-      // First delete existing
-      await apiRequest('delete', {
-        table: 'trainer_service_categories',
-        where: `trainer_id = '${userId}'`
-      }, { headers: withAuth() }).catch(() => {})
+      // Get previous categories to determine what changed
+      const previousCategoriesData = await apiService.getTrainerCategories(userId)
+      const previousCategoryIds = previousCategoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
 
-      // Then insert selected categories
-      const serviceCategoryRows = selectedCategoryIds.map(catId => ({
-        id: createId('tsc'),
-        trainer_id: userId,
-        category_id: catId,
-        hourly_rate: categoryPricing[catId] ? Number(categoryPricing[catId]) : null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
+      // Determine which categories to add and remove
+      const categoriesToAdd = selectedCategoryIds.filter(id => !previousCategoryIds.includes(id))
+      const categoriesToRemove = previousCategoryIds.filter(id => !selectedCategoryIds.includes(id))
 
-      if (serviceCategoryRows.length > 0) {
-        await apiRequest('insert', {
-          table: 'trainer_service_categories',
-          data: serviceCategoryRows
-        }, { headers: withAuth() })
+      // Save category changes
+      for (const categoryId of categoriesToAdd) {
+        try {
+          await apiService.addTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to add category ${categoryId}:`, catErr)
+        }
+      }
+
+      for (const categoryId of categoriesToRemove) {
+        try {
+          await apiService.removeTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
+      // Save category pricing for all selected categories
+      for (const categoryId of selectedCategoryIds) {
+        const price = categoryPricing[categoryId]
+        if (price && Number(price) > 0) {
+          try {
+            await apiService.setTrainerCategoryPricing(userId, categoryId, Number(price))
+          } catch (pricingErr) {
+            console.warn(`Failed to save pricing for category ${categoryId}:`, pricingErr)
+          }
+        }
       }
 
       toast({ title: 'Success', description: 'Pricing and services updated' })

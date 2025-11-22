@@ -8,6 +8,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
+import * as apiService from '@/lib/api-service'
 
 type DayConfig = { key: DayKey; label: string }
 type DayKey =
@@ -184,22 +185,55 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ onClose }) => {
     let active = true
     setLoading(true)
 
-    apiRequest('profile_get', { user_id: userId }, { headers: withAuth() })
-      .then((data: any) => {
+    const loadAvailability = async () => {
+      try {
+        const profileData = await apiService.getUserProfile(userId)
         if (!active) return
-        const parsed = parseAvailability(data?.availability)
-        setSchedule(parsed)
-        setInitialPayload(buildPayload(parsed))
-      })
-      .catch((error: any) => {
+
+        if (profileData?.data && profileData.data.length > 0) {
+          const data = profileData.data[0]
+          const parsed = parseAvailability(data?.availability)
+          setSchedule(parsed)
+          setInitialPayload(buildPayload(parsed))
+        } else {
+          // Fallback to localStorage if API returns empty
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            const data = JSON.parse(savedProfile)
+            const parsed = parseAvailability(data.availability)
+            setSchedule(parsed)
+            setInitialPayload(buildPayload(parsed))
+          } else {
+            setSchedule(createEmptySchedule())
+            setInitialPayload(buildPayload(createEmptySchedule()))
+          }
+        }
+      } catch (error: any) {
         if (!active) return
         console.warn('Failed to load availability', error)
-        setSchedule(createEmptySchedule())
-        setInitialPayload(buildPayload(createEmptySchedule()))
-      })
-      .finally(() => {
+
+        // Fallback to localStorage on error
+        try {
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            const data = JSON.parse(savedProfile)
+            const parsed = parseAvailability(data.availability)
+            setSchedule(parsed)
+            setInitialPayload(buildPayload(parsed))
+          } else {
+            setSchedule(createEmptySchedule())
+            setInitialPayload(buildPayload(createEmptySchedule()))
+          }
+        } catch {
+          setSchedule(createEmptySchedule())
+          setInitialPayload(buildPayload(createEmptySchedule()))
+        }
+      } finally {
         if (active) setLoading(false)
-      })
+      }
+    }
+
+    loadAvailability()
 
     return () => {
       active = false
@@ -278,7 +312,9 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ onClose }) => {
     setSaving(true)
     try {
       const payload = buildPayload(schedule)
-      await apiRequest('profile_update', { user_id: userId, user_type: 'trainer', availability: payload }, { headers: withAuth() })
+      await apiService.updateUserProfile(userId, {
+        availability: JSON.stringify(payload),
+      })
 
       setInitialPayload(payload)
       setShowValidationError(false)

@@ -1,4 +1,4 @@
-const DEFAULT_API_URL = 'https://trainer.skatryk.co.ke/api.php'
+const DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'https://trainer.skatryk.co.ke/api.php'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
