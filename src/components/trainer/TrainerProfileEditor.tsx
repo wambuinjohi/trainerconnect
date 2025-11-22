@@ -398,9 +398,9 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             ) : categories.length === 0 ? (
               <div className="text-sm text-muted-foreground">No categories available. Please ask the administrator to create some.</div>
             ) : (
-              <div className="space-y-2 border border-border rounded-md p-4">
+              <div className="space-y-3 border border-border rounded-md p-4">
                 {categories.map((category) => (
-                  <div key={category.id} className="flex items-start gap-3">
+                  <div key={category.id} className="flex items-start gap-3 pb-3 border-b border-border last:border-b-0">
                     <input
                       type="checkbox"
                       id={`category_${category.id}`}
@@ -409,15 +409,38 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
                       disabled={loading}
                       className="mt-1"
                     />
-                    <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        {category.icon && <span className="text-xl">{category.icon}</span>}
-                        <span className="font-medium text-foreground">{category.name}</span>
-                      </div>
-                      {category.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                    <div className="flex-1">
+                      <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          {category.icon && <span className="text-xl">{category.icon}</span>}
+                          <span className="font-medium text-foreground">{category.name}</span>
+                        </div>
+                        {category.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                        )}
+                      </label>
+                      {selectedCategoryIds.includes(category.id) && (
+                        <div className="mt-2 ml-6">
+                          <label htmlFor={`price_${category.id}`} className="text-xs font-medium text-foreground">
+                            Hourly Rate (Ksh)
+                          </label>
+                          <input
+                            id={`price_${category.id}`}
+                            type="number"
+                            min="0"
+                            step="100"
+                            value={categoryPricing[category.id] || ''}
+                            onChange={(e) => setCategoryPricing(prev => ({
+                              ...prev,
+                              [category.id]: Number(e.target.value)
+                            }))}
+                            disabled={loading}
+                            placeholder="e.g., 1500"
+                            className="w-full mt-1 px-2 py-1 border border-border rounded text-sm bg-input"
+                          />
+                        </div>
                       )}
-                    </label>
+                    </div>
                   </div>
                 ))}
               </div>
