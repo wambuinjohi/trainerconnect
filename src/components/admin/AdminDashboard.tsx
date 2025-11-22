@@ -1301,20 +1301,6 @@ export const AdminDashboard: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Debug: show raw fetch result */}
-      <div className="mt-4">
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="text-foreground">Fetch result (raw)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="text-sm overflow-auto max-h-64 bg-muted p-2 rounded">
-{JSON.stringify(users, null, 2)}
-            </pre>
-          </CardContent>
-        </Card>
-      </div>
-
     </div>
   )
 
