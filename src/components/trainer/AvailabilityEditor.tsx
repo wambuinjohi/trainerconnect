@@ -8,6 +8,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
+import * as apiService from '@/lib/api-service'
 
 type DayConfig = { key: DayKey; label: string }
 type DayKey =
