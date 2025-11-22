@@ -93,6 +93,8 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   useEffect(() => {
     if (!userId) return
     setLoading(true)
+    setSelectedCategoryIds([])
+    setCategoryPricing({})
     const loadProfile = async () => {
       try {
         // Load profile from API
