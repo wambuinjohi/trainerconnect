@@ -59,7 +59,15 @@ export function calculateDistance(
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
+  const distance = R * c
+
+  // Sanity check: max distance between two points on Earth is ~20,000km (half Earth's circumference)
+  // If distance is greater, coordinates are likely invalid/swapped
+  if (distance > 20000) {
+    return null
+  }
+
+  return distance
 }
 
 /**
