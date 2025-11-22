@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,9 @@ import { Star, MapPin, Search, Sliders } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/Header'
 import { FiltersModal } from '@/components/client/FiltersModal'
+import { SearchBar } from '@/components/client/SearchBar'
 import { toast } from '@/hooks/use-toast'
+import { useSearchHistory } from '@/hooks/use-search-history'
 import * as apiService from '@/lib/api-service'
 import {
   enrichTrainersWithDistance,
