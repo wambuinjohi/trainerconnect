@@ -108,6 +108,76 @@ function buildWhereClause($conditions) {
     return "WHERE " . implode(" AND ", $parts);
 }
 
+// Calculate distance between two coordinates using Haversine formula
+function calculateDistance($lat1, $lon1, $lat2, $lon2) {
+    $lat1 = floatval($lat1);
+    $lon1 = floatval($lon1);
+    $lat2 = floatval($lat2);
+    $lon2 = floatval($lon2);
+
+    // Validate coordinates
+    if (!is_finite($lat1) || !is_finite($lon1) || !is_finite($lat2) || !is_finite($lon2)) {
+        return null;
+    }
+    if ($lat1 < -90 || $lat1 > 90 || $lon1 < -180 || $lon1 > 180 ||
+        $lat2 < -90 || $lat2 > 90 || $lon2 < -180 || $lon2 > 180) {
+        return null;
+    }
+
+    $R = 6371; // Earth's radius in km
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    $distance = $R * $c;
+
+    // Sanity check: max distance between two points on Earth is ~20,000km
+    if ($distance > 20000) {
+        return null;
+    }
+
+    return round($distance, 2);
+}
+
+// Calculate transport fee based on distance and pricing tiers
+function calculateTransportFee($distanceKm, $hourlyRateByRadius) {
+    if ($distanceKm === null) {
+        return 0;
+    }
+
+    if (empty($hourlyRateByRadius) || !is_array($hourlyRateByRadius)) {
+        return 0;
+    }
+
+    // Sort tiers by radius_km in ascending order
+    usort($hourlyRateByRadius, function($a, $b) {
+        $radiusA = floatval($a['radius_km'] ?? $a['radius'] ?? 0);
+        $radiusB = floatval($b['radius_km'] ?? $b['radius'] ?? 0);
+        return $radiusA <=> $radiusB;
+    });
+
+    // Find the matching tier (first tier >= distance)
+    foreach ($hourlyRateByRadius as $tier) {
+        $tierRadius = floatval($tier['radius_km'] ?? $tier['radius'] ?? 0);
+        $tierRate = floatval($tier['rate'] ?? $tier['hourly_rate'] ?? 0);
+
+        if ($distanceKm <= $tierRadius) {
+            return round($tierRate, 2);
+        }
+    }
+
+    // If distance exceeds all tiers, use the highest tier rate
+    if (!empty($hourlyRateByRadius)) {
+        $lastTier = end($hourlyRateByRadius);
+        $rate = floatval($lastTier['rate'] ?? $lastTier['hourly_rate'] ?? 0);
+        return round($rate, 2);
+    }
+
+    return 0;
+}
+
 // =============================
 // HANDLE FILE UPLOADS (MULTIPART)
 // =============================
@@ -2325,6 +2395,168 @@ switch ($action) {
         break;
 
     // INSERT BOOKING (custom action wrapper)
+    // CREATE BOOKING WITH TRANSPORT FEE CALCULATION
+    case 'booking_create':
+        if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['session_date']) || !isset($input['session_time'])) {
+            respond("error", "Missing required booking fields (client_id, trainer_id, session_date, session_time).", null, 400);
+        }
+
+        $clientId = $conn->real_escape_string($input['client_id']);
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $sessionDate = $conn->real_escape_string($input['session_date']);
+        $sessionTime = $conn->real_escape_string($input['session_time']);
+        $durationHours = isset($input['duration_hours']) ? intval($input['duration_hours']) : 1;
+        $totalSessions = isset($input['total_sessions']) ? intval($input['total_sessions']) : 1;
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $baseServiceAmount = isset($input['base_service_amount']) ? floatval($input['base_service_amount']) : 0;
+        $notes = isset($input['notes']) ? $conn->real_escape_string($input['notes']) : NULL;
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : NULL;
+        $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
+
+        // Client location
+        $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
+        $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
+        $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+
+        // Get trainer profile for location and rates
+        $trainerProfileSql = "SELECT location_lat, location_lng, hourly_rate_by_radius, timezone, availability FROM user_profiles WHERE user_id = '$trainerId' LIMIT 1";
+        $trainerProfileResult = $conn->query($trainerProfileSql);
+        if (!$trainerProfileResult || $trainerProfileResult->num_rows === 0) {
+            respond("error", "Trainer not found.", null, 404);
+        }
+
+        $trainerProfile = $trainerProfileResult->fetch_assoc();
+        $trainerLat = floatval($trainerProfile['location_lat'] ?? 0);
+        $trainerLng = floatval($trainerProfile['location_lng'] ?? 0);
+        $hourlyRateByRadius = !empty($trainerProfile['hourly_rate_by_radius']) ?
+            json_decode($trainerProfile['hourly_rate_by_radius'], true) : [];
+
+        // Validate availability
+        if (!$skipValidation && !empty($trainerProfile['availability'])) {
+            $availability = json_decode($trainerProfile['availability'], true);
+            if (is_array($availability)) {
+                try {
+                    $bookingDateTime = new DateTime($sessionDate . ' ' . $sessionTime);
+                    $dayName = strtolower($bookingDateTime->format('l'));
+                    $bookingTime = $bookingDateTime->format('H:i');
+
+                    $dayAvailable = false;
+                    $timeSlotAvailable = false;
+
+                    if (isset($availability[$dayName]) && is_array($availability[$dayName])) {
+                        $dayAvailable = true;
+                        foreach ($availability[$dayName] as $slot) {
+                            if (is_string($slot)) {
+                                $parts = explode('-', $slot);
+                                if (count($parts) === 2) {
+                                    $slotStart = trim($parts[0]);
+                                    $slotEnd = trim($parts[1]);
+                                    if ($bookingTime >= $slotStart && $bookingTime < $slotEnd) {
+                                        $timeSlotAvailable = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!$timeSlotAvailable) {
+                        $dayLabel = $bookingDateTime->format('l');
+                        respond("error", "The trainer is not available on $dayLabel at $bookingTime. Please choose a different time from their availability.", null, 400);
+                    }
+                } catch (Exception $e) {
+                    respond("error", "Invalid date/time format.", null, 400);
+                }
+            }
+        }
+
+        // Calculate transport fee
+        $transportFee = 0;
+        if ($clientLocationLat !== null && $clientLocationLng !== null && $trainerLat !== 0 && $trainerLng !== 0) {
+            $distanceKm = calculateDistance($trainerLat, $trainerLng, $clientLocationLat, $clientLocationLng);
+            if ($distanceKm !== null && is_array($hourlyRateByRadius) && !empty($hourlyRateByRadius)) {
+                $transportFee = calculateTransportFee($distanceKm, $hourlyRateByRadius);
+            }
+        }
+
+        // Calculate fees
+        // IMPORTANT: Platform fee is calculated ONLY on base service amount, NOT on transport fees
+        // This ensures transport fees are never subject to commission deductions
+        // Platform fee percentage (10%)
+        $platformFeePct = 10;
+        $platformFee = round(($baseServiceAmount * $platformFeePct) / 100, 2);
+
+        // VAT percentage (16%)
+        $vatPct = 16;
+        $vatAmount = round((($baseServiceAmount + $platformFee) * $vatPct) / 100, 2);
+
+        // Client surcharge (what client sees as platform fee)
+        $clientSurcharge = $platformFee;
+
+        // Trainer net amount = what trainer receives after platform deduction
+        // Includes both base service AND transport fee, minus only the platform commission
+        // Formula: base_service_amount + transport_fee - platform_fee
+        // Note: platform_fee is calculated ONLY on base_service_amount, never on transport_fee
+        $trainerNetAmount = round($baseServiceAmount + $transportFee - $platformFee, 2);
+
+        // Total amount client pays
+        $totalAmount = round($baseServiceAmount + $transportFee + $platformFee + $vatAmount, 2);
+
+        // Generate booking ID
+        $bookingId = 'booking_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        // Prepare statement with all fee breakdown columns
+        $stmt = $conn->prepare("
+            INSERT INTO bookings (
+                id, client_id, trainer_id, category_id, session_date, session_time, duration_hours,
+                total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
+                vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
+                client_location_lat, client_location_lng, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->bind_param(
+            "sssisiiidddddddsddss",
+            $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
+            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFee,
+            $vatAmount, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
+            $clientLocationLat, $clientLocationLng, $now, $now
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            $eventData = [
+                'booking_id' => $bookingId,
+                'client_id' => $clientId,
+                'trainer_id' => $trainerId,
+                'base_service_amount' => $baseServiceAmount,
+                'transport_fee' => $transportFee,
+                'platform_fee' => $platformFee,
+                'total_amount' => $totalAmount,
+                'trainer_net' => $trainerNetAmount
+            ];
+            if ($categoryId) {
+                $eventData['category_id'] = $categoryId;
+            }
+            logEvent('booking_created_with_fees', $eventData);
+
+            respond("success", "Booking created successfully with fee breakdown.", [
+                "booking_id" => $bookingId,
+                "base_service_amount" => $baseServiceAmount,
+                "transport_fee" => $transportFee,
+                "platform_fee" => $platformFee,
+                "vat_amount" => $vatAmount,
+                "trainer_net_amount" => $trainerNetAmount,
+                "client_surcharge" => $clientSurcharge,
+                "total_amount" => $totalAmount
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to create booking: " . $conn->error, null, 500);
+        }
+        break;
+
     case 'booking_insert':
         if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['session_date']) || !isset($input['session_time'])) {
             respond("error", "Missing required booking fields (client_id, trainer_id, session_date, session_time).", null, 400);
@@ -2607,6 +2839,84 @@ switch ($action) {
         } else {
             $stmt->close();
             respond("error", "Failed to approve payout: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GENERATE INVOICE FROM BOOKING
+    case 'invoice_generate':
+        if (!isset($input['booking_id'])) {
+            respond("error", "Missing booking_id.", null, 400);
+        }
+
+        $bookingId = $conn->real_escape_string($input['booking_id']);
+
+        // Fetch booking details
+        $bookingSql = "SELECT * FROM bookings WHERE id = '$bookingId' LIMIT 1";
+        $bookingResult = $conn->query($bookingSql);
+        if (!$bookingResult || $bookingResult->num_rows === 0) {
+            respond("error", "Booking not found.", null, 404);
+        }
+
+        $booking = $bookingResult->fetch_assoc();
+        $clientId = $booking['client_id'];
+        $trainerId = $booking['trainer_id'];
+        $baseServiceAmount = floatval($booking['base_service_amount'] ?? 0);
+        $transportFee = floatval($booking['transport_fee'] ?? 0);
+        $platformFee = floatval($booking['platform_fee'] ?? 0);
+        $vatAmount = floatval($booking['vat_amount'] ?? 0);
+        $clientSurcharge = floatval($booking['client_surcharge'] ?? 0);
+        $totalAmount = floatval($booking['total_amount'] ?? 0);
+        $trainerNetAmount = floatval($booking['trainer_net_amount'] ?? 0);
+
+        // Generate invoice number
+        $invoiceNumber = 'INV-' . date('Ymd') . '-' . uniqid();
+        $invoiceId = 'invoice_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+        $subtotal = round($baseServiceAmount + $transportFee, 2);
+
+        // Insert invoice record
+        $stmt = $conn->prepare("
+            INSERT INTO invoices (
+                id, booking_id, client_id, trainer_id, invoice_number,
+                base_service_amount, transport_fee, subtotal, platform_fee, vat_amount,
+                client_surcharge, total_amount, trainer_net_amount, status, generated_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $status = 'pending';
+        $stmt->bind_param(
+            "sssssdddddddddsss",
+            $invoiceId, $bookingId, $clientId, $trainerId, $invoiceNumber,
+            $baseServiceAmount, $transportFee, $subtotal, $platformFee, $vatAmount,
+            $clientSurcharge, $totalAmount, $trainerNetAmount, $status, $now, $now, $now
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('invoice_generated', [
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'booking_id' => $bookingId,
+                'total_amount' => $totalAmount,
+                'trainer_net' => $trainerNetAmount
+            ]);
+
+            respond("success", "Invoice generated successfully.", [
+                "invoice_id" => $invoiceId,
+                "invoice_number" => $invoiceNumber,
+                "booking_id" => $bookingId,
+                "base_service_amount" => $baseServiceAmount,
+                "transport_fee" => $transportFee,
+                "subtotal" => $subtotal,
+                "platform_fee" => $platformFee,
+                "vat_amount" => $vatAmount,
+                "total_amount" => $totalAmount,
+                "trainer_net_amount" => $trainerNetAmount,
+                "generated_at" => $now
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to generate invoice: " . $conn->error, null, 500);
         }
         break;
 

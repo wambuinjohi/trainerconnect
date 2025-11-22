@@ -34,7 +34,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
     setLoading(true)
     const baseAmount = computeBaseAmount()
-    let totalAmount = baseAmount
+    let baseServiceAmount = baseAmount
+    let appliedReferralDiscount = 0
 
     // Load client saved location to link to booking
     let clientLocation: { label?: string; lat?: number | null; lng?: number | null } = {}
@@ -55,7 +56,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
           const settings = loadSettings()
           const pct = Math.max(0, Math.min(100, settings.referralClientDiscount || 0))
           const discount = Math.round((baseAmount * pct) / 100)
-          totalAmount = Math.max(0, baseAmount - discount)
+          baseServiceAmount = Math.max(0, baseAmount - discount)
+          appliedReferralDiscount = discount
           setAppliedDiscount(discount)
           try {
             await apiRequest('referral_update', { id: row.id, referee_id: user.id, discount_used: true, discount_amount: discount }, { headers: withAuth() })
@@ -66,11 +68,6 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
       }
     }
 
-    // Apply platform client surcharge and VAT to what client pays
-    const clientCommission = Math.round((totalAmount * clientChargePct) / 100)
-    const vatAmount = Math.round(((totalAmount + clientCommission) * vatPct) / 100)
-    const clientTotal = totalAmount + clientCommission + vatAmount
-
     const payload: any = {
       client_id: user.id,
       trainer_id: trainer.id,
@@ -79,7 +76,7 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
       duration_hours: 1,
       total_sessions: sessions,
       status: 'pending',
-      total_amount: clientTotal,
+      base_service_amount: baseServiceAmount,
       notes,
       client_location_label: (clientLocation.label || null),
       client_location_lat: (clientLocation.lat != null ? clientLocation.lat : null),
@@ -87,8 +84,13 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
 
     try {
-      // create booking using API service
-      const bookingData = await apiService.createBooking(payload)
+      // create booking using new booking_create action with server-side fee calculation
+      const bookingResponse = await apiRequest('booking_create', payload, { headers: withAuth() })
+      const bookingData = { id: bookingResponse?.booking_id }
+      const clientTotal = bookingResponse?.total_amount || 0
+      const transportFee = bookingResponse?.transport_fee || 0
+      const platformFee = bookingResponse?.platform_fee || 0
+      const vatAmount = bookingResponse?.vat_amount || 0
 
       // in-app notifications: client, trainer, admins
       try {
@@ -231,14 +233,15 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
         <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
           <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
           <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{sessions}</span></div>
-          {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Discount</span><span>−Ksh {appliedDiscount}</span></div>}
-          {(() => { const base = computeBaseAmount() - appliedDiscount; const clientFee = Math.round((base * clientChargePct)/100); const vat = Math.round(((base + clientFee) * vatPct)/100); const total = base + clientFee + vat; return (
-            <>
-              <div className="flex justify-between"><span>Platform fee ({clientChargePct}%)</span><span>+Ksh {clientFee}</span></div>
-              <div className="flex justify-between"><span>VAT ({vatPct}%)</span><span>+Ksh {vat}</span></div>
-              <div className="flex justify-between mt-2"><span className="font-medium">Total</span><span className="font-bold">Ksh {total}</span></div>
-            </>
-          ) })()}
+          <div className="flex justify-between"><span>Service Amount</span><span className="font-semibold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+          {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Referral Discount</span><span>−Ksh {appliedDiscount}</span></div>}
+          <div className="border-t border-border my-2 pt-2">
+            <div className="text-xs text-muted-foreground mb-2">Breakdown (calculated server-side):</div>
+            <div className="flex justify-between text-xs"><span>Transport fee (distance-based)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between text-xs"><span>Platform fee (10%)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between text-xs"><span>VAT (16%)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between mt-2"><span className="font-medium">Total (incl. all fees)</span><span className="font-bold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
