@@ -2174,20 +2174,22 @@ switch ($action) {
 
         foreach ($notifications as $notif) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
+            $bookingId = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
             $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
+            $actionType = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             $notifId = 'notif_' . uniqid();
 
             if (!$userId) continue;
 
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
-                    id, user_id, title, body, message, type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
+            $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
 
             if ($stmt->execute()) {
                 $inserted++;
