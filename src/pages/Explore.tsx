@@ -244,15 +244,19 @@ const Explore: React.FC = () => {
           {/* Search and Filter Section */}
           <div className="space-y-3 mb-6">
             {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-              <Input
-                placeholder="Search trainers or services..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10"
-              />
-            </div>
+            <SearchBar
+              placeholder="Search trainers or services..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSubmit={(query) => {
+                if (query) {
+                  addSearch(query)
+                }
+              }}
+              suggestions={suggestions}
+              recentSearches={recentSearches}
+              popularSearches={popularSearches}
+            />
 
             {/* Location and Filter Buttons */}
             <div className="flex gap-2">
