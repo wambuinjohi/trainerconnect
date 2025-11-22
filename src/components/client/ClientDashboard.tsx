@@ -312,6 +312,15 @@ export const ClientDashboard: React.FC = () => {
         value={searchQuery}
         onChange={setSearchQuery}
         onSubmit={(query) => {
+          if (!userLocation) {
+            toast({
+              title: 'Location required',
+              description: 'Please enable GPS to search for trainers',
+              variant: 'destructive'
+            })
+            requestLocation()
+            return
+          }
           if (query) {
             addSearch(query)
             setActiveTab('explore')
