@@ -134,11 +134,13 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
       // Validate inputs
       if (!baseRate || isNaN(Number(baseRate))) {
         toast({ title: 'Invalid base rate', variant: 'destructive' })
+        setSaving(false)
         return
       }
 
       if (selectedCategoryIds.length === 0) {
         toast({ title: 'Select at least one service category', variant: 'destructive' })
+        setSaving(false)
         return
       }
 
@@ -146,41 +148,56 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
       for (const tier of tiers) {
         if (!tier.radius || !tier.rate || isNaN(Number(tier.radius)) || isNaN(Number(tier.rate))) {
           toast({ title: 'Invalid distance tier - fill all fields', variant: 'destructive' })
+          setSaving(false)
           return
         }
       }
 
-      // Save base rate
-      await apiRequest('profile_update', {
-        user_id: userId,
+      // Save base rate and tiers to profile
+      const cleanedTiers = tiers.length > 0
+        ? tiers.map(t => ({ radius_km: Number(t.radius), rate: Number(t.rate) }))
+        : null
+
+      await apiService.updateUserProfile(userId, {
         hourly_rate: Number(baseRate),
-        hourly_rate_by_radius: tiers.length > 0
-          ? tiers.map(t => ({ radius_km: Number(t.radius), rate: Number(t.rate) }))
-          : null
-      }, { headers: withAuth() })
+        hourly_rate_by_radius: cleanedTiers ? JSON.stringify(cleanedTiers) : null
+      })
 
-      // Save trainer service categories
-      // First delete existing
-      await apiRequest('delete', {
-        table: 'trainer_service_categories',
-        where: `trainer_id = '${userId}'`
-      }, { headers: withAuth() }).catch(() => {})
+      // Get previous categories to determine what changed
+      const previousCategoriesData = await apiService.getTrainerCategories(userId)
+      const previousCategoryIds = previousCategoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
 
-      // Then insert selected categories
-      const serviceCategoryRows = selectedCategoryIds.map(catId => ({
-        id: createId('tsc'),
-        trainer_id: userId,
-        category_id: catId,
-        hourly_rate: categoryPricing[catId] ? Number(categoryPricing[catId]) : null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
+      // Determine which categories to add and remove
+      const categoriesToAdd = selectedCategoryIds.filter(id => !previousCategoryIds.includes(id))
+      const categoriesToRemove = previousCategoryIds.filter(id => !selectedCategoryIds.includes(id))
 
-      if (serviceCategoryRows.length > 0) {
-        await apiRequest('insert', {
-          table: 'trainer_service_categories',
-          data: serviceCategoryRows
-        }, { headers: withAuth() })
+      // Save category changes
+      for (const categoryId of categoriesToAdd) {
+        try {
+          await apiService.addTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to add category ${categoryId}:`, catErr)
+        }
+      }
+
+      for (const categoryId of categoriesToRemove) {
+        try {
+          await apiService.removeTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
+      // Save category pricing for all selected categories
+      for (const categoryId of selectedCategoryIds) {
+        const price = categoryPricing[categoryId]
+        if (price && Number(price) > 0) {
+          try {
+            await apiService.setTrainerCategoryPricing(userId, categoryId, Number(price))
+          } catch (pricingErr) {
+            console.warn(`Failed to save pricing for category ${categoryId}:`, pricingErr)
+          }
+        }
       }
 
       toast({ title: 'Success', description: 'Pricing and services updated' })
