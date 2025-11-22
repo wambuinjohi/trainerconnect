@@ -110,6 +110,13 @@ export const ClientDashboard: React.FC = () => {
     }
   }
 
+  // Check for pending ratings when bookings load
+  useEffect(() => {
+    if (bookings.length > 0) {
+      checkPendingRatings()
+    }
+  }, [bookings])
+
   useEffect(() => {
     const loadCategories = async () => {
       try {
