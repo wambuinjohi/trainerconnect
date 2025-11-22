@@ -22,12 +22,46 @@ export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose 
     apiRequest('profile_get', { user_id: userId }, { headers: withAuth() })
       .then((data: any) => {
         if (!mounted || !data) return
-        setLat(data.location_lat != null ? String(data.location_lat) : '')
-        setLng(data.location_lng != null ? String(data.location_lng) : '')
-        setLabel(data.location_label || '')
-        setRadius(data.service_radius ?? '')
+
+        // Load location data
+        const profileData = data.data || data
+
+        // Debug log to help diagnose loading issues
+        if (profileData) {
+          console.log('ServiceAreaEditor: Loaded profile data with fields:', Object.keys(profileData).filter(k => k.includes('location') || k.includes('radius')))
+        }
+
+        // Set latitude (handle both decimal and string formats)
+        if (profileData?.location_lat != null) {
+          setLat(String(profileData.location_lat))
+        } else {
+          setLat('')
+        }
+
+        // Set longitude (handle both decimal and string formats)
+        if (profileData?.location_lng != null) {
+          setLng(String(profileData.location_lng))
+        } else {
+          setLng('')
+        }
+
+        // Set location label - this is what was missing
+        if (profileData?.location_label) {
+          setLabel(String(profileData.location_label))
+        } else {
+          setLabel('')
+        }
+
+        // Set service radius
+        if (profileData?.service_radius != null) {
+          setRadius(Number(profileData.service_radius))
+        } else {
+          setRadius('')
+        }
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error('Failed to load profile data:', err)
+      })
     return () => { mounted = false }
   }, [userId])
 
