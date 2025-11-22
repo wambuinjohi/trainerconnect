@@ -2480,6 +2480,8 @@ switch ($action) {
         }
 
         // Calculate fees
+        // IMPORTANT: Platform fee is calculated ONLY on base service amount, NOT on transport fees
+        // This ensures transport fees are never subject to commission deductions
         // Platform fee percentage (10%)
         $platformFeePct = 10;
         $platformFee = round(($baseServiceAmount * $platformFeePct) / 100, 2);
