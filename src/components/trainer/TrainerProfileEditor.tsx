@@ -9,6 +9,7 @@ import { MediaUploadSection } from './MediaUploadSection'
 import { useFileUpload } from '@/hooks/use-file-upload'
 import { Upload, X } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
+import { apiRequest, withAuth } from '@/lib/api'
 
 interface TrainerProfile {
   user_id?: string
@@ -41,6 +42,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [uploadingImage, setUploadingImage] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
+  const [categoryPricing, setCategoryPricing] = useState<Record<number, number>>({})
   const [categoriesLoading, setCategoriesLoading] = useState(true)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const { upload } = useFileUpload({
@@ -103,6 +105,14 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         if (categoriesData?.data) {
           const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
           setSelectedCategoryIds(ids)
+
+          // Load category pricing
+          const pricing: Record<number, number> = {}
+          for (const cat of categoriesData.data) {
+            const catId = cat.category_id || cat.cat_id
+            pricing[catId] = cat.hourly_rate || profile?.hourly_rate || 1000
+          }
+          setCategoryPricing(pricing)
         }
       } catch (error) {
         console.error('Failed to fetch profile', error)
@@ -163,11 +173,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         return
       }
 
-      // Disciplines & certifications normalization
-      const disciplines = Array.isArray(profile.disciplines)
-        ? profile.disciplines
-        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
-
+      // Certifications normalization
       const certifications = Array.isArray(profile.certifications)
         ? profile.certifications
         : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
@@ -235,7 +241,6 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         user_id: userId,
         user_type: 'trainer',
         name: name || null,
-        disciplines,
         certifications,
         hourly_rate: hourlyRateNum,
         hourly_rate_by_radius: cleanedTiers.length ? cleanedTiers : null,
@@ -250,7 +255,6 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       try {
         const updatePayload = {
           full_name: name,
-          disciplines: JSON.stringify(disciplines),
           certifications: JSON.stringify(certifications),
           hourly_rate: hourlyRateNum,
           service_radius: serviceRadiusNum,
@@ -301,6 +305,22 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           await apiService.removeTrainerCategory(userId, categoryId)
         } catch (catErr) {
           console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
+      // Save category pricing for all selected categories
+      for (const categoryId of selectedCategoryIds) {
+        const price = categoryPricing[categoryId]
+        if (price && price > 0) {
+          try {
+            await apiRequest('trainer_category_pricing_set', {
+              trainer_id: userId,
+              category_id: categoryId,
+              hourly_rate: price
+            }, { headers: withAuth() })
+          } catch (pricingErr) {
+            console.warn(`Failed to save pricing for category ${categoryId}:`, pricingErr)
+          }
         }
       }
 
@@ -395,9 +415,9 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             ) : categories.length === 0 ? (
               <div className="text-sm text-muted-foreground">No categories available. Please ask the administrator to create some.</div>
             ) : (
-              <div className="space-y-2 border border-border rounded-md p-4">
+              <div className="space-y-3 border border-border rounded-md p-4">
                 {categories.map((category) => (
-                  <div key={category.id} className="flex items-start gap-3">
+                  <div key={category.id} className="flex items-start gap-3 pb-3 border-b border-border last:border-b-0">
                     <input
                       type="checkbox"
                       id={`category_${category.id}`}
@@ -406,15 +426,38 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
                       disabled={loading}
                       className="mt-1"
                     />
-                    <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
-                      <div className="flex items-center gap-2">
-                        {category.icon && <span className="text-xl">{category.icon}</span>}
-                        <span className="font-medium text-foreground">{category.name}</span>
-                      </div>
-                      {category.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                    <div className="flex-1">
+                      <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          {category.icon && <span className="text-xl">{category.icon}</span>}
+                          <span className="font-medium text-foreground">{category.name}</span>
+                        </div>
+                        {category.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                        )}
+                      </label>
+                      {selectedCategoryIds.includes(category.id) && (
+                        <div className="mt-2 ml-6">
+                          <label htmlFor={`price_${category.id}`} className="text-xs font-medium text-foreground">
+                            Hourly Rate (Ksh)
+                          </label>
+                          <input
+                            id={`price_${category.id}`}
+                            type="number"
+                            min="0"
+                            step="100"
+                            value={categoryPricing[category.id] || ''}
+                            onChange={(e) => setCategoryPricing(prev => ({
+                              ...prev,
+                              [category.id]: Number(e.target.value)
+                            }))}
+                            disabled={loading}
+                            placeholder="e.g., 1500"
+                            className="w-full mt-1 px-2 py-1 border border-border rounded text-sm bg-input"
+                          />
+                        </div>
                       )}
-                    </label>
+                    </div>
                   </div>
                 ))}
               </div>
