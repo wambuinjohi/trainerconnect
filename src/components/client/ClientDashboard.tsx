@@ -18,7 +18,8 @@ import {
   Plus,
   ChevronRight,
   ArrowLeft,
-  LogOut
+  LogOut,
+  DollarSign
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
