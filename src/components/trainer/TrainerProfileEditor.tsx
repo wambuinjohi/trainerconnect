@@ -246,6 +246,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         user_id: userId,
         user_type: 'trainer',
         name: name || null,
+        disciplines,
         certifications,
         hourly_rate: hourlyRateNum,
         hourly_rate_by_radius: cleanedTiers.length ? cleanedTiers : null,
