@@ -12,8 +12,6 @@ import * as apiService from '@/lib/api-service'
 import {
   enrichTrainersWithDistance,
   filterTrainers,
-  formatDistance,
-  calculateDistance,
   type FilterCriteria,
   type TrainerWithCategories,
 } from '@/lib/distance-utils'
