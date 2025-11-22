@@ -564,12 +564,15 @@ export const ClientDashboard: React.FC = () => {
       {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
       {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
       {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
+      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => { setReviewBooking(null); setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b)) }} />}
+      {nextSessionBooking && <NextSessionModal booking={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings?.() }} />}
 
       {!modalOpen && (
         <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border">
           <div className="container max-w-md mx-auto flex justify-around py-2">
             <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className={activeTab === 'home' ? 'text-primary' : 'text-muted-foreground'}><Home className="h-5 w-5" /><span className="text-xs">Home</span></Button>
             <Button variant="ghost" size="sm" onClick={() => setActiveTab('explore')} className={activeTab === 'explore' ? 'text-primary' : 'text-muted-foreground'}><Compass className="h-5 w-5" /><span className="text-xs">Explore</span></Button>
+            <Button variant="ghost" size="sm" onClick={() => setActiveTab('schedule')} className={activeTab === 'schedule' ? 'text-primary' : 'text-muted-foreground'}><Calendar className="h-5 w-5" /><span className="text-xs">Sessions</span></Button>
           </div>
         </div>
       )}
