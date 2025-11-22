@@ -22,6 +22,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiRequest, withAuth } from '@/lib/api'
 import { TrainerProfileEditor } from './TrainerProfileEditor'
 import { AvailabilityEditor } from './AvailabilityEditor'
 import { ServicesManager } from './ServicesManager'
