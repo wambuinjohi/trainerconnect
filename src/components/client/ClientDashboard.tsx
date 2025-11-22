@@ -223,7 +223,12 @@ export const ClientDashboard: React.FC = () => {
       if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
       if (filters.onlyAvailable && !t.available) return false
       if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
-      if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const nameMatch = (t.name || '').toLowerCase().includes(query)
+        const disciplineMatch = (t.discipline || '').toLowerCase().includes(query)
+        if (!nameMatch && !disciplineMatch) return false
+      }
       return true
     })
   }
