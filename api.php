@@ -2175,11 +2175,11 @@ switch ($action) {
 
         $stmt = $conn->prepare("
             INSERT INTO messages (
-                id, trainer_id, client_id, content,
+                id, sender_id, recipient_id, trainer_id, client_id, content,
                 read_by_trainer, read_by_client, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("ssssssss", $messageId, $trainerId, $clientId, $content, $readByTrainer, $readByClient, $now, $now);
+        $stmt->bind_param("ssssssssss", $messageId, $senderId, $recipientId, $trainerId, $clientId, $content, $readByTrainer, $readByClient, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
@@ -2237,10 +2237,10 @@ switch ($action) {
 
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
-                    id, user_id, booking_id, title, body, type, action_type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("sssssssss", $notifId, $userId, $bookingId, $title, $body, $type, $actionType, $now, $now);
+            $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
 
             if ($stmt->execute()) {
                 $inserted++;
@@ -2442,10 +2442,10 @@ switch ($action) {
         $conditions = [];
 
         if ($trainerId) {
-            $conditions[] = "trainer_id = '$trainerId'";
+            $conditions[] = "(trainer_id = '$trainerId' OR sender_id = '$trainerId' OR recipient_id = '$trainerId')";
         }
         if ($clientId) {
-            $conditions[] = "client_id = '$clientId'";
+            $conditions[] = "(client_id = '$clientId' OR sender_id = '$clientId' OR recipient_id = '$clientId')";
         }
 
         $sql .= implode(" OR ", $conditions);
