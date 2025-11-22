@@ -411,7 +411,8 @@ switch ($action) {
             if ($value === null || $value === 'null') {
                 $updates[] = "`$escapedKey` = NULL";
             } else {
-                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($value) . "'";
+                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($stringValue) . "'";
             }
         }
 
