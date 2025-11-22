@@ -28,7 +28,14 @@ export const TrainerPayoutRequest: React.FC = () => {
 
         // Get trainer's payments/earnings
         const paymentsData = await apiRequest('payments_get', { trainer_id: user.id }, { headers: withAuth() })
-        const totalEarnings = paymentsData?.data?.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0) || 0
+
+        // Use summary if available, fallback to sum of trainer_net_amount
+        let totalEarnings = 0
+        if (paymentsData?.summary?.total_earnings) {
+          totalEarnings = Number(paymentsData.summary.total_earnings) || 0
+        } else {
+          totalEarnings = paymentsData?.data?.reduce((sum: number, p: any) => sum + (Number(p.trainer_net_amount) || 0), 0) || 0
+        }
         setBalance(totalEarnings)
 
         // Get pending payout requests for this trainer
