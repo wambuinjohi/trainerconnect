@@ -75,6 +75,19 @@ export const ClientDashboard: React.FC = () => {
 
   const modalOpen = Boolean(selectedTrainer || showEditProfile || showPaymentMethods || showNotifications || showHelpSupport || showFilters || reviewBooking || nextSessionBooking)
 
+  const loadBookings = async () => {
+    if (!user?.id) return
+    try {
+      const bookingsData = await apiService.getBookings(user.id, 'client')
+      if (bookingsData?.data) {
+        setBookings(bookingsData.data)
+      }
+    } catch (err) {
+      console.warn('Failed to load bookings', err)
+      setBookings([])
+    }
+  }
+
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -128,19 +141,6 @@ export const ClientDashboard: React.FC = () => {
       } catch (err) {
         console.warn('Failed to load trainers', err)
         setTrainers([])
-      }
-    }
-
-    const loadBookings = async () => {
-      if (!user?.id) return
-      try {
-        const bookingsData = await apiService.getBookings(user.id, 'client')
-        if (bookingsData?.data) {
-          setBookings(bookingsData.data)
-        }
-      } catch (err) {
-        console.warn('Failed to load bookings', err)
-        setBookings([])
       }
     }
 
