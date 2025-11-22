@@ -2395,6 +2395,163 @@ switch ($action) {
         break;
 
     // INSERT BOOKING (custom action wrapper)
+    // CREATE BOOKING WITH TRANSPORT FEE CALCULATION
+    case 'booking_create':
+        if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['session_date']) || !isset($input['session_time'])) {
+            respond("error", "Missing required booking fields (client_id, trainer_id, session_date, session_time).", null, 400);
+        }
+
+        $clientId = $conn->real_escape_string($input['client_id']);
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $sessionDate = $conn->real_escape_string($input['session_date']);
+        $sessionTime = $conn->real_escape_string($input['session_time']);
+        $durationHours = isset($input['duration_hours']) ? intval($input['duration_hours']) : 1;
+        $totalSessions = isset($input['total_sessions']) ? intval($input['total_sessions']) : 1;
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $baseServiceAmount = isset($input['base_service_amount']) ? floatval($input['base_service_amount']) : 0;
+        $notes = isset($input['notes']) ? $conn->real_escape_string($input['notes']) : NULL;
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : NULL;
+        $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
+
+        // Client location
+        $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
+        $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
+        $clientLocationLng = isset($input['client_location_lng']) ? floatval($input['client_location_lng']) : NULL;
+
+        // Get trainer profile for location and rates
+        $trainerProfileSql = "SELECT location_lat, location_lng, hourly_rate_by_radius, timezone, availability FROM user_profiles WHERE user_id = '$trainerId' LIMIT 1";
+        $trainerProfileResult = $conn->query($trainerProfileSql);
+        if (!$trainerProfileResult || $trainerProfileResult->num_rows === 0) {
+            respond("error", "Trainer not found.", null, 404);
+        }
+
+        $trainerProfile = $trainerProfileResult->fetch_assoc();
+        $trainerLat = floatval($trainerProfile['location_lat'] ?? 0);
+        $trainerLng = floatval($trainerProfile['location_lng'] ?? 0);
+        $hourlyRateByRadius = !empty($trainerProfile['hourly_rate_by_radius']) ?
+            json_decode($trainerProfile['hourly_rate_by_radius'], true) : [];
+
+        // Validate availability
+        if (!$skipValidation && !empty($trainerProfile['availability'])) {
+            $availability = json_decode($trainerProfile['availability'], true);
+            if (is_array($availability)) {
+                try {
+                    $bookingDateTime = new DateTime($sessionDate . ' ' . $sessionTime);
+                    $dayName = strtolower($bookingDateTime->format('l'));
+                    $bookingTime = $bookingDateTime->format('H:i');
+
+                    $dayAvailable = false;
+                    $timeSlotAvailable = false;
+
+                    if (isset($availability[$dayName]) && is_array($availability[$dayName])) {
+                        $dayAvailable = true;
+                        foreach ($availability[$dayName] as $slot) {
+                            if (is_string($slot)) {
+                                $parts = explode('-', $slot);
+                                if (count($parts) === 2) {
+                                    $slotStart = trim($parts[0]);
+                                    $slotEnd = trim($parts[1]);
+                                    if ($bookingTime >= $slotStart && $bookingTime < $slotEnd) {
+                                        $timeSlotAvailable = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (!$timeSlotAvailable) {
+                        $dayLabel = $bookingDateTime->format('l');
+                        respond("error", "The trainer is not available on $dayLabel at $bookingTime. Please choose a different time from their availability.", null, 400);
+                    }
+                } catch (Exception $e) {
+                    respond("error", "Invalid date/time format.", null, 400);
+                }
+            }
+        }
+
+        // Calculate transport fee
+        $transportFee = 0;
+        if ($clientLocationLat !== null && $clientLocationLng !== null && $trainerLat !== 0 && $trainerLng !== 0) {
+            $distanceKm = calculateDistance($trainerLat, $trainerLng, $clientLocationLat, $clientLocationLng);
+            if ($distanceKm !== null && is_array($hourlyRateByRadius) && !empty($hourlyRateByRadius)) {
+                $transportFee = calculateTransportFee($distanceKm, $hourlyRateByRadius);
+            }
+        }
+
+        // Calculate fees
+        // Platform fee percentage (10%)
+        $platformFeePct = 10;
+        $platformFee = round(($baseServiceAmount * $platformFeePct) / 100, 2);
+
+        // VAT percentage (16%)
+        $vatPct = 16;
+        $vatAmount = round((($baseServiceAmount + $platformFee) * $vatPct) / 100, 2);
+
+        // Client surcharge (what client sees as platform fee)
+        $clientSurcharge = $platformFee;
+
+        // Trainer net amount (base service + transport fee - platform fee)
+        $trainerNetAmount = round($baseServiceAmount + $transportFee - $platformFee, 2);
+
+        // Total amount client pays
+        $totalAmount = round($baseServiceAmount + $transportFee + $platformFee + $vatAmount, 2);
+
+        // Generate booking ID
+        $bookingId = 'booking_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        // Prepare statement with all fee breakdown columns
+        $stmt = $conn->prepare("
+            INSERT INTO bookings (
+                id, client_id, trainer_id, category_id, session_date, session_time, duration_hours,
+                total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
+                vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
+                client_location_lat, client_location_lng, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $stmt->bind_param(
+            "sssisiiidddddddsddss",
+            $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
+            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFee,
+            $vatAmount, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
+            $clientLocationLat, $clientLocationLng, $now, $now
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            $eventData = [
+                'booking_id' => $bookingId,
+                'client_id' => $clientId,
+                'trainer_id' => $trainerId,
+                'base_service_amount' => $baseServiceAmount,
+                'transport_fee' => $transportFee,
+                'platform_fee' => $platformFee,
+                'total_amount' => $totalAmount,
+                'trainer_net' => $trainerNetAmount
+            ];
+            if ($categoryId) {
+                $eventData['category_id'] = $categoryId;
+            }
+            logEvent('booking_created_with_fees', $eventData);
+
+            respond("success", "Booking created successfully with fee breakdown.", [
+                "booking_id" => $bookingId,
+                "base_service_amount" => $baseServiceAmount,
+                "transport_fee" => $transportFee,
+                "platform_fee" => $platformFee,
+                "vat_amount" => $vatAmount,
+                "trainer_net_amount" => $trainerNetAmount,
+                "client_surcharge" => $clientSurcharge,
+                "total_amount" => $totalAmount
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to create booking: " . $conn->error, null, 500);
+        }
+        break;
+
     case 'booking_insert':
         if (!isset($input['client_id']) || !isset($input['trainer_id']) || !isset($input['session_date']) || !isset($input['session_time'])) {
             respond("error", "Missing required booking fields (client_id, trainer_id, session_date, session_time).", null, 400);
