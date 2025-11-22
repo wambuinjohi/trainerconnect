@@ -355,6 +355,22 @@ switch ($action) {
         $rows = [];
         while ($row = $result->fetch_assoc()) $rows[] = $row;
 
+        // Parse JSON fields for user_profiles table
+        if ($table === 'user_profiles') {
+            $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
+            foreach ($rows as &$row) {
+                foreach ($jsonFields as $field) {
+                    if (isset($row[$field]) && is_string($row[$field]) && !empty($row[$field])) {
+                        $parsed = json_decode($row[$field], true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $row[$field] = $parsed;
+                        }
+                    }
+                }
+            }
+            unset($row);
+        }
+
         $count = null;
         if (isset($input['count']) && $input['count'] === 'exact') {
             $countSql = "SELECT COUNT(*) as cnt FROM `$table` $where";
@@ -1852,6 +1868,18 @@ switch ($action) {
         }
 
         $profile = $result->fetch_assoc();
+
+        // Parse JSON fields for proper response format
+        $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
+        foreach ($jsonFields as $field) {
+            if (isset($profile[$field]) && is_string($profile[$field]) && !empty($profile[$field])) {
+                $parsed = json_decode($profile[$field], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $profile[$field] = $parsed;
+                }
+            }
+        }
+
         respond("success", "Profile fetched successfully.", ["data" => $profile]);
         break;
 
@@ -2174,20 +2202,22 @@ switch ($action) {
 
         foreach ($notifications as $notif) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
+            $bookingId = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
             $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
+            $actionType = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             $notifId = 'notif_' . uniqid();
 
             if (!$userId) continue;
 
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
-                    id, user_id, title, body, message, type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
+            $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
 
             if ($stmt->execute()) {
                 $inserted++;

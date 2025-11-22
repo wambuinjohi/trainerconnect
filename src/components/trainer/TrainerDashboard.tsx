@@ -134,9 +134,11 @@ export const TrainerDashboard: React.FC = () => {
           const notifRows: any[] = [
             {
               user_id: booking.client_id,
+              booking_id: id,
               title: 'Session Complete',
               body: `Your session with ${profileData.name} has ended. Please rate your experience!`,
-              booking_id: id,
+              action_type: 'rate',
+              type: 'success',
               created_at: nowIso,
               read: false
             }

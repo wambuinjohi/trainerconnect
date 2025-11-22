@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchHistory } from '@/hooks/use-search-history'
 import * as apiService from '@/lib/api-service'
 import { enrichTrainersWithDistance } from '@/lib/distance-utils'
+import { apiRequest, withAuth } from '@/lib/api'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -88,6 +89,39 @@ export const ClientDashboard: React.FC = () => {
     }
   }
 
+  const setReviewByBooking = (bookingId: string) => {
+    setReviewsByBooking(prev => ({ ...prev, [bookingId]: true }))
+  }
+
+  const checkPendingRatings = async () => {
+    if (!user?.id) return
+    try {
+      const notifData = await apiRequest('notifications_get', { user_id: user.id }, { headers: withAuth() })
+      const notifs = Array.isArray(notifData) ? notifData : (notifData?.data || [])
+
+      // Find pending rate action notifications
+      const pendingRateNotif = notifs.find((n: any) => n.action_type === 'rate' && !n.read && n.booking_id)
+
+      if (pendingRateNotif && bookings.length > 0) {
+        // Find the associated booking
+        const targetBooking = bookings.find(b => b.id === pendingRateNotif.booking_id)
+        if (targetBooking && targetBooking.status === 'completed' && !reviewsByBooking[targetBooking.id] && !targetBooking.rating_submitted) {
+          // Auto-open the review modal
+          setReviewBooking(targetBooking)
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to check pending ratings', err)
+    }
+  }
+
+  // Check for pending ratings when bookings load
+  useEffect(() => {
+    if (bookings.length > 0) {
+      checkPendingRatings()
+    }
+  }, [bookings])
+
   useEffect(() => {
     const loadCategories = async () => {
       try {
@@ -121,18 +155,24 @@ export const ClientDashboard: React.FC = () => {
               return {
                 id: trainer.user_id,
                 name: trainer.full_name || trainer.user_id,
+                discipline: trainer.disciplines || 'Training',
+                bio: trainer.bio || '',
+                profile_image: trainer.profile_image || null,
                 categoryIds: categoryIds,
                 rating: trainer.rating || 0,
                 reviews: trainer.total_reviews || 0,
                 hourlyRate: trainer.hourly_rate || 0,
-                available: true,
+                available: trainer.is_available !== false,
                 distance: '—',
                 distanceKm: null,
                 service_radius: trainer.service_radius || 10,
                 location_lat: trainer.location_lat || null,
                 location_lng: trainer.location_lng || null,
                 location_label: trainer.location_label || 'Unknown',
-                image: '👤'
+                image: trainer.profile_image ? null : '👤',
+                availability: Array.isArray(trainer.availability) || typeof trainer.availability === 'object' ? trainer.availability : null,
+                hourly_rate_by_radius: Array.isArray(trainer.hourly_rate_by_radius) ? trainer.hourly_rate_by_radius : [],
+                pricing_packages: Array.isArray(trainer.pricing_packages) ? trainer.pricing_packages : []
               }
             })
           )
@@ -165,7 +205,12 @@ export const ClientDashboard: React.FC = () => {
       if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
       if (filters.onlyAvailable && !t.available) return false
       if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
-      if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const nameMatch = (t.name || '').toLowerCase().includes(query)
+        const disciplineMatch = (t.discipline || '').toLowerCase().includes(query)
+        if (!nameMatch && !disciplineMatch) return false
+      }
       return true
     })
   }
@@ -564,7 +609,11 @@ export const ClientDashboard: React.FC = () => {
       {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
       {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
       {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
-      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => { setReviewBooking(null); setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b)) }} />}
+      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => {
+        setReviewByBooking(reviewBooking.id)
+        setReviewBooking(null)
+        setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b))
+      }} />}
       {nextSessionBooking && <NextSessionModal previous={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings() }} />}
 
       {!modalOpen && (
