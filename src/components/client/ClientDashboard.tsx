@@ -80,23 +80,36 @@ export const ClientDashboard: React.FC = () => {
       try {
         const trainersData = await apiService.getAvailableTrainers(filters)
         if (trainersData?.data) {
-          setTrainers(trainersData.data.map((trainer: any) => ({
-            id: trainer.user_id,
-            name: trainer.full_name || trainer.user_id,
-            discipline: Array.isArray(trainer.disciplines) ? trainer.disciplines[0] : trainer.disciplines,
-            disciplines: Array.isArray(trainer.disciplines) ? trainer.disciplines : [trainer.disciplines],
-            rating: trainer.rating || 0,
-            reviews: trainer.total_reviews || 0,
-            hourlyRate: trainer.hourly_rate || 0,
-            available: true,
-            distance: '—',
-            distanceKm: null,
-            service_radius: trainer.service_radius || 10,
-            location_lat: trainer.location_lat || null,
-            location_lng: trainer.location_lng || null,
-            location_label: trainer.location_label || 'Unknown',
-            image: '👤'
-          })))
+          const trainersWithCategories = await Promise.all(
+            trainersData.data.map(async (trainer: any) => {
+              let categoryIds: number[] = []
+              try {
+                const categoriesData = await apiService.getTrainerCategories(trainer.user_id)
+                if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+                  categoryIds = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
+                }
+              } catch (err) {
+                console.warn('Failed to fetch categories for trainer', trainer.user_id, err)
+              }
+              return {
+                id: trainer.user_id,
+                name: trainer.full_name || trainer.user_id,
+                categoryIds: categoryIds,
+                rating: trainer.rating || 0,
+                reviews: trainer.total_reviews || 0,
+                hourlyRate: trainer.hourly_rate || 0,
+                available: true,
+                distance: '—',
+                distanceKm: null,
+                service_radius: trainer.service_radius || 10,
+                location_lat: trainer.location_lat || null,
+                location_lng: trainer.location_lng || null,
+                location_label: trainer.location_label || 'Unknown',
+                image: '👤'
+              }
+            })
+          )
+          setTrainers(trainersWithCategories)
         }
       } catch (err) {
         console.warn('Failed to load trainers', err)
@@ -125,15 +138,15 @@ export const ClientDashboard: React.FC = () => {
   const applyFilters = (list: any[]) => {
     return list.filter(t => {
       if (selectedCategory) {
-        const ds = Array.isArray(t.disciplines) ? t.disciplines : [t.discipline]
-        const match = ds.some((d: string) => String(d || '').toLowerCase() === String(selectedCategory).toLowerCase())
+        const selectedCategoryId = dbCategories.find(c => c.name === selectedCategory)?.id
+        const match = selectedCategoryId && t.categoryIds && t.categoryIds.includes(selectedCategoryId)
         if (!match) return false
       }
       if (filters.minRating && (t.rating || 0) < filters.minRating) return false
       if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
       if (filters.onlyAvailable && !t.available) return false
       if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
-      if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.discipline || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+      if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
       return true
     })
   }
@@ -283,15 +296,15 @@ export const ClientDashboard: React.FC = () => {
     // Filter trainers based on selected category and other criteria
     const filteredTrainers = selectedCategory
       ? trainers.filter(t => {
-          const ds = Array.isArray(t.disciplines) ? t.disciplines : [t.discipline]
-          const match = ds.some((d: string) => String(d || '').toLowerCase() === String(selectedCategory).toLowerCase())
+          const selectedCategoryId = dbCategories.find(c => c.name === selectedCategory)?.id
+          const match = selectedCategoryId && t.categoryIds && t.categoryIds.includes(selectedCategoryId)
 
           if (!match) return false
           if (filters.minRating && (t.rating || 0) < filters.minRating) return false
           if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
           if (filters.onlyAvailable && !t.available) return false
           if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
-          if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.discipline || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+          if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
 
           return true
         })
