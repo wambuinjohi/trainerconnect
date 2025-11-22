@@ -17,8 +17,28 @@ export const ReviewModal: React.FC<{ booking: any, onClose?: () => void, onSubmi
 
   const submit = async () => {
     if (!user || !booking) return
+
+    // Prevent double submission
+    if (loading) return
+
     setLoading(true)
     try {
+      // Check if review already exists for this booking
+      try {
+        const existingReviews = await apiRequest('select', {
+          table: 'reviews',
+          where: `booking_id = '${booking.id}' AND client_id = '${user.id}'`
+        }, { headers: withAuth() })
+
+        if (existingReviews?.data && existingReviews.data.length > 0) {
+          toast({ title: 'Already reviewed', description: 'You have already submitted a review for this session.', variant: 'destructive' })
+          onClose?.()
+          return
+        }
+      } catch (err) {
+        console.warn('Failed to check existing reviews', err)
+      }
+
       const payload: any = {
         booking_id: booking.id,
         client_id: user.id,
