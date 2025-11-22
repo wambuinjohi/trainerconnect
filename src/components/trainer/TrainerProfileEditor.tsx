@@ -279,6 +279,31 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       // Save to localStorage as fallback
       localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
 
+      // Get previous categories to determine what changed
+      const previousCategoriesData = await apiService.getTrainerCategories(userId)
+      const previousCategoryIds = previousCategoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
+
+      // Determine which categories to add and remove
+      const categoriesToAdd = selectedCategoryIds.filter(id => !previousCategoryIds.includes(id))
+      const categoriesToRemove = previousCategoryIds.filter(id => !selectedCategoryIds.includes(id))
+
+      // Save category changes
+      for (const categoryId of categoriesToAdd) {
+        try {
+          await apiService.addTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to add category ${categoryId}:`, catErr)
+        }
+      }
+
+      for (const categoryId of categoriesToRemove) {
+        try {
+          await apiService.removeTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
       toast({ title: 'Saved', description: 'Profile updated successfully.' })
       onClose?.()
     } catch (err) {
