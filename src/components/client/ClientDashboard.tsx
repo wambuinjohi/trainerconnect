@@ -295,18 +295,52 @@ export const ClientDashboard: React.FC = () => {
   }
 
   // -------------------- Render Functions --------------------
-  const renderHomeContent = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div></div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-          <LogOut className="h-5 w-5 text-red-500" />
-        </Button>
-      </div>
-      <div className="text-center py-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
-        <p className="text-muted-foreground">Connect with certified professionals in your area</p>
-      </div>
+  const renderHomeContent = () => {
+    if (!userLocation) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div></div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+              <LogOut className="h-5 w-5 text-red-500" />
+            </Button>
+          </div>
+
+          <Card className="bg-gradient-primary border-0 text-white">
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                  <MapPin className="h-8 w-8 text-white" />
+                </div>
+              </div>
+              <h2 className="text-2xl font-bold">Enable Location</h2>
+              <p className="text-white/90">We need your location to find trainers near you and calculate distances accurately.</p>
+              <Button
+                size="lg"
+                onClick={requestLocation}
+                className="bg-white text-trainer-accent hover:bg-gray-100 w-full font-semibold"
+              >
+                Enable GPS Now
+              </Button>
+              <p className="text-sm text-white/70">Your location is only used to show nearby trainers. We never share your data.</p>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div></div>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+            <LogOut className="h-5 w-5 text-red-500" />
+          </Button>
+        </div>
+        <div className="text-center py-6">
+          <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
+          <p className="text-muted-foreground">Connect with certified professionals in your area</p>
+        </div>
       <SearchBar
         placeholder="Search trainers or services..."
         value={searchQuery}
@@ -331,19 +365,7 @@ export const ClientDashboard: React.FC = () => {
         popularSearches={popularSearches}
       />
 
-      <LocationSelector />
-
-      {!userLocation && (
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-start gap-3">
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground">Find trainers near you</h3>
-              <p className="text-sm text-muted-foreground">We use your location only to sort trainers by distance.</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={requestLocation}>Enable GPS</Button>
-          </CardContent>
-        </Card>
-      )}
+        <LocationSelector />
 
       <Card className="bg-gradient-primary border-0 text-white">
         <CardContent className="p-6 flex justify-between items-center">
@@ -389,8 +411,9 @@ export const ClientDashboard: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
-  )
+      </div>
+    )
+  }
 
   const renderExploreContent = () => {
     // Filter trainers based on selected category and other criteria
