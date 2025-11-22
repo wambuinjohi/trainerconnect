@@ -2022,9 +2022,15 @@ switch ($action) {
 
         foreach ($input as $key => $value) {
             if ($key === 'user_id' || $key === 'action') continue;
-            if ($value === null) continue;
 
             $safeKey = $conn->real_escape_string($key);
+
+            // Allow setting location_label and similar fields to null
+            if ($value === null) {
+                $updates[] = "`$safeKey` = NULL";
+                continue;
+            }
+
             if (is_array($value) || is_object($value)) {
                 $updates[] = "`$safeKey` = ?";
                 $params[] = json_encode($value);
