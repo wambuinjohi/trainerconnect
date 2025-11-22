@@ -453,8 +453,15 @@ switch ($action) {
 
         foreach ($rows as $data) {
             $columns = implode("`, `", array_keys($data));
-            $values = implode("', '", array_map([$conn, 'real_escape_string'], array_values($data)));
-            $sql = "INSERT INTO `$table` (`$columns`) VALUES ('$values')";
+            $escapedValues = array_map(function($value) use ($conn) {
+                if ($value === null || $value === 'null') {
+                    return 'NULL';
+                }
+                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                return "'" . $conn->real_escape_string($stringValue) . "'";
+            }, array_values($data));
+            $values = implode(", ", $escapedValues);
+            $sql = "INSERT INTO `$table` (`$columns`) VALUES ($values)";
             if ($conn->query($sql)) $inserted++;
         }
 
