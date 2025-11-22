@@ -298,7 +298,12 @@ switch ($action) {
                 $updates = [];
                 foreach ($data as $key => $value) {
                     if ($key === 'user_id') continue;
-                    $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($value) . "'";
+                    if ($value === null || $value === 'null') {
+                        $updates[] = "`" . $conn->real_escape_string($key) . "` = NULL";
+                    } else {
+                        $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
+                        $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                    }
                 }
                 $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "'";
                 if ($conn->query($sql)) {
