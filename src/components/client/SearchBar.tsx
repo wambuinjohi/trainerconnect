@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Search, X, Clock, TrendingUp } from 'lucide-react'
+import { Search, X, Clock, TrendingUp, Zap } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { highlightQuery } from '@/lib/search-utils'
 
 export interface SearchBarProps {
   placeholder?: string
