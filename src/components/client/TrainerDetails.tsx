@@ -10,6 +10,17 @@ import { BookingForm } from './BookingForm'
 import { Chat } from './Chat'
 import * as apiService from '@/lib/api-service'
 
+// Helper function for formatting trainer hourly rate
+function formatHourlyRate(rate: number | null | undefined): string {
+  if (rate == null || rate === 0) return '0'
+  const num = Number(rate)
+  if (!Number.isFinite(num)) return '0'
+  if (num % 1 === 0) {
+    return num.toLocaleString()
+  }
+  return num.toFixed(2).replace(/\.?0+$/, '')
+}
+
 export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = ({ trainer, onClose }) => {
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
@@ -22,7 +33,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
     const fetchProfile = async () => {
       try {
         const data = await apiRequest('profile_get', { user_id: trainer.id }, { headers: withAuth() })
-        if (data) setProfile(data)
+        if (data?.data) setProfile(data.data)
       } catch (err) {
         // ignore
       }
@@ -77,7 +88,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                   </div>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="font-semibold">Ksh {trainer.hourlyRate}/hour</div>
+                  <div className="font-semibold">Ksh {formatHourlyRate(profile?.hourly_rate || trainer.hourlyRate)}/hour</div>
                   <Badge variant={trainer.available ? 'default' : 'secondary'}>{trainer.available ? 'Available' : 'Busy'}</Badge>
                 </div>
               </div>
@@ -108,12 +119,12 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                     {profile.hourly_rate_by_radius.map((tier:any, i:number) => (
                       <div key={i} className="flex justify-between">
                         <span>Within {tier.radius_km} km</span>
-                        <span className="font-semibold">Ksh {Number(tier.rate)}</span>
+                        <span className="font-semibold">Ksh {formatHourlyRate(tier.rate)}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Ksh {trainer.hourlyRate}/hour</div>
+                  <div className="text-sm text-muted-foreground">Ksh {formatHourlyRate(profile?.hourly_rate || trainer.hourlyRate)}/hour</div>
                 )}
               </div>
 

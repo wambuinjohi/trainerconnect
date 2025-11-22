@@ -166,7 +166,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                 {suggestions.slice(0, 3).map((suggestion, idx) => (
                   <button
                     key={`suggestion-${idx}`}
-                    onClick={() => handleSuggestionClick(suggestion)}
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleSuggestionClick(suggestion)
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                       selectedSuggestionIndex === idx
                         ? 'bg-primary/10 text-primary'
@@ -196,7 +199,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   return (
                     <button
                       key={`recent-${idx}`}
-                      onClick={() => handleSuggestionClick(search)}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        handleSuggestionClick(search)
+                      }}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedSuggestionIndex === absoluteIdx
                           ? 'bg-primary/10 text-primary'
@@ -227,7 +233,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                   return (
                     <button
                       key={`popular-${idx}`}
-                      onClick={() => handleSuggestionClick(search)}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        handleSuggestionClick(search)
+                      }}
                       className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                         selectedSuggestionIndex === absoluteIdx
                           ? 'bg-primary/10 text-primary'
