@@ -312,7 +312,9 @@ const AvailabilityEditor: React.FC<AvailabilityEditorProps> = ({ onClose }) => {
     setSaving(true)
     try {
       const payload = buildPayload(schedule)
-      await apiRequest('profile_update', { user_id: userId, user_type: 'trainer', availability: payload }, { headers: withAuth() })
+      await apiService.updateUserProfile(userId, {
+        availability: JSON.stringify(payload),
+      })
 
       setInitialPayload(payload)
       setShowValidationError(false)
