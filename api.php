@@ -1852,6 +1852,18 @@ switch ($action) {
         }
 
         $profile = $result->fetch_assoc();
+
+        // Parse JSON fields for proper response format
+        $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
+        foreach ($jsonFields as $field) {
+            if (isset($profile[$field]) && is_string($profile[$field]) && !empty($profile[$field])) {
+                $parsed = json_decode($profile[$field], true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $profile[$field] = $parsed;
+                }
+            }
+        }
+
         respond("success", "Profile fetched successfully.", ["data" => $profile]);
         break;
 
