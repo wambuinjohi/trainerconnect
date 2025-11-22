@@ -1676,7 +1676,7 @@ switch ($action) {
             VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE hourly_rate = ?, updated_at = NOW()
         ");
-        $stmt->bind_param("ssidds", $pricingId, $trainerId, $categoryId, $hourlyRate, $now, $hourlyRate);
+        $stmt->bind_param("ssidsd", $pricingId, $trainerId, $categoryId, $hourlyRate, $now, $hourlyRate);
 
         if ($stmt->execute()) {
             $stmt->close();
