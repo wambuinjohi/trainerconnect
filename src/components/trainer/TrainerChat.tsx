@@ -85,8 +85,8 @@ export const TrainerChat: React.FC<{ booking: any, onClose?: () => void }> = ({ 
           </CardHeader>
           <CardContent>
             <div className="space-y-2 mb-2 max-h-96 overflow-auto">
-              {messages.map((m, i) => (
-                <div key={i} className={`p-2 rounded ${m.client_id === clientId ? 'bg-muted' : 'bg-primary/10 self-end'}`}>
+              {messages.map((m) => (
+                <div key={m.id || `${m.content}-${m.created_at}`} className={`p-2 rounded ${m.client_id === clientId ? 'bg-muted' : 'bg-primary/10 self-end'}`}>
                   <div className="flex items-center justify-between">
                     <div className="text-sm">{m.content}</div>
                     <div className="ml-2 text-xs text-muted-foreground">

@@ -18,7 +18,8 @@ import {
   Plus,
   ChevronRight,
   ArrowLeft,
-  LogOut
+  LogOut,
+  DollarSign
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
@@ -29,6 +30,36 @@ import { FiltersModal } from './FiltersModal'
 import { ReviewModal } from './ReviewModal'
 import { NextSessionModal } from './NextSessionModal'
 import { LocationSelector } from './LocationSelector'
+
+// Helper functions for formatting trainer data
+function parseDisciplines(disciplines: any): string {
+  if (!disciplines) return 'Training'
+  if (typeof disciplines === 'string') {
+    try {
+      const parsed = JSON.parse(disciplines)
+      if (Array.isArray(parsed)) {
+        return parsed.join(', ')
+      }
+      return String(parsed)
+    } catch {
+      return String(disciplines).trim()
+    }
+  }
+  if (Array.isArray(disciplines)) {
+    return disciplines.join(', ')
+  }
+  return String(disciplines)
+}
+
+function formatHourlyRate(rate: number | null | undefined): string {
+  if (rate == null || rate === 0) return '0'
+  const num = Number(rate)
+  if (!Number.isFinite(num)) return '0'
+  if (num % 1 === 0) {
+    return num.toLocaleString()
+  }
+  return num.toFixed(2).replace(/\.?0+$/, '')
+}
 import { SearchBar } from './SearchBar'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
@@ -155,13 +186,13 @@ export const ClientDashboard: React.FC = () => {
               return {
                 id: trainer.user_id,
                 name: trainer.full_name || trainer.user_id,
-                discipline: trainer.disciplines || 'Training',
+                discipline: parseDisciplines(trainer.disciplines),
                 bio: trainer.bio || '',
                 profile_image: trainer.profile_image || null,
                 categoryIds: categoryIds,
-                rating: trainer.rating || 0,
-                reviews: trainer.total_reviews || 0,
-                hourlyRate: trainer.hourly_rate || 0,
+                rating: Number(trainer.rating) || 0,
+                reviews: Number(trainer.total_reviews) || 0,
+                hourlyRate: Number(trainer.hourly_rate) || 0,
                 available: trainer.is_available !== false,
                 distance: '—',
                 distanceKm: null,
@@ -407,7 +438,7 @@ export const ClientDashboard: React.FC = () => {
                             <Badge className="bg-green-500 text-white text-xs">Nearest</Badge>
                           )}
                         </div>
-                        <p className="text-sm text-muted-foreground">{trainer.discipline}</p>
+                        <p className="text-sm text-muted-foreground">{trainer.discipline || 'Training'}</p>
                       </div>
                       <Badge variant={trainer.available ? "default" : "secondary"} className="flex-shrink-0">
                         {trainer.available ? 'Available' : 'Busy'}
@@ -416,7 +447,7 @@ export const ClientDashboard: React.FC = () => {
                     <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground flex-wrap">
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        {trainer.rating} ({trainer.reviews})
+                        {trainer.rating.toFixed(1)} ({trainer.reviews})
                       </div>
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
@@ -425,7 +456,7 @@ export const ClientDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="font-semibold text-foreground">Ksh {trainer.hourlyRate}/hour</span>
+                      <span className="font-semibold text-foreground">Ksh {formatHourlyRate(trainer.hourlyRate)}/hour</span>
                       <div className="flex gap-2">
                         <Button variant="outline" size="sm" onClick={() => openTrainer(trainer)}>
                           <MessageCircle className="h-4 w-4" />
