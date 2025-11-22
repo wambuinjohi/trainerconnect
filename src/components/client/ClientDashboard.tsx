@@ -170,27 +170,9 @@ export const ClientDashboard: React.FC = () => {
                 location_lng: trainer.location_lng || null,
                 location_label: trainer.location_label || 'Unknown',
                 image: trainer.profile_image ? null : '👤',
-                availability: (() => {
-                  try {
-                    return typeof trainer.availability === 'string' ? JSON.parse(trainer.availability) : trainer.availability
-                  } catch {
-                    return null
-                  }
-                })(),
-                hourly_rate_by_radius: (() => {
-                  try {
-                    return typeof trainer.hourly_rate_by_radius === 'string' ? JSON.parse(trainer.hourly_rate_by_radius) : trainer.hourly_rate_by_radius
-                  } catch {
-                    return []
-                  }
-                })(),
-                pricing_packages: (() => {
-                  try {
-                    return typeof trainer.pricing_packages === 'string' ? JSON.parse(trainer.pricing_packages) : trainer.pricing_packages
-                  } catch {
-                    return []
-                  }
-                })()
+                availability: Array.isArray(trainer.availability) || typeof trainer.availability === 'object' ? trainer.availability : null,
+                hourly_rate_by_radius: Array.isArray(trainer.hourly_rate_by_radius) ? trainer.hourly_rate_by_radius : [],
+                pricing_packages: Array.isArray(trainer.pricing_packages) ? trainer.pricing_packages : []
               }
             })
           )
