@@ -2815,7 +2815,12 @@ switch ($action) {
         $trainerId = $request['trainer_id'];
         $requestedAmount = floatval($request['amount']);
 
-        $commission = ($requestedAmount * $commissionPercentage) / 100;
+        // FIXED: Do not apply commission to trainer_net_amount
+        // The trainer_net_amount already has platform_fee deducted at booking time
+        // Transport fees are not subject to any additional commission or fees
+        // Only apply commission if there's a separate B2C processing fee (if applicable)
+        // For now, set commission to 0 since trainer_net is already net of all deductions
+        $commission = 0;
         $netAmount = $requestedAmount - $commission;
 
         $phoneQuery = $conn->query("SELECT phone FROM user_profiles WHERE user_id = '$trainerId'");
