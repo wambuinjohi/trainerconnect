@@ -233,14 +233,15 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
         <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
           <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
           <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{sessions}</span></div>
-          {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Discount</span><span>−Ksh {appliedDiscount}</span></div>}
-          {(() => { const base = computeBaseAmount() - appliedDiscount; const clientFee = Math.round((base * clientChargePct)/100); const vat = Math.round(((base + clientFee) * vatPct)/100); const total = base + clientFee + vat; return (
-            <>
-              <div className="flex justify-between"><span>Platform fee ({clientChargePct}%)</span><span>+Ksh {clientFee}</span></div>
-              <div className="flex justify-between"><span>VAT ({vatPct}%)</span><span>+Ksh {vat}</span></div>
-              <div className="flex justify-between mt-2"><span className="font-medium">Total</span><span className="font-bold">Ksh {total}</span></div>
-            </>
-          ) })()}
+          <div className="flex justify-between"><span>Service Amount</span><span className="font-semibold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+          {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Referral Discount</span><span>−Ksh {appliedDiscount}</span></div>}
+          <div className="border-t border-border my-2 pt-2">
+            <div className="text-xs text-muted-foreground mb-2">Breakdown (calculated server-side):</div>
+            <div className="flex justify-between text-xs"><span>Transport fee (distance-based)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between text-xs"><span>Platform fee (10%)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between text-xs"><span>VAT (16%)</span><span>Ksh 0</span></div>
+            <div className="flex justify-between mt-2"><span className="font-medium">Total (incl. all fees)</span><span className="font-bold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
