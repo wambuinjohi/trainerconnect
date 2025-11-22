@@ -103,6 +103,18 @@ export function enrichTrainersWithDistance(
           trainer.location_lat,
           trainer.location_lng
         )
+        // Debug logging
+        if (distKm === null || (distKm && distKm > 1000)) {
+          console.warn('[Distance Debug]', {
+            trainer: trainer.name,
+            userLoc: userLocation,
+            trainerLat: trainer.location_lat,
+            trainerLng: trainer.location_lng,
+            calculatedKm: distKm,
+            typeOfLat: typeof trainer.location_lat,
+            typeOfLng: typeof trainer.location_lng,
+          })
+        }
         return {
           ...trainer,
           distanceKm: distKm,
