@@ -127,6 +127,14 @@ export async function removeTrainerCategory(trainerId: string, categoryId: numbe
   return apiRequest('trainer_category_remove', { trainer_id: trainerId, category_id: categoryId })
 }
 
+export async function setTrainerCategoryPricing(trainerId: string, categoryId: number, hourlyRate: number) {
+  return apiRequest('trainer_category_pricing_set', { trainer_id: trainerId, category_id: categoryId, hourly_rate: hourlyRate })
+}
+
+export async function getTrainerCategoryPricing(trainerId: string) {
+  return apiRequest('trainer_category_pricing_get', { trainer_id: trainerId })
+}
+
 export async function getTrainersByCategory(categoryId: number) {
   return apiRequest('trainers_by_category', { category_id: categoryId })
 }
