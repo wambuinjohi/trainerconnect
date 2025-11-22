@@ -28,7 +28,14 @@ export const TrainerPayoutRequest: React.FC = () => {
 
         // Get trainer's payments/earnings
         const paymentsData = await apiRequest('payments_get', { trainer_id: user.id }, { headers: withAuth() })
-        const totalEarnings = paymentsData?.data?.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0) || 0
+
+        // Use summary if available, fallback to sum of trainer_net_amount
+        let totalEarnings = 0
+        if (paymentsData?.summary?.total_earnings) {
+          totalEarnings = Number(paymentsData.summary.total_earnings) || 0
+        } else {
+          totalEarnings = paymentsData?.data?.reduce((sum: number, p: any) => sum + (Number(p.trainer_net_amount) || 0), 0) || 0
+        }
         setBalance(totalEarnings)
 
         // Get pending payout requests for this trainer
@@ -120,6 +127,15 @@ export const TrainerPayoutRequest: React.FC = () => {
             </div>
           )}
           <p className="text-sm text-muted-foreground mt-2">From completed sessions</p>
+          {!loading && balance > 0 && (
+            <>
+              {requests && requests.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  This includes any client travel/transport fees you've earned
+                </p>
+              )}
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -133,7 +149,7 @@ export const TrainerPayoutRequest: React.FC = () => {
             <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-700">
               <p className="font-semibold">Admin approval required</p>
-              <p>Your payout request will be reviewed and approved by the admin. Commission will be deducted if applicable.</p>
+              <p>Your payout request will be reviewed and approved by the admin. The amount shown is your net earnings (platform fees and transport compensation already calculated).</p>
             </div>
           </div>
 

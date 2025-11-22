@@ -1896,7 +1896,17 @@ switch ($action) {
 
         $trainerId = $conn->real_escape_string($input['trainer_id']);
 
-        $sql = "SELECT * FROM payments WHERE trainer_id = '$trainerId' ORDER BY created_at DESC";
+        // Get all completed payments for this trainer with fee breakdown
+        $sql = "
+            SELECT
+                id, booking_id, amount, trainer_net_amount,
+                base_service_amount, transport_fee, platform_fee, vat_amount,
+                status, method, transaction_reference, created_at, updated_at
+            FROM payments
+            WHERE trainer_id = '$trainerId'
+              AND status = 'completed'
+            ORDER BY created_at DESC
+        ";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -1908,7 +1918,30 @@ switch ($action) {
             $payments[] = $row;
         }
 
-        respond("success", "Payments fetched successfully.", ["data" => $payments]);
+        // Calculate total trainer earnings from completed payments
+        $sumSql = "
+            SELECT
+                SUM(trainer_net_amount) as total_earnings,
+                COUNT(*) as payment_count,
+                SUM(transport_fee) as total_transport_earned
+            FROM payments
+            WHERE trainer_id = '$trainerId'
+              AND status = 'completed'
+        ";
+        $sumResult = $conn->query($sumSql);
+        $summary = [];
+        if ($sumResult && $sumResult->num_rows > 0) {
+            $summary = $sumResult->fetch_assoc();
+        }
+
+        respond("success", "Payments fetched successfully.", [
+            "data" => $payments,
+            "summary" => [
+                "total_earnings" => floatval($summary['total_earnings'] ?? 0),
+                "payment_count" => intval($summary['payment_count'] ?? 0),
+                "total_transport_earned" => floatval($summary['total_transport_earned'] ?? 0)
+            ]
+        ]);
         break;
 
     // INSERT PAYMENT
@@ -1989,9 +2022,15 @@ switch ($action) {
 
         foreach ($input as $key => $value) {
             if ($key === 'user_id' || $key === 'action') continue;
-            if ($value === null) continue;
 
             $safeKey = $conn->real_escape_string($key);
+
+            // Allow setting location_label and similar fields to null
+            if ($value === null) {
+                $updates[] = "`$safeKey` = NULL";
+                continue;
+            }
+
             if (is_array($value) || is_object($value)) {
                 $updates[] = "`$safeKey` = ?";
                 $params[] = json_encode($value);
@@ -2782,7 +2821,12 @@ switch ($action) {
         $trainerId = $request['trainer_id'];
         $requestedAmount = floatval($request['amount']);
 
-        $commission = ($requestedAmount * $commissionPercentage) / 100;
+        // FIXED: Do not apply commission to trainer_net_amount
+        // The trainer_net_amount already has platform_fee deducted at booking time
+        // Transport fees are not subject to any additional commission or fees
+        // Only apply commission if there's a separate B2C processing fee (if applicable)
+        // For now, set commission to 0 since trainer_net is already net of all deductions
+        $commission = 0;
         $netAmount = $requestedAmount - $commission;
 
         $phoneQuery = $conn->query("SELECT phone FROM user_profiles WHERE user_id = '$trainerId'");
