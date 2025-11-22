@@ -103,6 +103,17 @@ const Explore: React.FC = () => {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
 
+  const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Generate suggestions from trainer names
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return trainers
+      .filter(t => (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      .map(t => t.name)
+      .slice(0, 5)
+  }, [searchQuery, trainers])
+
   // Load categories and trainers
   useEffect(() => {
     const fetchData = async () => {
