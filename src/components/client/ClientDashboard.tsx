@@ -35,6 +35,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchHistory } from '@/hooks/use-search-history'
 import * as apiService from '@/lib/api-service'
 import { enrichTrainersWithDistance } from '@/lib/distance-utils'
+import { apiRequest, withAuth } from '@/lib/api'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
