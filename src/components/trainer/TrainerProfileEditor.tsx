@@ -261,6 +261,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       try {
         const updatePayload = {
           full_name: name,
+          disciplines: JSON.stringify(disciplines),
           certifications: JSON.stringify(certifications),
           hourly_rate: hourlyRateNum,
           service_radius: serviceRadiusNum,
