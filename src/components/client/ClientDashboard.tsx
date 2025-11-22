@@ -32,6 +32,7 @@ import { LocationSelector } from './LocationSelector'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import * as apiService from '@/lib/api-service'
+import { enrichTrainersWithDistance, filterTrainers, type FilterCriteria } from '@/lib/distance-utils'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
