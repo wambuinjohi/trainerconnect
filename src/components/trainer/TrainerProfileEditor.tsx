@@ -307,6 +307,22 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         }
       }
 
+      // Save category pricing for all selected categories
+      for (const categoryId of selectedCategoryIds) {
+        const price = categoryPricing[categoryId]
+        if (price && price > 0) {
+          try {
+            await apiRequest('trainer_category_pricing_set', {
+              trainer_id: userId,
+              category_id: categoryId,
+              hourly_rate: price
+            }, { headers: withAuth() })
+          } catch (pricingErr) {
+            console.warn(`Failed to save pricing for category ${categoryId}:`, pricingErr)
+          }
+        }
+      }
+
       toast({ title: 'Saved', description: 'Profile updated successfully.' })
       onClose?.()
     } catch (err) {
