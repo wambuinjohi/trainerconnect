@@ -207,7 +207,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                        <span className="truncate">{search}</span>
+                        <span className="truncate">{renderSuggestionText(search)}</span>
                       </div>
                     </button>
                   )
