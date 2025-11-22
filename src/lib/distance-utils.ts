@@ -1,28 +1,78 @@
 /**
+ * Validate and normalize geographic coordinates
+ * @param lat - Latitude value (should be -90 to 90)
+ * @param lng - Longitude value (should be -180 to 180)
+ * @returns Valid coordinates or null if invalid
+ */
+function validateCoordinates(
+  lat: any,
+  lng: any
+): { lat: number; lng: number } | null {
+  // Handle empty/null values
+  if (lat == null || lng == null || lat === '' || lng === '') {
+    return null
+  }
+
+  // Convert to numbers
+  const numLat = Number(lat)
+  const numLng = Number(lng)
+
+  // Check if both are valid numbers
+  if (!Number.isFinite(numLat) || !Number.isFinite(numLng)) {
+    return null
+  }
+
+  // Check if within valid geographic ranges
+  // Latitude: -90 to 90
+  // Longitude: -180 to 180
+  if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
+    return null
+  }
+
+  return { lat: numLat, lng: numLng }
+}
+
+/**
  * Calculate distance between two coordinates using Haversine formula
  * @param lat1 - Latitude of first point
  * @param lon1 - Longitude of first point
  * @param lat2 - Latitude of second point
  * @param lon2 - Longitude of second point
- * @returns Distance in kilometers
+ * @returns Distance in kilometers, or null if coordinates are invalid
  */
 export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
-): number {
+): number | null {
+  // Validate coordinates
+  const startCoords = validateCoordinates(lat1, lon1)
+  const endCoords = validateCoordinates(lat2, lon2)
+
+  if (!startCoords || !endCoords) {
+    return null
+  }
+
   const R = 6371 // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const dLat = ((endCoords.lat - startCoords.lat) * Math.PI) / 180
+  const dLon = ((endCoords.lng - startCoords.lng) * Math.PI) / 180
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos((startCoords.lat * Math.PI) / 180) *
+      Math.cos((endCoords.lat * Math.PI) / 180) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-  return R * c
+  const distance = R * c
+
+  // Sanity check: max distance between two points on Earth is ~20,000km (half Earth's circumference)
+  // If distance is greater, coordinates are likely invalid/swapped
+  if (distance > 20000) {
+    return null
+  }
+
+  return distance
 }
 
 /**
@@ -30,7 +80,7 @@ export function calculateDistance(
  * @param distanceKm - Distance in kilometers
  * @returns Formatted distance string
  */
-export function formatDistance(distanceKm: number | null): string {
+export function formatDistance(distanceKm: number | null | undefined): string {
   if (distanceKm === null || distanceKm === undefined) {
     return '—'
   }
@@ -59,13 +109,28 @@ export function enrichTrainersWithDistance(
 
   return trainers
     .map((trainer) => {
-      if (trainer.location_lat && trainer.location_lng) {
+      if (trainer.location_lat != null && trainer.location_lng != null) {
         const distKm = calculateDistance(
           userLocation.lat,
           userLocation.lng,
           trainer.location_lat,
           trainer.location_lng
         )
+        // Debug logging for any issues
+        if (distKm === null) {
+          console.debug('[Distance] Coordinates rejected as invalid:', {
+            trainer: trainer.name,
+            trainerLat: trainer.location_lat,
+            trainerLng: trainer.location_lng,
+            typeOfLat: typeof trainer.location_lat,
+            typeOfLng: typeof trainer.location_lng,
+          })
+        } else if (distKm > 1000) {
+          console.warn('[Distance] Unusually large distance:', {
+            trainer: trainer.name,
+            distanceKm: distKm,
+          })
+        }
         return {
           ...trainer,
           distanceKm: distKm,
