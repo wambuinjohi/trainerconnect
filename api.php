@@ -1503,6 +1503,126 @@ switch ($action) {
         break;
 
     // =============================
+    // TRAINER CATEGORIES MANAGEMENT
+    // =============================
+
+    // GET TRAINER CATEGORIES
+    case 'trainer_categories_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $stmt = $conn->prepare("
+            SELECT tc.id, tc.trainer_id, tc.category_id, c.id as cat_id, c.name, c.icon, c.description, tc.created_at
+            FROM trainer_categories tc
+            LEFT JOIN categories c ON tc.category_id = c.id
+            WHERE tc.trainer_id = ?
+            ORDER BY c.name ASC
+        ");
+        $stmt->bind_param("s", $trainerId);
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $categories = [];
+            while ($row = $result->fetch_assoc()) {
+                $categories[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Trainer categories fetched successfully.", ["data" => $categories]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch trainer categories: " . $conn->error, null, 500);
+        }
+        break;
+
+    // ADD TRAINER CATEGORY
+    case 'trainer_category_add':
+        if (!isset($input['trainer_id']) || !isset($input['category_id'])) {
+            respond("error", "Missing trainer_id or category_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+        $assignmentId = 'tc_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO trainer_categories (id, trainer_id, category_id, created_at)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssiss", $assignmentId, $trainerId, $categoryId, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_category_added', ['trainer_id' => $trainerId, 'category_id' => $categoryId]);
+            respond("success", "Category added to trainer successfully.", ["id" => $assignmentId]);
+        } else {
+            $stmt->close();
+            if (strpos($conn->error, 'Duplicate entry') !== false) {
+                respond("error", "Trainer already has this category.", null, 409);
+            } else {
+                respond("error", "Failed to add category to trainer: " . $conn->error, null, 500);
+            }
+        }
+        break;
+
+    // REMOVE TRAINER CATEGORY
+    case 'trainer_category_remove':
+        if (!isset($input['trainer_id']) || !isset($input['category_id'])) {
+            respond("error", "Missing trainer_id or category_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+
+        $stmt = $conn->prepare("
+            DELETE FROM trainer_categories
+            WHERE trainer_id = ? AND category_id = ?
+        ");
+        $stmt->bind_param("si", $trainerId, $categoryId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_category_removed', ['trainer_id' => $trainerId, 'category_id' => $categoryId]);
+            respond("success", "Category removed from trainer successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to remove category from trainer: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET TRAINERS BY CATEGORY
+    case 'trainers_by_category':
+        if (!isset($input['category_id'])) {
+            respond("error", "Missing category_id.", null, 400);
+        }
+
+        $categoryId = intval($input['category_id']);
+        $stmt = $conn->prepare("
+            SELECT DISTINCT up.*
+            FROM trainer_categories tc
+            INNER JOIN user_profiles up ON tc.trainer_id = up.user_id
+            WHERE tc.category_id = ? AND up.user_type = 'trainer' AND up.is_approved = 1
+            ORDER BY up.rating DESC, up.full_name ASC
+        ");
+        $stmt->bind_param("i", $categoryId);
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $trainers = [];
+            while ($row = $result->fetch_assoc()) {
+                $trainers[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Trainers fetched successfully.", ["data" => $trainers]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch trainers: " . $conn->error, null, 500);
+        }
+        break;
+
+    // =============================
     // CUSTOM ACTIONS: Client Portal
     // =============================
 
