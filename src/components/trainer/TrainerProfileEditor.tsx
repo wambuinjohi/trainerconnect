@@ -102,17 +102,27 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
         // Load trainer categories
         const categoriesData = await apiService.getTrainerCategories(userId)
-        if (categoriesData?.data) {
-          const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
+        console.log('Trainer categories loaded:', categoriesData)
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          const ids = categoriesData.data.map((cat: any) => {
+            const catId = cat.category_id || cat.cat_id || cat.id
+            console.log('Processing category:', cat, 'ID:', catId)
+            return catId
+          })
+          console.log('Selected category IDs:', ids)
           setSelectedCategoryIds(ids)
 
           // Load category pricing
           const pricing: Record<number, number> = {}
+          const baseRate = data?.hourly_rate || profile?.hourly_rate || 1000
           for (const cat of categoriesData.data) {
-            const catId = cat.category_id || cat.cat_id
-            pricing[catId] = cat.hourly_rate || profile?.hourly_rate || 1000
+            const catId = cat.category_id || cat.cat_id || cat.id
+            pricing[catId] = cat.hourly_rate || baseRate
           }
+          console.log('Category pricing:', pricing)
           setCategoryPricing(pricing)
+        } else {
+          console.log('No trainer categories found or invalid response:', categoriesData)
         }
       } catch (error) {
         console.error('Failed to fetch profile', error)
