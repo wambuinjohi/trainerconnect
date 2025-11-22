@@ -149,7 +149,7 @@ export const TrainerPayoutRequest: React.FC = () => {
             <AlertCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-700">
               <p className="font-semibold">Admin approval required</p>
-              <p>Your payout request will be reviewed and approved by the admin. Commission will be deducted if applicable.</p>
+              <p>Your payout request will be reviewed and approved by the admin. The amount shown is your net earnings (platform fees and transport compensation already calculated).</p>
             </div>
           </div>
 
