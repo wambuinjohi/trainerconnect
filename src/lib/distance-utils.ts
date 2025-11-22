@@ -1,24 +1,61 @@
 /**
+ * Validate and normalize geographic coordinates
+ * @param lat - Latitude value (should be -90 to 90)
+ * @param lng - Longitude value (should be -180 to 180)
+ * @returns Valid coordinates or null if invalid
+ */
+function validateCoordinates(
+  lat: any,
+  lng: any
+): { lat: number; lng: number } | null {
+  // Convert to numbers
+  const numLat = Number(lat)
+  const numLng = Number(lng)
+
+  // Check if both are valid numbers
+  if (!Number.isFinite(numLat) || !Number.isFinite(numLng)) {
+    return null
+  }
+
+  // Check if within valid geographic ranges
+  // Latitude: -90 to 90
+  // Longitude: -180 to 180
+  if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
+    return null
+  }
+
+  return { lat: numLat, lng: numLng }
+}
+
+/**
  * Calculate distance between two coordinates using Haversine formula
  * @param lat1 - Latitude of first point
  * @param lon1 - Longitude of first point
  * @param lat2 - Latitude of second point
  * @param lon2 - Longitude of second point
- * @returns Distance in kilometers
+ * @returns Distance in kilometers, or null if coordinates are invalid
  */
 export function calculateDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number
-): number {
+): number | null {
+  // Validate coordinates
+  const startCoords = validateCoordinates(lat1, lon1)
+  const endCoords = validateCoordinates(lat2, lon2)
+
+  if (!startCoords || !endCoords) {
+    return null
+  }
+
   const R = 6371 // Earth's radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180
-  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const dLat = ((endCoords.lat - startCoords.lat) * Math.PI) / 180
+  const dLon = ((endCoords.lng - startCoords.lng) * Math.PI) / 180
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
+    Math.cos((startCoords.lat * Math.PI) / 180) *
+      Math.cos((endCoords.lat * Math.PI) / 180) *
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2)
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
