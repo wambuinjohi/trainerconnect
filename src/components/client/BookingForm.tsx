@@ -34,7 +34,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
     setLoading(true)
     const baseAmount = computeBaseAmount()
-    let totalAmount = baseAmount
+    let baseServiceAmount = baseAmount
+    let appliedReferralDiscount = 0
 
     // Load client saved location to link to booking
     let clientLocation: { label?: string; lat?: number | null; lng?: number | null } = {}
@@ -55,7 +56,8 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
           const settings = loadSettings()
           const pct = Math.max(0, Math.min(100, settings.referralClientDiscount || 0))
           const discount = Math.round((baseAmount * pct) / 100)
-          totalAmount = Math.max(0, baseAmount - discount)
+          baseServiceAmount = Math.max(0, baseAmount - discount)
+          appliedReferralDiscount = discount
           setAppliedDiscount(discount)
           try {
             await apiRequest('referral_update', { id: row.id, referee_id: user.id, discount_used: true, discount_amount: discount }, { headers: withAuth() })
@@ -66,11 +68,6 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
       }
     }
 
-    // Apply platform client surcharge and VAT to what client pays
-    const clientCommission = Math.round((totalAmount * clientChargePct) / 100)
-    const vatAmount = Math.round(((totalAmount + clientCommission) * vatPct) / 100)
-    const clientTotal = totalAmount + clientCommission + vatAmount
-
     const payload: any = {
       client_id: user.id,
       trainer_id: trainer.id,
@@ -79,7 +76,7 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
       duration_hours: 1,
       total_sessions: sessions,
       status: 'pending',
-      total_amount: clientTotal,
+      base_service_amount: baseServiceAmount,
       notes,
       client_location_label: (clientLocation.label || null),
       client_location_lat: (clientLocation.lat != null ? clientLocation.lat : null),
@@ -87,8 +84,13 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     }
 
     try {
-      // create booking using API service
-      const bookingData = await apiService.createBooking(payload)
+      // create booking using new booking_create action with server-side fee calculation
+      const bookingResponse = await apiRequest('booking_create', payload, { headers: withAuth() })
+      const bookingData = { id: bookingResponse?.booking_id }
+      const clientTotal = bookingResponse?.total_amount || 0
+      const transportFee = bookingResponse?.transport_fee || 0
+      const platformFee = bookingResponse?.platform_fee || 0
+      const vatAmount = bookingResponse?.vat_amount || 0
 
       // in-app notifications: client, trainer, admins
       try {
