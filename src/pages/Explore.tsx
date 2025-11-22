@@ -93,6 +93,7 @@ const TrainerRow: React.FC<{
 
 // Main Explore page
 const Explore: React.FC = () => {
+  const [searchParams] = useSearchParams()
   const [trainers, setTrainers] = useState<TrainerWithCategories[]>([])
   const [filteredTrainers, setFilteredTrainers] = useState<TrainerWithCategories[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -104,6 +105,17 @@ const Explore: React.FC = () => {
   const [locationLoading, setLocationLoading] = useState(false)
 
   const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    const categoryParam = searchParams.get('category')
+    if (categoryParam) {
+      const categoryId = parseInt(categoryParam, 10)
+      if (!isNaN(categoryId)) {
+        setFilters(prev => ({ ...prev, categoryId }))
+      }
+    }
+  }, [searchParams])
 
   // Generate suggestions from trainer names
   const suggestions = useMemo(() => {
