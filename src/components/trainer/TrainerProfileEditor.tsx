@@ -156,6 +156,13 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     }
     setLoading(true)
     try {
+      // Validate categories
+      if (selectedCategoryIds.length === 0) {
+        toast({ title: 'Category required', description: 'Please select at least one service category.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
       // Disciplines & certifications normalization
       const disciplines = Array.isArray(profile.disciplines)
         ? profile.disciplines
