@@ -67,7 +67,7 @@ export function calculateDistance(
  * @param distanceKm - Distance in kilometers
  * @returns Formatted distance string
  */
-export function formatDistance(distanceKm: number | null): string {
+export function formatDistance(distanceKm: number | null | undefined): string {
   if (distanceKm === null || distanceKm === undefined) {
     return '—'
   }
