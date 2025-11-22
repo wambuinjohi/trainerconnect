@@ -1,23 +1,50 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Header from '@/components/Header'
 import AuthLogo from '@/components/auth/AuthLogo'
-import { 
-  CheckCircle2, 
-  MapPin, 
-  Shield, 
-  MessageSquare, 
+import {
+  CheckCircle2,
+  MapPin,
+  Shield,
+  MessageSquare,
   Star,
   Dumbbell,
   Calendar,
   TrendingUp,
   Users,
-  Award
+  Award,
+  ArrowRight
 } from 'lucide-react'
+import * as apiService from '@/lib/api-service'
+
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
 
 const Home: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const data = await apiService.getCategories()
+        if (data?.data) {
+          setCategories(data.data)
+        }
+      } catch (err) {
+        console.warn('Failed to load categories', err)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+    loadCategories()
+  }, [])
 
   const features = [
     {
