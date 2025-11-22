@@ -280,7 +280,31 @@ export const ClientDashboard: React.FC = () => {
   )
 
   const renderExploreContent = () => {
-    const filteredTrainers = applyFilters(trainers)
+    // Filter trainers based on selected category and other criteria
+    const filteredTrainers = selectedCategory
+      ? trainers.filter(t => {
+          const ds = Array.isArray(t.disciplines) ? t.disciplines : [t.discipline]
+          const match = ds.some((d: string) => String(d || '').toLowerCase() === String(selectedCategory).toLowerCase())
+
+          if (!match) return false
+          if (filters.minRating && (t.rating || 0) < filters.minRating) return false
+          if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
+          if (filters.onlyAvailable && !t.available) return false
+          if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
+          if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.discipline || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+
+          return true
+        })
+      : trainers.filter(t => {
+          if (filters.minRating && (t.rating || 0) < filters.minRating) return false
+          if (filters.maxPrice && (t.hourlyRate || 0) > Number(filters.maxPrice)) return false
+          if (filters.onlyAvailable && !t.available) return false
+          if (filters.radius && (t.distanceKm == null || t.distanceKm > Number(filters.radius))) return false
+          if (searchQuery && !((t.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || (t.discipline || '').toLowerCase().includes(searchQuery.toLowerCase()))) return false
+
+          return true
+        })
+
     const nearestTrainerId = filteredTrainers.length > 0 ? filteredTrainers[0].id : null
 
     return (

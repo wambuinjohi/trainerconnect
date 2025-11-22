@@ -799,6 +799,55 @@ switch ($action) {
                   INDEX `idx_trainer_id` (`trainer_id`),
                   INDEX `idx_status` (`status`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'trainer_categories' => "
+                CREATE TABLE IF NOT EXISTS `trainer_categories` (
+                  `id` VARCHAR(36) PRIMARY KEY DEFAULT (UUID()),
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `category_id` INT NOT NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_trainer_categories_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  CONSTRAINT `fk_trainer_categories_category_id`
+                    FOREIGN KEY (`category_id`)
+                    REFERENCES `categories`(`id`)
+                    ON DELETE CASCADE,
+                  UNIQUE KEY `uq_trainer_category` (`trainer_id`, `category_id`),
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_category_id` (`category_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'categories' => "
+                CREATE TABLE IF NOT EXISTS `categories` (
+                  `id` INT AUTO_INCREMENT PRIMARY KEY,
+                  `name` VARCHAR(255) NOT NULL UNIQUE,
+                  `icon` VARCHAR(50),
+                  `description` TEXT,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  INDEX `idx_name` (`name`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
+            'services' => "
+                CREATE TABLE IF NOT EXISTS `services` (
+                  `id` VARCHAR(36) PRIMARY KEY,
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `title` VARCHAR(255) NOT NULL,
+                  `description` TEXT,
+                  `price` DECIMAL(15, 2) NOT NULL,
+                  `duration_minutes` INT,
+                  `is_active` BOOLEAN DEFAULT TRUE,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_services_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_is_active` (`is_active`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             "
         ];
 
@@ -1450,6 +1499,126 @@ switch ($action) {
         } else {
             $stmt->close();
             respond("error", "Failed to delete category: " . $conn->error, null, 500);
+        }
+        break;
+
+    // =============================
+    // TRAINER CATEGORIES MANAGEMENT
+    // =============================
+
+    // GET TRAINER CATEGORIES
+    case 'trainer_categories_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $stmt = $conn->prepare("
+            SELECT tc.id, tc.trainer_id, tc.category_id, c.id as cat_id, c.name, c.icon, c.description, tc.created_at
+            FROM trainer_categories tc
+            LEFT JOIN categories c ON tc.category_id = c.id
+            WHERE tc.trainer_id = ?
+            ORDER BY c.name ASC
+        ");
+        $stmt->bind_param("s", $trainerId);
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $categories = [];
+            while ($row = $result->fetch_assoc()) {
+                $categories[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Trainer categories fetched successfully.", ["data" => $categories]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch trainer categories: " . $conn->error, null, 500);
+        }
+        break;
+
+    // ADD TRAINER CATEGORY
+    case 'trainer_category_add':
+        if (!isset($input['trainer_id']) || !isset($input['category_id'])) {
+            respond("error", "Missing trainer_id or category_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+        $assignmentId = 'tc_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO trainer_categories (id, trainer_id, category_id, created_at)
+            VALUES (?, ?, ?, ?)
+        ");
+        $stmt->bind_param("ssiss", $assignmentId, $trainerId, $categoryId, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_category_added', ['trainer_id' => $trainerId, 'category_id' => $categoryId]);
+            respond("success", "Category added to trainer successfully.", ["id" => $assignmentId]);
+        } else {
+            $stmt->close();
+            if (strpos($conn->error, 'Duplicate entry') !== false) {
+                respond("error", "Trainer already has this category.", null, 409);
+            } else {
+                respond("error", "Failed to add category to trainer: " . $conn->error, null, 500);
+            }
+        }
+        break;
+
+    // REMOVE TRAINER CATEGORY
+    case 'trainer_category_remove':
+        if (!isset($input['trainer_id']) || !isset($input['category_id'])) {
+            respond("error", "Missing trainer_id or category_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+
+        $stmt = $conn->prepare("
+            DELETE FROM trainer_categories
+            WHERE trainer_id = ? AND category_id = ?
+        ");
+        $stmt->bind_param("si", $trainerId, $categoryId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_category_removed', ['trainer_id' => $trainerId, 'category_id' => $categoryId]);
+            respond("success", "Category removed from trainer successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to remove category from trainer: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET TRAINERS BY CATEGORY
+    case 'trainers_by_category':
+        if (!isset($input['category_id'])) {
+            respond("error", "Missing category_id.", null, 400);
+        }
+
+        $categoryId = intval($input['category_id']);
+        $stmt = $conn->prepare("
+            SELECT DISTINCT up.*
+            FROM trainer_categories tc
+            INNER JOIN user_profiles up ON tc.trainer_id = up.user_id
+            WHERE tc.category_id = ? AND up.user_type = 'trainer' AND up.is_approved = 1
+            ORDER BY up.rating DESC, up.full_name ASC
+        ");
+        $stmt->bind_param("i", $categoryId);
+
+        if ($stmt->execute()) {
+            $result = $stmt->get_result();
+            $trainers = [];
+            while ($row = $result->fetch_assoc()) {
+                $trainers[] = $row;
+            }
+            $stmt->close();
+            respond("success", "Trainers fetched successfully.", ["data" => $trainers]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to fetch trainers: " . $conn->error, null, 500);
         }
         break;
 

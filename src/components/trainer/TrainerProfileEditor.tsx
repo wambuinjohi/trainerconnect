@@ -25,6 +25,13 @@ interface TrainerProfile {
   bio?: string
 }
 
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
+
 export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
   const userId = user?.id
@@ -32,6 +39,9 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
   const [name, setName] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
   const imageInputRef = useRef<HTMLInputElement>(null)
   const { upload } = useFileUpload({
     maxFileSize: 5 * 1024 * 1024,
@@ -49,6 +59,23 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       setUploadingImage(false)
     }
   })
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const categoriesData = await apiService.getCategories()
+        if (categoriesData?.data) {
+          setCategories(categoriesData.data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories', error)
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    loadCategories()
+  }, [])
 
   useEffect(() => {
     if (!userId) return
@@ -70,6 +97,13 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
             setName(String(data.name || ''))
           }
         }
+
+        // Load trainer categories
+        const categoriesData = await apiService.getTrainerCategories(userId)
+        if (categoriesData?.data) {
+          const ids = categoriesData.data.map((cat: any) => cat.category_id || cat.cat_id)
+          setSelectedCategoryIds(ids)
+        }
       } catch (error) {
         console.error('Failed to fetch profile', error)
         // Fallback to localStorage on error
@@ -89,6 +123,14 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   }, [userId])
 
   const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
+
+  const handleCategoryChange = (categoryId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedCategoryIds(prev => [...new Set([...prev, categoryId])])
+    } else {
+      setSelectedCategoryIds(prev => prev.filter(id => id !== categoryId))
+    }
+  }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files
@@ -114,6 +156,13 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     }
     setLoading(true)
     try {
+      // Validate categories
+      if (selectedCategoryIds.length === 0) {
+        toast({ title: 'Category required', description: 'Please select at least one service category.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
       // Disciplines & certifications normalization
       const disciplines = Array.isArray(profile.disciplines)
         ? profile.disciplines
@@ -230,6 +279,31 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       // Save to localStorage as fallback
       localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
 
+      // Get previous categories to determine what changed
+      const previousCategoriesData = await apiService.getTrainerCategories(userId)
+      const previousCategoryIds = previousCategoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
+
+      // Determine which categories to add and remove
+      const categoriesToAdd = selectedCategoryIds.filter(id => !previousCategoryIds.includes(id))
+      const categoriesToRemove = previousCategoryIds.filter(id => !selectedCategoryIds.includes(id))
+
+      // Save category changes
+      for (const categoryId of categoriesToAdd) {
+        try {
+          await apiService.addTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to add category ${categoryId}:`, catErr)
+        }
+      }
+
+      for (const categoryId of categoriesToRemove) {
+        try {
+          await apiService.removeTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
       toast({ title: 'Saved', description: 'Profile updated successfully.' })
       onClose?.()
     } catch (err) {
@@ -311,6 +385,43 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           <div>
             <Label htmlFor="bio">Bio</Label>
             <textarea id="bio" value={profile.bio || ''} onChange={(e) => handleChange('bio', e.target.value)} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
+          </div>
+
+          <div className="space-y-3">
+            <Label>Service Categories (required)</Label>
+            <p className="text-sm text-muted-foreground">Select the categories of services you offer. These are defined by the platform administrator.</p>
+            {categoriesLoading ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No categories available. Please ask the administrator to create some.</div>
+            ) : (
+              <div className="space-y-2 border border-border rounded-md p-4">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id={`category_${category.id}`}
+                      checked={selectedCategoryIds.includes(category.id)}
+                      onChange={(e) => handleCategoryChange(category.id, e.target.checked)}
+                      disabled={loading}
+                      className="mt-1"
+                    />
+                    <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
+                      <div className="flex items-center gap-2">
+                        {category.icon && <span className="text-xl">{category.icon}</span>}
+                        <span className="font-medium text-foreground">{category.name}</span>
+                      </div>
+                      {category.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                      )}
+                    </label>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedCategoryIds.length === 0 && (
+              <p className="text-xs text-destructive">Please select at least one category</p>
+            )}
           </div>
 
           <div>

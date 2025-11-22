@@ -8,10 +8,12 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { BookingForm } from './BookingForm'
 import { Chat } from './Chat'
+import * as apiService from '@/lib/api-service'
 
 export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = ({ trainer, onClose }) => {
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
+  const [categories, setCategories] = useState<any[]>([])
   const [showBooking, setShowBooking] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
@@ -26,6 +28,21 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
       }
     }
     fetchProfile()
+  }, [trainer.id])
+
+  useEffect(() => {
+    // Fetch trainer's categories
+    const fetchCategories = async () => {
+      try {
+        const data = await apiService.getTrainerCategories(trainer.id)
+        if (data?.data) {
+          setCategories(data.data)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch trainer categories', err)
+      }
+    }
+    fetchCategories()
   }, [trainer.id])
 
   const openBooking = () => setShowBooking(true)
@@ -76,6 +93,20 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                   <div className="flex flex-wrap gap-2">
                     {profile.disciplines.map((d:any,i:number)=>(
                       <Badge key={i}>{d}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {categories.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Service Categories</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map((cat:any,i:number)=>(
+                      <Badge key={i} variant="outline" className="gap-1">
+                        {cat.icon && <span>{cat.icon}</span>}
+                        <span>{cat.name}</span>
+                      </Badge>
                     ))}
                   </div>
                 </div>
