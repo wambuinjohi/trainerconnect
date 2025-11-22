@@ -400,6 +400,154 @@ export const ClientDashboard: React.FC = () => {
     )
   }
 
+  const renderScheduleContent = () => {
+    const sortedBookings = [...bookings].sort((a, b) =>
+      new Date(b.session_date || 0).getTime() - new Date(a.session_date || 0).getTime()
+    )
+
+    const groupedByStatus = {
+      pending: sortedBookings.filter(b => b.status === 'pending'),
+      confirmed: sortedBookings.filter(b => b.status === 'confirmed'),
+      in_session: sortedBookings.filter(b => b.status === 'in_session'),
+      completed: sortedBookings.filter(b => b.status === 'completed'),
+      cancelled: sortedBookings.filter(b => b.status === 'cancelled'),
+    }
+
+    const renderBookingCard = (booking: any, showActions: boolean = true) => (
+      <Card key={booking.id} className="bg-card border-border">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">{booking.trainer_name || booking.trainer_id || 'Trainer'}</h3>
+              <p className="text-sm text-muted-foreground">{booking.notes || 'Session'}</p>
+            </div>
+            <Badge variant={
+              booking.status === 'confirmed' ? 'default' :
+              booking.status === 'in_session' ? 'secondary' :
+              booking.status === 'completed' ? 'outline' :
+              booking.status === 'cancelled' ? 'destructive' :
+              'secondary'
+            }>
+              {booking.status?.replace('_', ' ').charAt(0).toUpperCase() + booking.status?.slice(1).replace('_', ' ') || 'Pending'}
+            </Badge>
+          </div>
+
+          <div className="space-y-2 mb-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              {booking.session_date ? new Date(booking.session_date).toLocaleDateString() : 'TBD'}
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {booking.session_time || 'Time TBD'}
+            </div>
+            {booking.total_amount && (
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4" />
+                Ksh {Number(booking.total_amount).toLocaleString()}
+              </div>
+            )}
+          </div>
+
+          {showActions && (
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" onClick={() => openTrainer({ id: booking.trainer_id })} className="flex-1">
+                <MessageCircle className="h-3 w-3 mr-1" />
+                Chat
+              </Button>
+              {booking.status === 'completed' && !reviewsByBooking[booking.id] && (
+                <Button size="sm" className="flex-1 bg-gradient-primary text-white" onClick={() => setReviewBooking(booking)}>
+                  <Star className="h-3 w-3 mr-1" />
+                  Rate
+                </Button>
+              )}
+              {booking.status === 'completed' && (
+                <Button size="sm" variant="outline" className="flex-1" onClick={() => setNextSessionBooking(booking)}>
+                  <Plus className="h-3 w-3 mr-1" />
+                  Next
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setActiveTab('home')} className="-ml-2">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold text-foreground">My Sessions</h1>
+        </div>
+
+        {bookings.length === 0 ? (
+          <Card className="bg-card border-border">
+            <CardContent className="p-6 text-center">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">No sessions yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Book a session to get started</p>
+              <Button className="mt-4" size="sm" onClick={() => setActiveTab('explore')}>Explore Trainers</Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {groupedByStatus.confirmed.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-500" />
+                  Upcoming
+                </h2>
+                {groupedByStatus.confirmed.map(b => renderBookingCard(b))}
+              </div>
+            )}
+
+            {groupedByStatus.in_session.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5 text-green-500" />
+                  In Session
+                </h2>
+                {groupedByStatus.in_session.map(b => renderBookingCard(b, false))}
+              </div>
+            )}
+
+            {groupedByStatus.completed.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <Star className="h-5 w-5 text-yellow-500" />
+                  Completed
+                </h2>
+                {groupedByStatus.completed.map(b => renderBookingCard(b))}
+              </div>
+            )}
+
+            {groupedByStatus.pending.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-orange-500" />
+                  Pending
+                </h2>
+                {groupedByStatus.pending.map(b => renderBookingCard(b))}
+              </div>
+            )}
+
+            {groupedByStatus.cancelled.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="font-semibold text-foreground flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-red-500" />
+                  Cancelled
+                </h2>
+                {groupedByStatus.cancelled.map(b => renderBookingCard(b, false))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   // -------------------- Other renderContent functions (Schedule, Profile) can also be simplified similarly --------------------
 
   return (
@@ -407,6 +555,7 @@ export const ClientDashboard: React.FC = () => {
       <div className="flex-1 overflow-auto pb-20 container max-w-md mx-auto p-4">
         {activeTab === 'home' && renderHomeContent()}
         {activeTab === 'explore' && renderExploreContent()}
+        {activeTab === 'schedule' && renderScheduleContent()}
       </div>
 
       {selectedTrainer && <TrainerDetails trainer={selectedTrainer} onClose={closeTrainer} />}
