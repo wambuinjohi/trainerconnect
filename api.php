@@ -2837,6 +2837,84 @@ switch ($action) {
         }
         break;
 
+    // GENERATE INVOICE FROM BOOKING
+    case 'invoice_generate':
+        if (!isset($input['booking_id'])) {
+            respond("error", "Missing booking_id.", null, 400);
+        }
+
+        $bookingId = $conn->real_escape_string($input['booking_id']);
+
+        // Fetch booking details
+        $bookingSql = "SELECT * FROM bookings WHERE id = '$bookingId' LIMIT 1";
+        $bookingResult = $conn->query($bookingSql);
+        if (!$bookingResult || $bookingResult->num_rows === 0) {
+            respond("error", "Booking not found.", null, 404);
+        }
+
+        $booking = $bookingResult->fetch_assoc();
+        $clientId = $booking['client_id'];
+        $trainerId = $booking['trainer_id'];
+        $baseServiceAmount = floatval($booking['base_service_amount'] ?? 0);
+        $transportFee = floatval($booking['transport_fee'] ?? 0);
+        $platformFee = floatval($booking['platform_fee'] ?? 0);
+        $vatAmount = floatval($booking['vat_amount'] ?? 0);
+        $clientSurcharge = floatval($booking['client_surcharge'] ?? 0);
+        $totalAmount = floatval($booking['total_amount'] ?? 0);
+        $trainerNetAmount = floatval($booking['trainer_net_amount'] ?? 0);
+
+        // Generate invoice number
+        $invoiceNumber = 'INV-' . date('Ymd') . '-' . uniqid();
+        $invoiceId = 'invoice_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+        $subtotal = round($baseServiceAmount + $transportFee, 2);
+
+        // Insert invoice record
+        $stmt = $conn->prepare("
+            INSERT INTO invoices (
+                id, booking_id, client_id, trainer_id, invoice_number,
+                base_service_amount, transport_fee, subtotal, platform_fee, vat_amount,
+                client_surcharge, total_amount, trainer_net_amount, status, generated_at, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        $status = 'pending';
+        $stmt->bind_param(
+            "sssssdddddddddsss",
+            $invoiceId, $bookingId, $clientId, $trainerId, $invoiceNumber,
+            $baseServiceAmount, $transportFee, $subtotal, $platformFee, $vatAmount,
+            $clientSurcharge, $totalAmount, $trainerNetAmount, $status, $now, $now, $now
+        );
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('invoice_generated', [
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'booking_id' => $bookingId,
+                'total_amount' => $totalAmount,
+                'trainer_net' => $trainerNetAmount
+            ]);
+
+            respond("success", "Invoice generated successfully.", [
+                "invoice_id" => $invoiceId,
+                "invoice_number" => $invoiceNumber,
+                "booking_id" => $bookingId,
+                "base_service_amount" => $baseServiceAmount,
+                "transport_fee" => $transportFee,
+                "subtotal" => $subtotal,
+                "platform_fee" => $platformFee,
+                "vat_amount" => $vatAmount,
+                "total_amount" => $totalAmount,
+                "trainer_net_amount" => $trainerNetAmount,
+                "generated_at" => $now
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to generate invoice: " . $conn->error, null, 500);
+        }
+        break;
+
     // SAVE ADMIN SETTINGS (including M-Pesa credentials)
     case 'settings_save':
         try {
