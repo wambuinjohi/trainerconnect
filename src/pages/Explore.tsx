@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,7 +7,9 @@ import { Star, MapPin, Search, Sliders } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/Header'
 import { FiltersModal } from '@/components/client/FiltersModal'
+import { SearchBar } from '@/components/client/SearchBar'
 import { toast } from '@/hooks/use-toast'
+import { useSearchHistory } from '@/hooks/use-search-history'
 import * as apiService from '@/lib/api-service'
 import {
   enrichTrainersWithDistance,
@@ -100,6 +102,17 @@ const Explore: React.FC = () => {
   const [filters, setFilters] = useState<any>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [locationLoading, setLocationLoading] = useState(false)
+
+  const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Generate suggestions from trainer names
+  const suggestions = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    return trainers
+      .filter(t => (t.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
+      .map(t => t.name)
+      .slice(0, 5)
+  }, [searchQuery, trainers])
 
   // Load categories and trainers
   useEffect(() => {
@@ -231,15 +244,19 @@ const Explore: React.FC = () => {
           {/* Search and Filter Section */}
           <div className="space-y-3 mb-6">
             {/* Search Input */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-              <Input
-                placeholder="Search trainers or services..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-10"
-              />
-            </div>
+            <SearchBar
+              placeholder="Search trainers or services..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+              onSubmit={(query) => {
+                if (query) {
+                  addSearch(query)
+                }
+              }}
+              suggestions={suggestions}
+              recentSearches={recentSearches}
+              popularSearches={popularSearches}
+            />
 
             {/* Location and Filter Buttons */}
             <div className="flex gap-2">

@@ -22,6 +22,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { apiRequest, withAuth } from '@/lib/api'
 import { TrainerProfileEditor } from './TrainerProfileEditor'
 import { AvailabilityEditor } from './AvailabilityEditor'
 import { ServicesManager } from './ServicesManager'
@@ -100,14 +101,58 @@ export const TrainerDashboard: React.FC = () => {
     toast({ title: 'Booking declined', description: 'You declined the booking.', variant: 'destructive' })
   }
 
-  const startSession = (id: string) => {
-    setBookings(prev => prev.map(b => {
-      if (b.id !== id) return b
-      if (b.status === 'confirmed') return { ...b, status: 'in_session' }
-      if (b.status === 'in_session') return { ...b, status: 'completed' }
-      return b
-    }))
-    toast({ title: 'Session updated', description: 'Booking status updated' })
+  const startSession = async (id: string) => {
+    const booking = bookings.find(b => b.id === id)
+    if (!booking) return
+
+    let newStatus = ''
+    if (booking.status === 'confirmed') {
+      newStatus = 'in_session'
+    } else if (booking.status === 'in_session') {
+      newStatus = 'completed'
+    } else {
+      return
+    }
+
+    try {
+      // Persist to database
+      await apiService.updateBooking(id, {
+        status: newStatus,
+        ...(newStatus === 'completed' && { completed_at: new Date().toISOString() })
+      })
+
+      // Update local state
+      setBookings(prev => prev.map(b => {
+        if (b.id !== id) return b
+        return { ...b, status: newStatus }
+      }))
+
+      // Send notification to client if session completed
+      if (newStatus === 'completed') {
+        try {
+          const nowIso = new Date().toISOString()
+          const notifRows: any[] = [
+            {
+              user_id: booking.client_id,
+              title: 'Session Complete',
+              body: `Your session with ${profileData.name} has ended. Please rate your experience!`,
+              booking_id: id,
+              created_at: nowIso,
+              read: false
+            }
+          ]
+          await apiRequest('notifications_insert', { notifications: notifRows }, { headers: withAuth() })
+        } catch (err) {
+          console.warn('Failed to send completion notification', err)
+        }
+      }
+
+      const msg = newStatus === 'in_session' ? 'Session started' : 'Session completed'
+      toast({ title: 'Success', description: msg })
+    } catch (err) {
+      console.error('Failed to update booking', err)
+      toast({ title: 'Error', description: 'Failed to update session status', variant: 'destructive' })
+    }
   }
 
   useEffect(() => {
