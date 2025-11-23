@@ -33,20 +33,44 @@ export const AdminPayoutManager: React.FC = () => {
   })
   const [confirmLoading, setConfirmLoading] = useState(false)
 
+  // Pagination state
+  const pageSize = 20
+  const [pendingPage, setPendingPage] = useState(1)
+  const [pendingTotal, setPendingTotal] = useState(0)
+  const [pendingTotalPages, setPendingTotalPages] = useState(0)
+  const [approvedPage, setApprovedPage] = useState(1)
+  const [approvedTotal, setApprovedTotal] = useState(0)
+  const [approvedTotalPages, setApprovedTotalPages] = useState(0)
+  const [b2cPage, setB2cPage] = useState(1)
+  const [b2cTotal, setB2cTotal] = useState(0)
+  const [b2cTotalPages, setB2cTotalPages] = useState(0)
+
   // Load payout requests
   useEffect(() => {
     loadRequests()
     loadB2CPayments()
-  }, [activeTab])
+  }, [activeTab, pendingPage, approvedPage, b2cPage])
 
   const loadRequests = async () => {
     try {
       setLoading(true)
       const status = activeTab === 'pending' ? 'pending' : 'approved'
-      const data = await apiRequest('payout_requests_get', { status }, { headers: withAuth() })
+      const currentPage = activeTab === 'pending' ? pendingPage : approvedPage
+      const data = await apiRequest('payout_requests_get', {
+        status,
+        page: currentPage,
+        limit: pageSize
+      }, { headers: withAuth() })
 
       if (data?.data) {
         setRequests(Array.isArray(data.data) ? data.data : [data.data])
+        if (activeTab === 'pending') {
+          setPendingTotal(data.total || 0)
+          setPendingTotalPages(data.totalPages || 0)
+        } else {
+          setApprovedTotal(data.total || 0)
+          setApprovedTotalPages(data.totalPages || 0)
+        }
       }
     } catch (err) {
       console.warn('Failed to load payout requests', err)
@@ -58,9 +82,14 @@ export const AdminPayoutManager: React.FC = () => {
 
   const loadB2CPayments = async () => {
     try {
-      const data = await apiRequest('b2c_payments_get', {}, { headers: withAuth() })
+      const data = await apiRequest('b2c_payments_get', {
+        page: b2cPage,
+        limit: pageSize
+      }, { headers: withAuth() })
       if (data?.data) {
         setB2cPayments(Array.isArray(data.data) ? data.data : [data.data])
+        setB2cTotal(data.total || 0)
+        setB2cTotalPages(data.totalPages || 0)
       }
     } catch (err) {
       console.warn('Failed to load B2C payments', err)
