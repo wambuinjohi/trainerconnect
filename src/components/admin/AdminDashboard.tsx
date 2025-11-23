@@ -1135,7 +1135,19 @@ export const AdminDashboard: React.FC = () => {
                 <Input id="notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={()=>{ if(activeDispute){ setDisputes(ds=>ds.map(d=>d.id===activeDispute.id?{...activeDispute}:d)); setActiveDispute(null);} }}>Save</Button>
+                <Button variant="outline" onClick={async ()=>{
+                  if(activeDispute){
+                    try {
+                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, { where: `id = '${activeDispute.id}'` })
+                      setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
+                      setActiveDispute(null)
+                      toast({ title: 'Success', description: 'Notes saved' })
+                    } catch (err: any) {
+                      console.error('Save error:', err)
+                      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
+                    }
+                  }
+                }}>Save</Button>
                 <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
               </div>
             </div>
