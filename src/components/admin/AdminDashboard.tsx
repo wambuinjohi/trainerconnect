@@ -777,6 +777,21 @@ export const AdminDashboard: React.FC = () => {
           console.warn('Failed to load issues', err)
         }
 
+        try {
+          const bookingsData = await apiService.getAllBookings()
+          if (bookingsData?.data) {
+            const analyticsData = buildAnalyticsPoints(bookingsData.data)
+            setAnalyticsPoints(analyticsData)
+            if (analyticsData.length > 0) {
+              const totalRevenue = analyticsData.reduce((sum, point) => sum + point.revenue, 0)
+              const totalBookings = analyticsData.reduce((sum, point) => sum + point.bookings, 0)
+              setStats(prev => ({ ...prev, totalRevenue, totalBookings }))
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load analytics data', err)
+        }
+
         setPromotions([])
         setPayoutRequests([])
         setActivityFeed([])
