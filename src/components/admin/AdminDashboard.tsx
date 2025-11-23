@@ -1223,6 +1223,9 @@ export const AdminDashboard: React.FC = () => {
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Resolve Case
                 </Button>
+                <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={()=>softDeleteIssue(String(dispute.id))}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
+                </Button>
               </div>
             </CardContent>
           </Card>
