@@ -492,10 +492,25 @@ export const AdminDashboard: React.FC = () => {
     })
   }, [transformedDisputes, query, statusFilter])
 
-  const setStatus = (id: number, status: DisputeStatus) => setDisputes(ds => ds.map(d => d.id===id?{...d,status}:d))
-  const resolve = (id: number) => setStatus(id,'resolved')
-  const refund = async (id: number) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+  const setStatus = async (id: any, status: DisputeStatus) => {
+    const issueId = String(id)
+    try {
+      await apiService.updateIssueStatus(issueId, status)
+      setIssues(iss => iss.map(i => i.id === issueId ? { ...i, status } : i))
+      if (activeDispute?.id === id) {
+        setActiveDispute({ ...activeDispute, status })
+      }
+      toast({ title: 'Success', description: `Dispute status updated to ${status}` })
+    } catch (err: any) {
+      console.error('Update dispute status error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to update dispute status', variant: 'destructive' })
+    }
+  }
+
+  const resolve = (id: any) => setStatus(id, 'resolved')
+
+  const refund = async (id: any) => {
+    toast({ title: 'Feature unavailable', description: 'Refund functionality not yet implemented', variant: 'destructive' })
   }
 
   const [promotions, setPromotions] = useState<any[]>([])
