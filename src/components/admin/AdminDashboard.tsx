@@ -160,6 +160,20 @@ export const AdminDashboard: React.FC = () => {
   const [disputePageSize, setDisputePageSize] = useState(20)
   const [disputeTotalCount, setDisputeTotalCount] = useState(0)
   const [loadingIssues, setLoadingIssues] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    action: () => Promise<void>
+    isDestructive?: boolean
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: async () => {},
+    isDestructive: false,
+  })
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   useEffect(() => {
     const loaded = loadSettings()
