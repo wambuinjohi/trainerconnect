@@ -1267,15 +1267,16 @@ export const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      {activeDispute && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setActiveDispute(null)}>
-          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-card" onClick={(e)=>e.stopPropagation()}>
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Case {activeDispute.case}</h3>
-              <button className="text-sm text-muted-foreground" onClick={()=>setActiveDispute(null)}>Close</button>
-            </div>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">{activeDispute.issue}</p>
+      <AlertDialog open={!!activeDispute} onOpenChange={(open) => {
+        if (!open) setActiveDispute(null)
+      }}>
+        {activeDispute && (
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Case {activeDispute.case}</AlertDialogTitle>
+              <AlertDialogDescription>{activeDispute.issue}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 py-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{activeDispute.client}</span></div>
                 <div><span className="text-muted-foreground">Trainer:</span> <span className="text-foreground">{activeDispute.trainer}</span></div>
@@ -1283,29 +1284,30 @@ export const AdminDashboard: React.FC = () => {
                 <div><span className="text-muted-foreground">Submitted:</span> <span className="text-foreground">{activeDispute.submittedAt}</span></div>
               </div>
               <div>
-                <Label htmlFor="notes">Internal notes</Label>
-                <Input id="notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={async ()=>{
-                  if(activeDispute){
-                    try {
-                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
-                      setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
-                      setActiveDispute(null)
-                      toast({ title: 'Success', description: 'Notes saved' })
-                    } catch (err: any) {
-                      console.error('Save error:', err)
-                      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
-                    }
-                  }
-                }}>Save</Button>
-                <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+                <Label htmlFor="dispute-notes">Internal notes</Label>
+                <Input id="dispute-notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
               </div>
             </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogFooter>
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button variant="outline" onClick={async ()=>{
+                if(activeDispute){
+                  try {
+                    await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
+                    setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
+                    setActiveDispute(null)
+                    toast({ title: 'Success', description: 'Notes saved' })
+                  } catch (err: any) {
+                    console.error('Save error:', err)
+                    toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
+                  }
+                }
+              }}>Save Notes</Button>
+              <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
 
       {showRefundModal && refundDispute && (
         <RefundModal
