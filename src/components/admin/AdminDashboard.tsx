@@ -284,20 +284,26 @@ export const AdminDashboard: React.FC = () => {
     }
     setSendingAnnouncement(true)
     try {
-      const response = await apiService.request('announcement_create', {
-        title: announcementTitle,
-        message: announcementBody,
-        target: announcementTarget,
-        admin_id: user?.id
+      const response = await fetch('/api.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'announcement_create',
+          title: announcementTitle,
+          message: announcementBody,
+          target: announcementTarget,
+          admin_id: user?.id
+        })
       })
 
-      if (response?.data?.announcement_id) {
+      const result = await response.json()
+      if (result.status === 'success' && result.data?.announcement_id) {
         toast({ title: 'Success', description: 'Announcement sent successfully!' })
         setAnnouncementTitle('')
         setAnnouncementBody('')
         setAnnouncementTarget('all')
       } else {
-        toast({ title: 'Error', description: response?.message || 'Failed to send announcement', variant: 'destructive' })
+        toast({ title: 'Error', description: result.message || 'Failed to send announcement', variant: 'destructive' })
       }
     } catch (err: any) {
       console.warn('Send announcement failed', err)
