@@ -693,11 +693,11 @@ export const ClientDashboard: React.FC = () => {
       {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
       {showHelpSupport && <ReportIssue onDone={() => setShowHelpSupport(false)} />}
       {showFilters && <FiltersModal initial={filters} onApply={(f) => setFilters(f)} onClose={() => setShowFilters(false)} />}
-      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={() => {
+      {reviewBooking && <ReviewModal booking={reviewBooking} onClose={() => setReviewBooking(null)} onSubmitted={async () => {
         setReviewByBooking(reviewBooking.id)
         setReviewBooking(null)
-        setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b))
-        loadBookings()
+        // Reload bookings from server to get the updated rating_submitted status
+        await loadBookings()
       }} />}
       {nextSessionBooking && <NextSessionModal previous={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings() }} />}
 
