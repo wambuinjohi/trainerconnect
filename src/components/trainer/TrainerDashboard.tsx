@@ -72,6 +72,8 @@ export const TrainerDashboard: React.FC = () => {
   const [chatBooking, setChatBooking] = useState<any | null>(null)
   const [showPayouts, setShowPayouts] = useState(false)
   const [showTopUp, setShowTopUp] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadNotificationsTrainer, setUnreadNotificationsTrainer] = useState(0)
   const [profileData, setProfileData] = useState<any>({
     name: user?.email,
     bio: 'Professional Trainer',
