@@ -275,7 +275,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
           <div className="text-center">
             <p className="font-semibold">Processing Refund</p>
             <p className="text-sm text-muted-foreground">
-              Sending Ksh {dispute.amount} to {phone}...
+              Sending Ksh {dispute.amount} to {normalizePhoneNumber(phone)}...
             </p>
           </div>
         </CardContent>
