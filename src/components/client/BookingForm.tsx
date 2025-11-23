@@ -246,9 +246,9 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
             <div className="text-xs text-muted-foreground mb-2">Fee Breakdown:</div>
             <div className="flex justify-between text-xs"><span>Platform Charge (Client)</span><span>Ksh {feeBreakdown.platformChargeClient}</span></div>
             <div className="flex justify-between text-xs"><span>Compensation Fee</span><span>Ksh {feeBreakdown.compensationFee}</span></div>
-            <div className="flex justify-between text-xs"><span>Maintenance Fee (on charges)</span><span>Ksh {feeBreakdown.maintenanceFee}</span></div>
+            <div className="flex justify-between text-xs text-muted-foreground"><span>Maintenance Fee (system revenue)</span><span>Ksh {feeBreakdown.maintenanceFee}</span></div>
             <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Transport fee (distance-based)</span><span>Ksh 0 (server-calculated)</span></div>
-            <div className="flex justify-between mt-2"><span className="font-medium">Estimated Total</span><span className="font-bold">Ksh {feeBreakdown.clientTotal}</span></div>
+            <div className="flex justify-between mt-2"><span className="font-medium">Estimated Total (excl. transport)</span><span className="font-bold">Ksh {feeBreakdown.clientTotal}</span></div>
             <div className="text-xs text-muted-foreground mt-1">*Transport fee will be added based on distance at checkout</div>
           </div>
         </div>
