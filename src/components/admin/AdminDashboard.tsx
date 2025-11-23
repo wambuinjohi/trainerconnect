@@ -527,9 +527,6 @@ export const AdminDashboard: React.FC = () => {
     toast({ title: 'Feature unavailable', description: 'Refund functionality not yet implemented', variant: 'destructive' })
   }
 
-  const [promotions, setPromotions] = useState<any[]>([])
-  const [payoutRequests, setPayoutRequests] = useState<any[]>([])
-  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
   const payoutsFiltered = useMemo(() => {
     return payoutRequests.filter((p:any) => {
       const status = String(p.status || 'requested').toLowerCase()
@@ -542,10 +539,6 @@ export const AdminDashboard: React.FC = () => {
     const pending = total - paid
     return { total, paid, pending }
   }, [payoutsFiltered])
-  const [categories, setCategories] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
-  const [catLoading, setCatLoading] = useState(false)
 
   // Normalize approval checks helper
   const approvedOf = (u:any) => {
