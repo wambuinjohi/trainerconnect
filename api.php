@@ -2535,46 +2535,74 @@ switch ($action) {
         $inserted = 0;
         $now = date('Y-m-d H:i:s');
 
+        // Check which columns exist in notifications table (cache for performance)
+        static $columnsCache = null;
+        if ($columnsCache === null) {
+            $columnsCache = ['hasBookingId' => false, 'hasActionType' => false];
+
+            $result = @$conn->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME='notifications' AND TABLE_SCHEMA=DATABASE()");
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    if ($row['COLUMN_NAME'] === 'booking_id') $columnsCache['hasBookingId'] = true;
+                    if ($row['COLUMN_NAME'] === 'action_type') $columnsCache['hasActionType'] = true;
+                }
+            }
+        }
+
         foreach ($notifications as $notif) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
-            $bookingId = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
             $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
-            $actionType = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             $notifId = 'notif_' . uniqid();
 
             if (!$userId) continue;
 
-            // Try to insert with all columns, fall back to basic columns if booking_id or action_type don't exist
-            $stmt = $conn->prepare("
-                INSERT INTO notifications (
-                    id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
+            // Build INSERT statement based on available columns
+            $sql = "INSERT INTO notifications (id, user_id";
+            $params = "ss";
+            $values = [$notifId, $userId];
 
-            if (!$stmt) {
-                // If the statement fails, try without booking_id and action_type
-                $stmt = $conn->prepare("
-                    INSERT INTO notifications (
-                        id, user_id, title, body, message, type, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                ");
-                if ($stmt) {
-                    $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
+            if ($columnsCache['hasBookingId']) {
+                $sql .= ", booking_id";
+                $params .= "s";
+                $values[] = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
+            }
+
+            $sql .= ", title, body, message, type";
+            $params .= "ssss";
+            $values[] = $title;
+            $values[] = $body;
+            $values[] = $body;
+            $values[] = $type;
+
+            if ($columnsCache['hasActionType']) {
+                $sql .= ", action_type";
+                $params .= "s";
+                $values[] = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
+            }
+
+            $sql .= ", created_at, updated_at) VALUES (";
+            $placeholders = array_fill(0, count($values) + 2, "?");
+            $sql .= implode(",", $placeholders) . ")";
+            $params .= "ss";
+            $values[] = $now;
+            $values[] = $now;
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($params, ...$values);
+                if ($stmt->execute()) {
+                    $inserted++;
+                } else {
+                    error_log("Failed to insert notification: " . $stmt->error);
                 }
+                $stmt->close();
             } else {
-                $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
+                error_log("Failed to prepare notification insert statement: " . $conn->error);
             }
-
-            if ($stmt && $stmt->execute()) {
-                $inserted++;
-            } else if ($stmt) {
-                // Log error but continue with other notifications
-                error_log("Failed to insert notification: " . $conn->error);
-            }
-            if ($stmt) $stmt->close();
         }
 
         respond("success", "Notifications created successfully.", ["inserted" => $inserted]);
