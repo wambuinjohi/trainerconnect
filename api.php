@@ -2901,7 +2901,7 @@ switch ($action) {
         $countResult = $conn->query($countSql);
         $totalCount = $countResult ? $countResult->fetch_assoc()['total'] : 0;
 
-        $sql = "SELECT pr.*, up.full_name, up.phone, up.location_label FROM payout_requests pr
+        $sql = "SELECT pr.*, up.full_name, up.phone_number, up.location_label FROM payout_requests pr
                 LEFT JOIN user_profiles up ON pr.trainer_id = up.user_id
                 WHERE pr.status = '$status'
                 ORDER BY pr.requested_at DESC
