@@ -139,22 +139,23 @@ try {
             INSERT INTO b2c_payment_callbacks (
                 transaction_id, originator_conversation_id, conversation_id,
                 result_code, result_description, transaction_amount,
-                receiver_phone, reference_id, raw_response, received_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                receiver_phone, reference_id, merchant_request_id, raw_response, received_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
             ON DUPLICATE KEY UPDATE
                 result_code = VALUES(result_code),
                 result_description = VALUES(result_description),
                 transaction_amount = VALUES(transaction_amount),
                 receiver_phone = VALUES(receiver_phone),
                 reference_id = VALUES(reference_id),
+                merchant_request_id = VALUES(merchant_request_id),
                 raw_response = VALUES(raw_response),
                 received_at = NOW()
         ");
-        
+
         if ($stmt) {
             $rawJson = json_encode($result);
             $stmt->bind_param(
-                "sssisdsss",
+                "sssissdsss",
                 $transactionID,
                 $originatorConversationID,
                 $conversationID,
@@ -163,6 +164,7 @@ try {
                 $transactionAmount,
                 $receiverPhone,
                 $referenceId,
+                $merchantRequestId,
                 $rawJson
             );
             
