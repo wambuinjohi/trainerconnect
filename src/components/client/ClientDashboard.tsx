@@ -483,29 +483,23 @@ export const ClientDashboard: React.FC = () => {
                     {trainer.image}
                   </div>
                   <div className="flex-1">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-foreground">{trainer.name}</h3>
-                          {idx === 0 && userLocation && selectedCategory && (
-                            <Badge className="bg-green-500 text-white text-xs">Nearest</Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">{trainer.discipline || 'Training'}</p>
-                      </div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-foreground">{trainer.name}</h3>
+                      {idx === 0 && userLocation && selectedCategory && (
+                        <Badge className="bg-green-500 text-white text-xs">Nearest</Badge>
+                      )}
                       <Badge variant={trainer.available ? "default" : "secondary"} className="flex-shrink-0">
                         {trainer.available ? 'Available' : 'Busy'}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground flex-wrap">
+                    <p className="text-xs text-muted-foreground mb-2">{trainer.discipline || 'Training'}</p>
+                    <div className="space-y-1 mb-3 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        {trainer.rating.toFixed(1)} ({trainer.reviews})
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
-                        {trainer.location_label}
-                        {trainer.distance !== '—' && <span className="ml-1 font-semibold text-foreground">{trainer.distance}</span>}
+                        <span>{trainer.rating.toFixed(1)} ({trainer.reviews})</span>
+                        <MapPin className="h-4 w-4 ml-2" />
+                        <span>{trainer.location_label}</span>
+                        {trainer.distance !== '—' && <span className="font-semibold text-foreground">{trainer.distance}</span>}
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
