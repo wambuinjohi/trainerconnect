@@ -385,6 +385,14 @@ export async function updateIssueStatus(issueId: string, status: string) {
   })
 }
 
+export async function updateIssue(issueId: string, data: Record<string, any>) {
+  return apiRequest('update', {
+    table: 'reported_issues',
+    data,
+    where: `id = '${issueId}'`,
+  })
+}
+
 // ============================================================================
 // WALLET/BALANCE SERVICES
 // ============================================================================
