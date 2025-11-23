@@ -124,9 +124,14 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
 
       toast({ title: 'Reported', description: `Issue reported: ${String(issueId)}` })
       onDone?.(String(issueId))
-    } catch (err) {
-      console.error('Report error', err)
-      toast({ title: 'Failed', description: 'Could not report issue', variant: 'destructive' })
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err)
+      console.error('Report error:', {
+        error: err,
+        message: errorMsg,
+        payload: { ...payload, description: '[redacted]' }
+      })
+      toast({ title: 'Failed', description: errorMsg || 'Could not report issue', variant: 'destructive' })
     } finally {
       setLoading(false)
     }
