@@ -103,31 +103,41 @@ export const AdminPayoutManager: React.FC = () => {
     })
   }
 
-  const initiateB2CPayment = async (payment: any) => {
+  const initiateB2CPayment = (payment: any) => {
     if (!payment.id) {
       toast({ title: 'Error', description: 'Invalid payment ID', variant: 'destructive' })
       return
     }
 
-    setProcessingId(payment.id)
-    try {
-      const data = await apiRequest('b2c_payment_initiate', {
-        b2c_payment_id: payment.id,
-        phone_number: payment.phone_number,
-        amount: payment.amount
-      }, { headers: withAuth() })
+    const amount = payment.amount ? `Ksh ${Number(payment.amount).toFixed(2)}` : 'Unknown amount'
+    const phone = payment.phone_number || 'Unknown number'
 
-      if (data?.status === 'success') {
-        toast({ title: 'B2C payment initiated', description: `Reference: ${data.data?.reference_id}` })
-        loadB2CPayments()
-      } else {
-        toast({ title: 'Error', description: data?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
-      }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
-    } finally {
-      setProcessingId(null)
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Initiate B2C Payment',
+      description: `Confirm M-Pesa payment of ${amount} to ${phone}? This action will transfer funds immediately.`,
+      action: async () => {
+        setProcessingId(payment.id)
+        try {
+          const data = await apiRequest('b2c_payment_initiate', {
+            b2c_payment_id: payment.id,
+            phone_number: payment.phone_number,
+            amount: payment.amount
+          }, { headers: withAuth() })
+
+          if (data?.status === 'success') {
+            toast({ title: 'B2C payment initiated', description: `Reference: ${data.data?.reference_id}` })
+            loadB2CPayments()
+          } else {
+            toast({ title: 'Error', description: data?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
+          }
+        } catch (err: any) {
+          toast({ title: 'Error', description: err?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
+        } finally {
+          setProcessingId(null)
+        }
+      },
+    })
   }
 
   const getStatusColor = (status: string) => {
