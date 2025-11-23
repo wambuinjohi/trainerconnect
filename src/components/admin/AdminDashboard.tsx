@@ -526,8 +526,12 @@ export const AdminDashboard: React.FC = () => {
 
   const resolve = (id: any) => setStatus(id, 'resolved')
 
-  const refund = async (id: any) => {
-    toast({ title: 'Feature unavailable', description: 'Refund functionality not yet implemented', variant: 'destructive' })
+  const refund = (id: any) => {
+    const dispute = filtered.find(d => d.id === id)
+    if (dispute) {
+      setRefundDispute(dispute)
+      setShowRefundModal(true)
+    }
   }
 
   const payoutsFiltered = useMemo(() => {
