@@ -58,22 +58,22 @@ describe('Fee Calculations', () => {
 
     // platformChargeClient: 800 × 15% = 120
     expect(breakdown.platformChargeClient).toBe(120)
-    
+
     // platformChargeTrainer: 800 × 10% = 80
     expect(breakdown.platformChargeTrainer).toBe(80)
-    
+
     // compensationFee: 800 × 10% = 80
     expect(breakdown.compensationFee).toBe(80)
-    
+
     // Sum: 280
     expect(breakdown.sumOfCharges).toBe(280)
-    
-    // maintenanceFee: 280 × 15% = 42
+
+    // maintenanceFee: 280 × 15% = 42 (NOT charged to client)
     expect(breakdown.maintenanceFee).toBe(42)
-    
-    // Client total: 800 + 120 + 80 + 42 = 1042
-    expect(breakdown.clientTotal).toBe(1042)
-    
+
+    // Client total: 800 + 120 + 80 = 1000 (no maintenance fee added)
+    expect(breakdown.clientTotal).toBe(1000)
+
     // Trainer share of maintenance: (80 / 280) × 42 = 12
     // Trainer net: 800 + 0 - 80 - 12 = 708
     expect(breakdown.trainerNetAmount).toBe(708)
