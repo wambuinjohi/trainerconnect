@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
 import { RefundModal } from './RefundModal'
@@ -153,6 +154,27 @@ export const AdminDashboard: React.FC = () => {
   const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
   const [showRefundModal, setShowRefundModal] = useState(false)
   const [refundDispute, setRefundDispute] = useState<Dispute | null>(null)
+  const [issuePage, setIssuePage] = useState(1)
+  const [issuePageSize, setIssuePageSize] = useState(20)
+  const [issueTotalCount, setIssueTotalCount] = useState(0)
+  const [disputePage, setDisputePage] = useState(1)
+  const [disputePageSize, setDisputePageSize] = useState(20)
+  const [disputeTotalCount, setDisputeTotalCount] = useState(0)
+  const [loadingIssues, setLoadingIssues] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    action: () => Promise<void>
+    isDestructive?: boolean
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: async () => {},
+    isDestructive: false,
+  })
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   useEffect(() => {
     const loaded = loadSettings()
@@ -717,13 +739,19 @@ export const AdminDashboard: React.FC = () => {
           setCategories(categoriesData.data)
         }
 
-        // Load issues (reported_issues) from database
+        // Load issues (reported_issues) from database with pagination
         try {
-          const result = await apiService.getIssues()
+          const result = await apiService.getIssuesWithPagination({
+            page: issuePage,
+            pageSize: issuePageSize,
+          })
           if (result?.data) {
             setIssues(result.data)
-            const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
-            setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+            if (result.count !== undefined) {
+              setIssueTotalCount(result.count)
+              const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
+              setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+            }
           }
         } catch (err) {
           console.warn('Failed to load issues', err)
@@ -793,6 +821,30 @@ export const AdminDashboard: React.FC = () => {
 
   const viewIssue = (it: any) => setActiveIssue(it)
 
+  const loadIssuesPage = async (page: number) => {
+    setLoadingIssues(true)
+    try {
+      const result = await apiService.getIssuesWithPagination({
+        page,
+        pageSize: issuePageSize,
+        searchQuery: query,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      })
+      if (result?.data) {
+        setIssues(result.data)
+        if (result.count !== undefined) {
+          setIssueTotalCount(result.count)
+        }
+      }
+      setIssuePage(page)
+    } catch (err: any) {
+      console.error('Load issues page error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to load issues', variant: 'destructive' })
+    } finally {
+      setLoadingIssues(false)
+    }
+  }
+
   const markIssueResolved = async (it: any) => {
     if (!it?.id) {
       toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
@@ -806,6 +858,37 @@ export const AdminDashboard: React.FC = () => {
     } catch (err: any) {
       console.error('Mark issue resolved error:', err)
       toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+    }
+  }
+
+  const softDeleteIssue = (issueId: string) => {
+    setConfirmModal({
+      open: true,
+      title: 'Delete Issue',
+      description: 'Are you sure you want to delete this issue? This action can be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.softDeleteIssue(issueId)
+          setIssues(issues.filter(iss => iss.id !== issueId))
+          setActiveIssue(null)
+          toast({ title: 'Success', description: 'Issue deleted' })
+        } catch (err: any) {
+          console.error('Soft delete issue error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete issue', variant: 'destructive' })
+        }
+      },
+    })
+  }
+
+  const restoreIssue = async (issueId: string) => {
+    try {
+      await apiService.restoreIssue(issueId)
+      await loadIssuesPage(issuePage)
+      toast({ title: 'Success', description: 'Issue restored' })
+    } catch (err: any) {
+      console.error('Restore issue error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to restore issue', variant: 'destructive' })
     }
   }
 
@@ -827,8 +910,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const renderIssues = () => {
-    const totalIssues = issues.length
     const openIssues = issues.filter((it: any) => String(it.status || 'pending').toLowerCase() !== 'resolved').length
+    const totalPages = Math.ceil(issueTotalCount / issuePageSize)
 
     return (
       <div className="space-y-6">
@@ -838,12 +921,12 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-sm text-muted-foreground">Review, investigate, and resolve client or trainer complaints.</p>
           </div>
           <div className="flex gap-2">
-            <Badge variant="secondary">{totalIssues} total</Badge>
+            <Badge variant="secondary">{issueTotalCount} total</Badge>
             <Badge variant={openIssues ? 'destructive' : 'secondary'}>{openIssues} open</Badge>
           </div>
         </div>
 
-        {totalIssues === 0 ? (
+        {issueTotalCount === 0 ? (
           <Card className="border-border bg-card">
             <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
               <div className="h-14 w-14 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-2xl">✓</div>
@@ -855,37 +938,76 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {issues.map((it: any) => {
-              const status = String(it.status || 'pending').toLowerCase()
-              const resolved = status === 'resolved'
-              return (
-                <Card key={it.id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-semibold text-foreground">{it.complaint_type || 'Issue'}</h3>
-                          <Badge variant={resolved ? 'secondary' : status === 'investigating' ? 'outline' : 'destructive'} className="capitalize">{status}</Badge>
+            {loadingIssues ? (
+              <Card className="border-border bg-card">
+                <CardContent className="flex items-center justify-center gap-3 py-8">
+                  <div className="text-muted-foreground">Loading issues...</div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {issues.map((it: any) => {
+                  const status = String(it.status || 'pending').toLowerCase()
+                  const resolved = status === 'resolved'
+                  return (
+                    <Card key={it.id} className="bg-card border-border">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base font-semibold text-foreground">{it.complaint_type || 'Issue'}</h3>
+                              <Badge variant={resolved ? 'secondary' : status === 'investigating' ? 'outline' : 'destructive'} className="capitalize">{status}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{it.description || 'No description provided.'}</p>
+                            <p className="text-xs text-muted-foreground">Reported by {it.user_name || it.user_email || it.user_id || 'Unknown user'} on {it.created_at ? new Date(it.created_at).toLocaleString() : 'unknown date'}</p>
+                            {(it.booking_reference || it.booking_id) && (
+                              <p className="text-xs text-muted-foreground">Booking reference: {it.booking_reference || it.booking_id}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 md:items-end">
+                            <Button size="sm" variant="outline" onClick={() => viewIssue(it)}>
+                              View details
+                            </Button>
+                            <Button size="sm" disabled={resolved} onClick={() => markIssueResolved(it)}>
+                              {resolved ? 'Resolved' : 'Mark resolved'}
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => softDeleteIssue(it.id)}>
+                              <Trash2 className="h-3 w-3 mr-1" /> Delete
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{it.description || 'No description provided.'}</p>
-                        <p className="text-xs text-muted-foreground">Reported by {it.user_name || it.user_email || it.user_id || 'Unknown user'} on {it.created_at ? new Date(it.created_at).toLocaleString() : 'unknown date'}</p>
-                        {(it.booking_reference || it.booking_id) && (
-                          <p className="text-xs text-muted-foreground">Booking reference: {it.booking_reference || it.booking_id}</p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2 md:items-end">
-                        <Button size="sm" variant="outline" onClick={() => viewIssue(it)}>
-                          View details
-                        </Button>
-                        <Button size="sm" disabled={resolved} onClick={() => markIssueResolved(it)}>
-                          {resolved ? 'Resolved' : 'Mark resolved'}
-                        </Button>
-                      </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    <div className="text-sm text-muted-foreground">
+                      Page {issuePage} of {totalPages} ({issueTotalCount} total)
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={issuePage === 1 || loadingIssues}
+                        onClick={() => loadIssuesPage(issuePage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={issuePage === totalPages || loadingIssues}
+                        onClick={() => loadIssuesPage(issuePage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1122,6 +1244,9 @@ export const AdminDashboard: React.FC = () => {
                 <Button size="sm" className="bg-gradient-primary text-white" onClick={()=>resolve(dispute.id)} disabled={dispute.status==='resolved'}>
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Resolve Case
+                </Button>
+                <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={()=>softDeleteIssue(String(dispute.id))}>
+                  <Trash2 className="h-3 w-3 mr-1" /> Delete
                 </Button>
               </div>
             </CardContent>

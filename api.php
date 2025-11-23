@@ -443,12 +443,26 @@ switch ($action) {
             $where = buildWhereClause($input['conditions']);
         }
 
+        // Add soft delete filter for reported_issues table
+        if ($table === 'reported_issues') {
+            if ($where) {
+                $where .= " AND deleted_at IS NULL";
+            } else {
+                $where = "WHERE deleted_at IS NULL";
+            }
+        }
+
         if (isset($input['order'])) {
             $orderBy = "ORDER BY " . $input['order'];
         }
 
         if (isset($input['limit'])) {
             $limit = "LIMIT " . intval($input['limit']);
+        }
+
+        // Add offset support for pagination
+        if (isset($input['offset'])) {
+            $limit .= " OFFSET " . intval($input['offset']);
         }
 
         $sql = "SELECT * FROM `$table` $where $orderBy $limit";
