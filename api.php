@@ -2709,28 +2709,23 @@ switch ($action) {
             }
         }
 
-        // Calculate fees
-        // IMPORTANT: Platform fee is calculated ONLY on base service amount, NOT on transport fees
-        // This ensures transport fees are never subject to commission deductions
-        // Platform fee percentage (10%)
-        $platformFeePct = 10;
-        $platformFee = round(($baseServiceAmount * $platformFeePct) / 100, 2);
+        // Load settings and calculate fees using new calculation order
+        $settings = loadPlatformSettings();
+        $feeBreakdown = calculateFeeBreakdown($baseServiceAmount, $settings, $transportFee);
 
-        // VAT percentage (16%)
-        $vatPct = 16;
-        $vatAmount = round((($baseServiceAmount + $platformFee) * $vatPct) / 100, 2);
+        // Extract calculated values
+        $platformChargeClient = $feeBreakdown['platformChargeClient'];
+        $platformChargeTrainer = $feeBreakdown['platformChargeTrainer'];
+        $compensationFee = $feeBreakdown['compensationFee'];
+        $maintenanceFee = $feeBreakdown['maintenanceFee'];
+        $totalAmount = $feeBreakdown['clientTotal'];
+        $trainerNetAmount = $feeBreakdown['trainerNetAmount'];
 
-        // Client surcharge (what client sees as platform fee)
-        $clientSurcharge = $platformFee;
+        // Client surcharge shown to client (sum of charges to client)
+        $clientSurcharge = $platformChargeClient + $compensationFee + $maintenanceFee;
 
-        // Trainer net amount = what trainer receives after platform deduction
-        // Includes both base service AND transport fee, minus only the platform commission
-        // Formula: base_service_amount + transport_fee - platform_fee
-        // Note: platform_fee is calculated ONLY on base_service_amount, never on transport_fee
-        $trainerNetAmount = round($baseServiceAmount + $transportFee - $platformFee, 2);
-
-        // Total amount client pays
-        $totalAmount = round($baseServiceAmount + $transportFee + $platformFee + $vatAmount, 2);
+        // For backward compatibility with VAT field (if needed)
+        $vatAmount = 0;
 
         // Generate booking ID
         $bookingId = 'booking_' . uniqid();
