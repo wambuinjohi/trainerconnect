@@ -298,7 +298,7 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onDone?.()}>Cancel</Button>
-          <Button onClick={submit} disabled={loading} className="bg-gradient-primary text-white">{loading ? 'Processing...' : 'Confirm & Pay'}</Button>
+          <Button onClick={submit} disabled={loading || !!availabilityError} className="bg-gradient-primary text-white" title={availabilityError ? 'Please select a valid date and time' : ''}>{loading ? 'Processing...' : 'Confirm & Pay'}</Button>
         </div>
       </div>
     </div>
