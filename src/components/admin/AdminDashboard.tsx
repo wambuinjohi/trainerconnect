@@ -1337,7 +1337,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div className="p-4 space-y-3">
               <p className="text-sm text-muted-foreground">Type: {activeIssue.complaint_type}</p>
-              <p className="text-sm text-muted-foreground">Description: {activeIssue.description}</p>
               <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '���'}</p>
               <div className="grid grid-cols-1 gap-2">
                 {(activeIssue.attachments || []).map((a:any,i:number)=>(
