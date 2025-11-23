@@ -39,6 +39,7 @@ import { TrainerReportIssue } from './TrainerReportIssue'
 import { TrainerDisputes } from './TrainerDisputes'
 import * as apiService from '@/lib/api-service'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
+import { NotificationsCenter } from '@/components/client/NotificationsCenter'
 
 export const TrainerDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
