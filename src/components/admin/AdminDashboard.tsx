@@ -153,6 +153,7 @@ export const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<any[]>([])
   const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
   const [catLoading, setCatLoading] = useState(false)
+  const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null)
   const [promotions, setPromotions] = useState<any[]>([])
   const [showRefundModal, setShowRefundModal] = useState(false)
   const [refundDispute, setRefundDispute] = useState<Dispute | null>(null)
