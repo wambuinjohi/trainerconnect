@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
+import { RefundModal } from './RefundModal'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -150,6 +151,8 @@ export const AdminDashboard: React.FC = () => {
   const [promotions, setPromotions] = useState<any[]>([])
   const [payoutRequests, setPayoutRequests] = useState<any[]>([])
   const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
+  const [showRefundModal, setShowRefundModal] = useState(false)
+  const [refundDispute, setRefundDispute] = useState<Dispute | null>(null)
 
   useEffect(() => {
     const loaded = loadSettings()
@@ -523,8 +526,12 @@ export const AdminDashboard: React.FC = () => {
 
   const resolve = (id: any) => setStatus(id, 'resolved')
 
-  const refund = async (id: any) => {
-    toast({ title: 'Feature unavailable', description: 'Refund functionality not yet implemented', variant: 'destructive' })
+  const refund = (id: any) => {
+    const dispute = filtered.find(d => d.id === id)
+    if (dispute) {
+      setRefundDispute(dispute)
+      setShowRefundModal(true)
+    }
   }
 
   const payoutsFiltered = useMemo(() => {
@@ -1160,6 +1167,25 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showRefundModal && refundDispute && (
+        <RefundModal
+          dispute={{
+            id: refundDispute.id,
+            client: refundDispute.client,
+            amount: refundDispute.amount,
+            issue: refundDispute.issue,
+          }}
+          clientPhone=""
+          onClose={() => {
+            setShowRefundModal(false)
+            setRefundDispute(null)
+          }}
+          onSuccess={() => {
+            setIssues(iss => iss.map(i => i.id === refundDispute.id ? { ...i, status: 'resolved' } : i))
+          }}
+        />
       )}
 
       {activeIssue && (

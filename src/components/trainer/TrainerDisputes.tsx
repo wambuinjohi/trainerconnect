@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { apiRequest, withAuth } from '@/lib/api'
 import * as apiService from '@/lib/api-service'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
@@ -52,7 +53,11 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
 
     try {
       setLoading(true)
-      const result = await apiService.getIssues({ trainerId: user.id })
+      const result = await apiRequest('select', {
+        table: 'reported_issues',
+        where: `user_id = '${user.id}' OR trainer_id = '${user.id}'`,
+        order: 'created_at DESC',
+      })
 
       if (result?.data && Array.isArray(result.data)) {
         const transformedDisputes = result.data.map((issue: any) => ({
@@ -147,31 +152,32 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onClose} className="-ml-2">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold text-foreground">Disputes</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Disputes</h1>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2 sm:gap-3">
         <div>
           <input
             type="text"
             placeholder="Search disputes..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-input text-foreground"
+            className="w-full px-2 sm:px-3 py-2 text-sm border border-border rounded-md bg-input text-foreground"
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 sm:gap-2 flex-wrap">
           {(['all', 'pending', 'investigating', 'resolved'] as const).map(status => (
             <Button
               key={status}
               variant={statusFilter === status ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter(status)}
+              className="text-xs sm:text-sm"
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </Button>
@@ -189,30 +195,30 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           {filtered.map(dispute => (
             <Card key={dispute.id} className="bg-card border-border cursor-pointer hover:bg-card/80 transition" onClick={() => setActiveDispute(dispute)}>
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-foreground">{dispute.issue}</h3>
-                      <Badge className={getStatusColor(dispute.status)}>
+                    <div className="flex items-start gap-2 mb-2 flex-wrap">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base">{dispute.issue}</h3>
+                      <Badge className={`${getStatusColor(dispute.status)} text-xs`}>
                         {dispute.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{dispute.description}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-2 break-words">{dispute.description}</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       <div>
                         <span className="text-muted-foreground">Client ID: </span>
-                        <span className="text-foreground">{dispute.user_id}</span>
+                        <span className="text-foreground break-all">{dispute.user_id}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Submitted: </span>
                         <span className="text-foreground">{new Date(dispute.submittedAt).toLocaleDateString()}</span>
                       </div>
                       {dispute.booking_reference && (
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                           <span className="text-muted-foreground">Booking Ref: </span>
                           <span className="text-foreground">{dispute.booking_reference}</span>
                         </div>
@@ -228,11 +234,11 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
       )}
 
       {activeDispute && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <Card className="w-full max-w-lg">
-            <CardHeader>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 overflow-y-auto">
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <CardHeader className="sticky top-0 bg-background">
               <div className="flex items-center justify-between">
-                <CardTitle>Dispute Details</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Dispute Details</CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setActiveDispute(null)}>✕</Button>
               </div>
             </CardHeader>
@@ -247,10 +253,10 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
                 <p className="text-sm text-muted-foreground">{activeDispute.description}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-foreground">Client ID</p>
-                  <p className="text-sm text-muted-foreground">{activeDispute.user_id}</p>
+                  <p className="text-sm text-muted-foreground break-all">{activeDispute.user_id}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Status</p>
@@ -281,22 +287,23 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
                 />
               </div>
 
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1 sm:gap-2 flex-wrap">
                 {(['pending', 'investigating', 'resolved'] as const).map(status => (
                   <Button
                     key={status}
                     variant={activeDispute.status === status ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleStatusChange(status)}
+                    className="text-xs sm:text-sm"
                   >
                     Mark {status.charAt(0).toUpperCase() + status.slice(1)}
                   </Button>
                 ))}
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setActiveDispute(null)}>Close</Button>
-                <Button onClick={saveNotes}>Save Notes</Button>
+              <div className="flex justify-end gap-2 flex-col-reverse sm:flex-row">
+                <Button variant="outline" onClick={() => setActiveDispute(null)} className="w-full sm:w-auto">Close</Button>
+                <Button onClick={saveNotes} className="w-full sm:w-auto">Save Notes</Button>
               </div>
             </CardContent>
           </Card>

@@ -371,8 +371,13 @@ switch ($action) {
                     if ($value === null || $value === 'null') {
                         $updates[] = "`" . $conn->real_escape_string($key) . "` = NULL";
                     } else {
-                        $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-                        $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        if (is_array($value) || is_object($value)) {
+                            $stringValue = json_encode($value);
+                            $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        } else {
+                            $stringValue = (string)$value;
+                            $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        }
                     }
                 }
                 $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "'";
@@ -384,20 +389,39 @@ switch ($action) {
             }
         }
 
-        $columns = implode("`, `", array_keys($data));
-        $escapedValues = array_map(function($value) use ($conn) {
-            if ($value === null || $value === 'null') {
-                return 'NULL';
-            }
-            $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-            return "'" . $conn->real_escape_string($stringValue) . "'";
-        }, array_values($data));
-        $values = implode(", ", $escapedValues);
-        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($values)";
+        $columns = array_keys($data);
+        $placeholders = array_fill(0, count($columns), '?');
+        $sql = "INSERT INTO `$table` (`" . implode("`, `", $columns) . "`) VALUES (" . implode(", ", $placeholders) . ")";
 
-        if ($conn->query($sql)) {
-            respond("success", "Record inserted successfully.", ["id" => $conn->insert_id]);
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            respond("error", "Failed to prepare insert: " . $conn->error, null, 500);
+        }
+
+        $types = "";
+        $values = [];
+        foreach (array_values($data) as $value) {
+            if ($value === null || $value === 'null') {
+                $values[] = null;
+                $types .= "s";
+            } else {
+                if (is_array($value) || is_object($value)) {
+                    $values[] = json_encode($value);
+                } else {
+                    $values[] = (string)$value;
+                }
+                $types .= "s";
+            }
+        }
+
+        $stmt->bind_param($types, ...$values);
+
+        if ($stmt->execute()) {
+            $insertId = $stmt->insert_id;
+            $stmt->close();
+            respond("success", "Record inserted successfully.", ["id" => $insertId]);
         } else {
+            $stmt->close();
             respond("error", "Insert failed: " . $conn->error, null, 500);
         }
         break;
@@ -480,23 +504,48 @@ switch ($action) {
         $table = $conn->real_escape_string($input['table']);
         $data = $input['data'];
         $updates = [];
+        $types = "";
+        $values = [];
 
         foreach ($data as $key => $value) {
-            $escapedKey = $conn->real_escape_string($key);
+            $escapedKey = "`" . $conn->real_escape_string($key) . "`";
             if ($value === null || $value === 'null') {
-                $updates[] = "`$escapedKey` = NULL";
+                $updates[] = "$escapedKey = NULL";
             } else {
-                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($stringValue) . "'";
+                $updates[] = "$escapedKey = ?";
+                if (is_array($value) || is_object($value)) {
+                    $values[] = json_encode($value);
+                } else {
+                    $values[] = (string)$value;
+                }
+                $types .= "s";
             }
         }
 
         $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE " . $input['where'];
 
-        if ($conn->query($sql)) {
-            respond("success", "Record updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        if (empty($values)) {
+            if ($conn->query($sql)) {
+                respond("success", "Record updated successfully.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Update failed: " . $conn->error, null, 500);
+            }
         } else {
-            respond("error", "Update failed: " . $conn->error, null, 500);
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                respond("error", "Failed to prepare update: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param($types, ...$values);
+
+            if ($stmt->execute()) {
+                $affectedRows = $stmt->affected_rows;
+                $stmt->close();
+                respond("success", "Record updated successfully.", ["affected_rows" => $affectedRows]);
+            } else {
+                $stmt->close();
+                respond("error", "Update failed: " . $conn->error, null, 500);
+            }
         }
         break;
 
@@ -1807,7 +1856,17 @@ switch ($action) {
         $description = $conn->real_escape_string($input['description']);
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'open';
         $priority = isset($input['priority']) ? $conn->real_escape_string($input['priority']) : 'normal';
-        $attachments = isset($input['attachments']) && !empty($input['attachments']) ? $conn->real_escape_string($input['attachments']) : NULL;
+        $attachments = NULL;
+        if (isset($input['attachments']) && !empty($input['attachments'])) {
+            if (is_array($input['attachments']) || is_object($input['attachments'])) {
+                $attachments = json_encode($input['attachments'], JSON_UNESCAPED_SLASHES);
+            } else {
+                $attachments = $input['attachments'];
+                if (!json_decode($attachments)) {
+                    $attachments = json_encode(['error' => 'Invalid attachment format']);
+                }
+            }
+        }
         $issueId = 'issue_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
