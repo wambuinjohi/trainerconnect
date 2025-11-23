@@ -223,7 +223,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         let responseText: string;
         try {
-          responseText = await response.text();
+          const clonedResponse = response.clone();
+          responseText = await clonedResponse.text();
         } catch (err) {
           console.error(`Signup attempt ${attempt}: Failed to read response body`, err);
           if (attempt < maxRetries) {
