@@ -20,7 +20,8 @@ import {
   Home,
   Briefcase,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Bell
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiRequest, withAuth } from '@/lib/api'
