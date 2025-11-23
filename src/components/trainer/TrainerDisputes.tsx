@@ -53,8 +53,8 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
 
     try {
       setLoading(true)
-      const result = await apiRequest('issue_select', { query: { trainer_id: user.id } }, { headers: withAuth() })
-      
+      const result = await apiService.getIssues({ trainerId: user.id })
+
       if (result?.data && Array.isArray(result.data)) {
         const transformedDisputes = result.data.map((issue: any) => ({
           id: issue.id,
