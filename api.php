@@ -3961,6 +3961,125 @@ switch ($action) {
         }
         break;
 
+    // ANNOUNCEMENTS SYSTEM
+    // ============================================================================
+
+    // CREATE ANNOUNCEMENT
+    case 'announcement_create':
+        if (!isset($input['title']) || !isset($input['message'])) {
+            respond("error", "Missing required fields: title, message.", null, 400);
+        }
+
+        $title = $conn->real_escape_string($input['title']);
+        $message = $conn->real_escape_string($input['message']);
+        $target = isset($input['target']) ? $conn->real_escape_string($input['target']) : 'all';
+        $createdBy = isset($input['created_by']) ? $conn->real_escape_string($input['created_by']) : null;
+        $isActive = isset($input['is_active']) ? (intval($input['is_active']) ? 1 : 0) : 1;
+        $startsAt = isset($input['starts_at']) ? $conn->real_escape_string($input['starts_at']) : null;
+        $endsAt = isset($input['ends_at']) ? $conn->real_escape_string($input['ends_at']) : null;
+
+        if (!in_array($target, ['all', 'clients', 'trainers', 'admins'])) {
+            respond("error", "Invalid target. Must be: all, clients, trainers, or admins.", null, 400);
+        }
+
+        $announcementId = 'ann_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO announcements (id, title, message, target_audience, created_by, is_active, starts_at, ends_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("sssssisss", $announcementId, $title, $message, $target, $createdBy, $isActive, $startsAt, $endsAt, $now, $now);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to create announcement: " . $conn->error, null, 500);
+        }
+        $stmt->close();
+
+        logEvent('announcement_created', [
+            'announcement_id' => $announcementId,
+            'target' => $target,
+            'created_by' => $createdBy,
+            'title' => $title
+        ]);
+
+        respond("success", "Announcement created successfully.", [
+            "announcement_id" => $announcementId,
+            "title" => $title,
+            "target" => $target
+        ]);
+        break;
+
+    // GET ANNOUNCEMENTS FOR USER
+    case 'announcements_get':
+        if (!isset($input['user_type'])) {
+            respond("error", "Missing required field: user_type.", null, 400);
+        }
+
+        $userType = $conn->real_escape_string($input['user_type']);
+        $limit = isset($input['limit']) ? intval($input['limit']) : 50;
+        $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+        $now = date('Y-m-d H:i:s');
+
+        $sql = "
+            SELECT a.* FROM announcements a
+            WHERE a.is_active = 1
+            AND (a.target_audience = 'all' OR a.target_audience = ?)
+            AND (a.starts_at IS NULL OR a.starts_at <= ?)
+            AND (a.ends_at IS NULL OR a.ends_at >= ?)
+            ORDER BY a.created_at DESC
+            LIMIT ? OFFSET ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("sssii", $userType, $now, $now, $limit, $offset);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to fetch announcements: " . $conn->error, null, 500);
+        }
+
+        $result = $stmt->get_result();
+        $announcements = [];
+        while ($row = $result->fetch_assoc()) {
+            $announcements[] = $row;
+        }
+        $stmt->close();
+
+        respond("success", "Announcements retrieved successfully.", [
+            "announcements" => $announcements,
+            "count" => count($announcements)
+        ]);
+        break;
+
+    // MARK ANNOUNCEMENT AS READ
+    case 'announcement_mark_read':
+        if (!isset($input['announcement_id'])) {
+            respond("error", "Missing required field: announcement_id.", null, 400);
+        }
+
+        $announcementId = $conn->real_escape_string($input['announcement_id']);
+        $userId = isset($input['user_id']) ? $conn->real_escape_string($input['user_id']) : null;
+
+        logEvent('announcement_read', [
+            'announcement_id' => $announcementId,
+            'user_id' => $userId
+        ]);
+
+        respond("success", "Announcement marked as read.", [
+            "announcement_id" => $announcementId
+        ]);
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);

@@ -30,6 +30,7 @@ import { FiltersModal } from './FiltersModal'
 import { ReviewModal } from './ReviewModal'
 import { NextSessionModal } from './NextSessionModal'
 import { LocationSelector } from './LocationSelector'
+import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 // Helper functions for formatting trainer data
 function parseDisciplines(disciplines: any): string {
@@ -337,6 +338,7 @@ export const ClientDashboard: React.FC = () => {
             <LogOut className="h-5 w-5 text-red-500" />
           </Button>
         </div>
+        <AnnouncementBanner userId={user?.id} userType="client" />
         <div className="text-center py-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
           <p className="text-muted-foreground">Connect with certified professionals in your area</p>

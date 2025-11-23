@@ -40,6 +40,7 @@ import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { loadSettings, saveSettings, defaultSettings, defaultMpesaSettings, type PlatformSettings, type MpesaSettings, loadSettingsFromDb, saveSettingsToDb } from '@/lib/settings'
 import { useTheme } from 'next-themes'
+import { apiRequest } from '@/lib/api'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Legend
@@ -284,8 +285,19 @@ export const AdminDashboard: React.FC = () => {
     }
     setSendingAnnouncement(true)
     try {
-      toast({ title: 'Announcement feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
-    } catch (err:any) {
+      await apiRequest('announcement_create', {
+        title: announcementTitle,
+        message: announcementBody,
+        target: announcementTarget,
+        created_by: user?.id,
+        is_active: 1
+      })
+
+      toast({ title: 'Success', description: 'Announcement sent successfully!' })
+      setAnnouncementTitle('')
+      setAnnouncementBody('')
+      setAnnouncementTarget('all')
+    } catch (err: any) {
       console.warn('Send announcement failed', err)
       toast({ title: 'Error', description: err?.message || 'Failed to send announcement', variant: 'destructive' })
     } finally {
@@ -679,14 +691,16 @@ export const AdminDashboard: React.FC = () => {
     setTestStkResult(null)
 
     try {
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'stk_push_initiate',
           phone: testStkPhone,
           amount: Number(testStkAmount),
-          account_reference: 'AdminTest',
+          account_reference: 'admin_test',
+          transaction_description: 'Admin STK Push Test',
+          booking_id: null,
         }),
       })
 
