@@ -289,7 +289,8 @@ export const AdminDashboard: React.FC = () => {
         title: announcementTitle,
         message: announcementBody,
         target: announcementTarget,
-        admin_id: user?.id
+        created_by: user?.id,
+        is_active: 1
       })
 
       toast({ title: 'Success', description: 'Announcement sent successfully!' })
