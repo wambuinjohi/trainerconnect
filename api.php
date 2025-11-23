@@ -3727,6 +3727,126 @@ switch ($action) {
         respond("success", "Wallet transactions retrieved.", ["data" => $transactions]);
         break;
 
+    // ============================================================================
+    // PROMOTION REQUESTS MANAGEMENT ENDPOINTS
+    // ============================================================================
+
+    // GET PROMOTION REQUESTS (for admin)
+    case 'promotion_requests_get':
+        $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $sql = "SELECT pr.*, up.full_name, up.phone FROM promotion_requests pr
+                LEFT JOIN user_profiles up ON pr.trainer_id = up.user_id
+                WHERE pr.status = '$status'
+                ORDER BY pr.requested_at DESC";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $requests = [];
+        while ($row = $result->fetch_assoc()) {
+            $requests[] = $row;
+        }
+
+        respond("success", "Promotion requests fetched successfully.", ["data" => $requests]);
+        break;
+
+    // APPROVE PROMOTION REQUEST
+    case 'promotion_request_approve':
+        if (!isset($input['promotion_request_id'])) {
+            respond("error", "Missing promotion_request_id.", null, 400);
+        }
+
+        $promotionRequestId = $conn->real_escape_string($input['promotion_request_id']);
+        $adminId = isset($input['admin_id']) ? $conn->real_escape_string($input['admin_id']) : null;
+
+        $sql = "SELECT * FROM promotion_requests WHERE id = '$promotionRequestId' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if (!$result || $result->num_rows === 0) {
+            respond("error", "Promotion request not found.", null, 404);
+        }
+
+        $request = $result->fetch_assoc();
+        $trainerId = $request['trainer_id'];
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            UPDATE promotion_requests
+            SET status = ?, approved_by = ?, approved_at = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $approvedStatus = 'approved';
+        $stmt->bind_param("ssss", $approvedStatus, $adminId, $now, $promotionRequestId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('promotion_request_approved', [
+                'promotion_request_id' => $promotionRequestId,
+                'trainer_id' => $trainerId,
+                'admin_id' => $adminId
+            ]);
+
+            respond("success", "Promotion request approved successfully.", [
+                "promotion_request_id" => $promotionRequestId,
+                "trainer_id" => $trainerId,
+                "approved_at" => $now
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to approve promotion request: " . $conn->error, null, 500);
+        }
+        break;
+
+    // REJECT PROMOTION REQUEST
+    case 'promotion_request_reject':
+        if (!isset($input['promotion_request_id'])) {
+            respond("error", "Missing promotion_request_id.", null, 400);
+        }
+
+        $promotionRequestId = $conn->real_escape_string($input['promotion_request_id']);
+        $adminId = isset($input['admin_id']) ? $conn->real_escape_string($input['admin_id']) : null;
+
+        $sql = "SELECT * FROM promotion_requests WHERE id = '$promotionRequestId' LIMIT 1";
+        $result = $conn->query($sql);
+
+        if (!$result || $result->num_rows === 0) {
+            respond("error", "Promotion request not found.", null, 404);
+        }
+
+        $request = $result->fetch_assoc();
+        $trainerId = $request['trainer_id'];
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            UPDATE promotion_requests
+            SET status = ?, approved_by = ?, updated_at = NOW()
+            WHERE id = ?
+        ");
+
+        $rejectedStatus = 'rejected';
+        $stmt->bind_param("sss", $rejectedStatus, $adminId, $promotionRequestId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('promotion_request_rejected', [
+                'promotion_request_id' => $promotionRequestId,
+                'trainer_id' => $trainerId,
+                'admin_id' => $adminId
+            ]);
+
+            respond("success", "Promotion request rejected successfully.", [
+                "promotion_request_id" => $promotionRequestId,
+                "trainer_id" => $trainerId
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to reject promotion request: " . $conn->error, null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
