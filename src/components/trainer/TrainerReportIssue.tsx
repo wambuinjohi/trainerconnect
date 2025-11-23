@@ -99,6 +99,12 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
 
     setLoading(true)
     try {
+      let attachmentUrls: string[] = []
+
+      if (selectedFiles.length > 0) {
+        attachmentUrls = await uploadFiles('temp')
+      }
+
       const payload: any = {
         user_id: user.id,
         trainer_id: null,
@@ -108,12 +114,13 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
         booking_reference: bookingRef || null,
         created_at: new Date().toISOString(),
       }
+
+      if (attachmentUrls.length > 0) {
+        payload.attachments = JSON.stringify(attachmentUrls)
+      }
+
       const data = await apiRequest('issue_insert', payload, { headers: withAuth() })
       const issueId = data?.id || ('ISSUE-' + Math.random().toString(36).slice(2, 9).toUpperCase())
-
-      if (selectedFiles.length > 0) {
-        await uploadFiles(issueId)
-      }
 
       toast({ title: 'Reported', description: `Issue reported: ${String(issueId)}` })
       onDone?.(String(issueId))
