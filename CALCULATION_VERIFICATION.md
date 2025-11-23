@@ -49,7 +49,7 @@ maintenanceFeePercent: 15%         // Applied to sum of all charges
 
 ### With Transport Fee (e.g., Ksh 200)
 
-- Client total = Ksh 1,302.50 + 200 = **Ksh 1,502.50**
+- Client total = Ksh 1,250.00 + 200 = **Ksh 1,450.00**
 - Trainer net = Ksh 885.00 + 200 = **Ksh 1,085.00**
 
 ---
