@@ -479,14 +479,18 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
+  const transformedDisputes = useMemo(() => {
+    return issues.map(issue => issueToDispute(issue))
+  }, [issues, users])
+
   const filtered = useMemo(() => {
-    return disputes.filter(d => {
+    return transformedDisputes.filter(d => {
       const q = query.toLowerCase()
       const matches = !q || [d.case,d.client,d.trainer,d.issue].some(v => String(v).toLowerCase().includes(q))
       const statusOk = statusFilter === 'all' ? true : d.status === statusFilter
       return matches && statusOk
     })
-  }, [disputes, query, statusFilter])
+  }, [transformedDisputes, query, statusFilter])
 
   const setStatus = (id: number, status: DisputeStatus) => setDisputes(ds => ds.map(d => d.id===id?{...d,status}:d))
   const resolve = (id: number) => setStatus(id,'resolved')
