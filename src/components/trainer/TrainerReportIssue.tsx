@@ -119,12 +119,18 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40" onClick={() => onDone?.()} />
-      <div className="relative w-full max-w-lg">
-        <Card>
-          <CardHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+      <div className="relative w-full max-w-lg my-auto">
+        <Card className="bg-background">
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Report an Issue</CardTitle>
+            <button
+              onClick={() => onDone?.()}
+              disabled={loading}
+              className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
