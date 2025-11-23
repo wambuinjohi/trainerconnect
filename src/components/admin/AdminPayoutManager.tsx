@@ -211,15 +211,21 @@ export const AdminPayoutManager: React.FC = () => {
       <div className="flex gap-2">
         <Button
           variant={activeTab === 'pending' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('pending')}
+          onClick={() => {
+            setActiveTab('pending')
+            setPendingPage(1)
+          }}
         >
-          Pending Requests ({requests.filter(r => r.status === 'pending').length})
+          Pending Requests ({pendingTotal})
         </Button>
         <Button
           variant={activeTab === 'processed' ? 'default' : 'outline'}
-          onClick={() => setActiveTab('processed')}
+          onClick={() => {
+            setActiveTab('processed')
+            setApprovedPage(1)
+          }}
         >
-          Approved Requests ({requests.filter(r => r.status === 'approved').length})
+          Approved Requests ({approvedTotal})
         </Button>
       </div>
 
@@ -229,60 +235,88 @@ export const AdminPayoutManager: React.FC = () => {
           <CardHeader>
             <CardTitle>Pending Payout Requests</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {loading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full" />)}
               </div>
-            ) : requests.filter(r => r.status === 'pending').length === 0 ? (
+            ) : requests.length === 0 ? (
               <p className="text-center text-muted-foreground py-6">No pending payout requests</p>
             ) : (
-              <div className="space-y-4">
-                {requests.filter(r => r.status === 'pending').map((req) => (
-                  <div key={req.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold text-lg">{req.full_name}</p>
-                        <p className="text-sm text-muted-foreground">{req.phone}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{req.location_label}</p>
+              <>
+                <div className="space-y-4">
+                  {requests.map((req) => (
+                    <div key={req.id} className="border rounded-lg p-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold text-lg">{req.full_name}</p>
+                          <p className="text-sm text-muted-foreground">{req.phone}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{req.location_label}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-xl">Ksh {Number(req.amount).toFixed(2)}</p>
+                          <Badge className="mt-1 bg-yellow-100 text-yellow-800">Pending</Badge>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-xl">Ksh {Number(req.amount).toFixed(2)}</p>
-                        <Badge className="mt-1 bg-yellow-100 text-yellow-800">Pending</Badge>
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="bg-gray-50 p-2 rounded">
-                        <p className="text-muted-foreground">Commission ({commissionPercent}%)</p>
-                        <p className="font-semibold">Ksh {(Number(req.amount) * commissionPercent / 100).toFixed(2)}</p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-gray-50 p-2 rounded">
+                          <p className="text-muted-foreground">Commission ({commissionPercent}%)</p>
+                          <p className="font-semibold">Ksh {(Number(req.amount) * commissionPercent / 100).toFixed(2)}</p>
+                        </div>
+                        <div className="bg-blue-50 p-2 rounded">
+                          <p className="text-muted-foreground">Net Payout</p>
+                          <p className="font-semibold text-blue-600">Ksh {(Number(req.amount) * (100 - commissionPercent) / 100).toFixed(2)}</p>
+                        </div>
                       </div>
-                      <div className="bg-blue-50 p-2 rounded">
-                        <p className="text-muted-foreground">Net Payout</p>
-                        <p className="font-semibold text-blue-600">Ksh {(Number(req.amount) * (100 - commissionPercent) / 100).toFixed(2)}</p>
-                      </div>
-                    </div>
 
-                    <Button
-                      onClick={() => approveRequest(req)}
-                      disabled={processingId === req.id}
-                      className="w-full bg-green-600 hover:bg-green-700"
-                    >
-                      {processingId === req.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Approving...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="h-4 w-4 mr-2" />
-                          Approve & Create B2C Payment
-                        </>
-                      )}
-                    </Button>
+                      <Button
+                        onClick={() => approveRequest(req)}
+                        disabled={processingId === req.id}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                      >
+                        {processingId === req.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Approving...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Approve & Create B2C Payment
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {pendingTotalPages > 1 && (
+                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
+                    <div className="text-sm text-muted-foreground">
+                      Page {pendingPage} of {pendingTotalPages} ({pendingTotal} total)
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pendingPage === 1 || loading}
+                        onClick={() => setPendingPage(prev => Math.max(1, prev - 1))}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pendingPage === pendingTotalPages || loading}
+                        onClick={() => setPendingPage(prev => Math.min(pendingTotalPages, prev + 1))}
+                      >
+                        Next
+                      </Button>
+                    </div>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
@@ -295,25 +329,53 @@ export const AdminPayoutManager: React.FC = () => {
             <CardHeader>
               <CardTitle>Approved Requests</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
                 </div>
-              ) : requests.filter(r => r.status === 'approved').length === 0 ? (
+              ) : requests.length === 0 ? (
                 <p className="text-center text-muted-foreground py-6">No approved requests</p>
               ) : (
-                <div className="space-y-3">
-                  {requests.filter(r => r.status === 'approved').map((req) => (
-                    <div key={req.id} className="border rounded-lg p-3 flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{req.full_name}</p>
-                        <p className="text-sm">Ksh {Number(req.net_amount).toFixed(2)} (after commission)</p>
+                <>
+                  <div className="space-y-3">
+                    {requests.map((req) => (
+                      <div key={req.id} className="border rounded-lg p-3 flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="font-semibold">{req.full_name}</p>
+                          <p className="text-sm">Ksh {Number(req.net_amount).toFixed(2)} (after commission)</p>
+                        </div>
+                        <Badge className="bg-blue-100 text-blue-800">Approved</Badge>
                       </div>
-                      <Badge className="bg-blue-100 text-blue-800">Approved</Badge>
+                    ))}
+                  </div>
+
+                  {approvedTotalPages > 1 && (
+                    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
+                      <div className="text-sm text-muted-foreground">
+                        Page {approvedPage} of {approvedTotalPages} ({approvedTotal} total)
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={approvedPage === 1 || loading}
+                          onClick={() => setApprovedPage(prev => Math.max(1, prev - 1))}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={approvedPage === approvedTotalPages || loading}
+                          onClick={() => setApprovedPage(prev => Math.min(approvedTotalPages, prev + 1))}
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
@@ -322,7 +384,7 @@ export const AdminPayoutManager: React.FC = () => {
             <CardHeader>
               <CardTitle>B2C Payment Status</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full" />)}
@@ -330,45 +392,73 @@ export const AdminPayoutManager: React.FC = () => {
               ) : b2cPayments.length === 0 ? (
                 <p className="text-center text-muted-foreground py-6">No B2C payments</p>
               ) : (
-                <div className="space-y-3">
-                  {b2cPayments.map((payment) => (
-                    <div key={payment.id} className="border rounded-lg p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold">Ksh {Number(payment.amount).toFixed(2)}</p>
-                        <Badge className={getStatusColor(payment.status)}>
-                          {payment.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{payment.phone_number}</p>
-                      <p className="text-xs text-muted-foreground">Ref: {payment.reference_id}</p>
+                <>
+                  <div className="space-y-3">
+                    {b2cPayments.map((payment) => (
+                      <div key={payment.id} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold">Ksh {Number(payment.amount).toFixed(2)}</p>
+                          <Badge className={getStatusColor(payment.status)}>
+                            {payment.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{payment.phone_number}</p>
+                        <p className="text-xs text-muted-foreground">Ref: {payment.reference_id}</p>
 
-                      {payment.status === 'pending' && (
+                        {payment.status === 'pending' && (
+                          <Button
+                            size="sm"
+                            onClick={() => initiateB2CPayment(payment)}
+                            disabled={processingId === payment.id}
+                            className="w-full mt-2"
+                          >
+                            {processingId === payment.id ? (
+                              <>
+                                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                Initiating...
+                              </>
+                            ) : (
+                              <>
+                                <Send className="h-3 w-3 mr-1" />
+                                Initiate M-Pesa B2C
+                              </>
+                            )}
+                          </Button>
+                        )}
+
+                        {payment.transaction_id && (
+                          <p className="text-xs text-green-600 mt-1">✓ Transaction ID: {payment.transaction_id}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {b2cTotalPages > 1 && (
+                    <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
+                      <div className="text-sm text-muted-foreground">
+                        Page {b2cPage} of {b2cTotalPages} ({b2cTotal} total)
+                      </div>
+                      <div className="flex gap-2">
                         <Button
                           size="sm"
-                          onClick={() => initiateB2CPayment(payment)}
-                          disabled={processingId === payment.id}
-                          className="w-full mt-2"
+                          variant="outline"
+                          disabled={b2cPage === 1 || loading}
+                          onClick={() => setB2cPage(prev => Math.max(1, prev - 1))}
                         >
-                          {processingId === payment.id ? (
-                            <>
-                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                              Initiating...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-3 w-3 mr-1" />
-                              Initiate M-Pesa B2C
-                            </>
-                          )}
+                          Previous
                         </Button>
-                      )}
-
-                      {payment.transaction_id && (
-                        <p className="text-xs text-green-600 mt-1">✓ Transaction ID: {payment.transaction_id}</p>
-                      )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={b2cPage === b2cTotalPages || loading}
+                          onClick={() => setB2cPage(prev => Math.min(b2cTotalPages, prev + 1))}
+                        >
+                          Next
+                        </Button>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
