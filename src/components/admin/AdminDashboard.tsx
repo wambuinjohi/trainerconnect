@@ -180,7 +180,6 @@ export const AdminDashboard: React.FC = () => {
     const loaded = loadSettings()
     setSettings(loaded)
     if (loaded.mpesa) setMpesa(loaded.mpesa)
-    // Try to hydrate from DB if available
     loadSettingsFromDb().then((db) => { if (db) { setSettings(db); if (db.mpesa) setMpesa(db.mpesa) } }).catch(() => {})
   }, [])
 
@@ -260,9 +259,7 @@ export const AdminDashboard: React.FC = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      // Always save locally
       saveSettings(settings)
-      // Best effort DB persist
       const ok = await saveSettingsToDb(settings)
       if (ok) {
         toast({ title: 'Settings saved' })
@@ -281,7 +278,6 @@ export const AdminDashboard: React.FC = () => {
     }
     setSendingAnnouncement(true)
     try {
-      // Announcement functionality removed - would need alternative implementation
       toast({ title: 'Announcement feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
     } catch (err:any) {
       console.warn('Send announcement failed', err)
@@ -569,7 +565,6 @@ export const AdminDashboard: React.FC = () => {
     return { total, paid, pending }
   }, [payoutsFiltered])
 
-  // Normalize approval checks helper
   const approvedOf = (u:any) => {
     const v = u && (u.is_approved !== undefined ? u.is_approved : u)
     if (v === true) return true
@@ -579,12 +574,10 @@ export const AdminDashboard: React.FC = () => {
     return ['1','true','yes','y','t'].includes(s)
   }
 
-  // Approve a trainer
   const approveTrainer = async (userId: string) => {
     try {
       await apiService.approveTrainer(userId)
       toast({ title: 'Success', description: 'Trainer approved' })
-      // Refresh page after showing success message
       setTimeout(() => {
         window.location.reload()
       }, 1000)
@@ -594,7 +587,6 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  // Reject a trainer
   const rejectTrainer = async (userId: string) => {
     try {
       await apiService.rejectTrainer(userId)
@@ -607,20 +599,25 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  // Delete a user
   const deleteUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return
-    try {
-      await apiService.deleteUser(userId)
-      setUsers(users.filter(u => u.user_id !== userId))
-      toast({ title: 'Success', description: 'User deleted' })
-    } catch (err: any) {
-      console.error('Delete user error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Delete User',
+      description: 'Are you sure you want to delete this user? This action cannot be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.deleteUser(userId)
+          setUsers(users.filter(u => u.user_id !== userId))
+          toast({ title: 'Success', description: 'User deleted' })
+        } catch (err: any) {
+          console.error('Delete user error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
+        }
+      },
+    })
   }
 
-  // Update user type
   const updateUserType = async (userId: string, newType: string) => {
     try {
       await apiService.updateUserType(userId, newType)
@@ -632,17 +629,14 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  // SMTP & MPesa settings (admin)
   const [smtp, setSmtp] = useState<{ host: string; port: string | number; user?: string; pass?: string; from?: string }>({ host:'', port:'', user:'', pass:'', from:'' })
   const [mpesa, setMpesa] = useState<MpesaSettings>(defaultMpesaSettings)
 
-  // M-Pesa STK Push test form state
   const [testStkPhone, setTestStkPhone] = useState('254722241745')
   const [testStkAmount, setTestStkAmount] = useState('5')
   const [testStkLoading, setTestStkLoading] = useState(false)
   const [testStkResult, setTestStkResult] = useState<any>(null)
 
-  // Function to initiate STK push test
   const handleTestStkPush = async () => {
     if (!testStkPhone.trim()) {
       toast({ title: 'Error', description: 'Please enter a phone number', variant: 'destructive' })
@@ -707,12 +701,10 @@ export const AdminDashboard: React.FC = () => {
   useEffect(() => {
     const loadAdmin = async () => {
       try {
-        // Load users with profiles from API
         const usersData = await apiService.getUsers()
         if (usersData?.data) {
           setUsers(usersData.data)
 
-          // Calculate stats from users
           const allUsers = usersData.data
           const trainers = allUsers.filter((u: any) => u.user_type === 'trainer')
           const clients = allUsers.filter((u: any) => u.user_type === 'client')
@@ -733,13 +725,11 @@ export const AdminDashboard: React.FC = () => {
           })
         }
 
-        // Load categories
         const categoriesData = await apiService.getCategories()
         if (categoriesData?.data) {
           setCategories(categoriesData.data)
         }
 
-        // Load issues (reported_issues) from database with pagination
         try {
           const result = await apiService.getIssuesWithPagination({
             page: issuePage,
@@ -757,7 +747,6 @@ export const AdminDashboard: React.FC = () => {
           console.warn('Failed to load issues', err)
         }
 
-        // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
         setActivityFeed([])
@@ -771,7 +760,6 @@ export const AdminDashboard: React.FC = () => {
   const handleSignOut = async () => {
     try {
       await signOut()
-      // Force navigation to the root/login to reflect signed-out state
       window.location.href = '/'
     } catch (err) {
       // ignore errors during sign out
@@ -893,16 +881,22 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const deleteCategory = async (id: any) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return
-
-    try {
-      await apiService.deleteCategory(id)
-      setCategories(categories.filter(c => c.id !== id))
-      toast({ title: 'Success', description: 'Category deleted' })
-    } catch (err: any) {
-      console.error('Delete category error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Delete Category',
+      description: 'Are you sure you want to delete this category? This action cannot be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.deleteCategory(id)
+          setCategories(categories.filter(c => c.id !== id))
+          toast({ title: 'Success', description: 'Category deleted' })
+        } catch (err: any) {
+          console.error('Delete category error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const processPayout = async (id: number) => {
@@ -1030,7 +1024,7 @@ export const AdminDashboard: React.FC = () => {
           const trainer = users.find((u:any) => u.user_id === (p.trainer_id || p.trainer_user_id || p.trainer))
           const trainerLabel = trainer?.full_name || trainer?.user_id || p.trainer_id || p.trainer_user_id || 'Unknown'
           const commissionRaw = (p.commission_rate ?? p.requested_commission)
-          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? '���' : `${Number(commissionRaw).toFixed(0)}%`
+          const commissionText = (commissionRaw === null || commissionRaw === undefined || Number.isNaN(Number(commissionRaw))) ? 'N/A' : `${Number(commissionRaw).toFixed(0)}%`
           const createdAt = p.created_at ? new Date(p.created_at).toLocaleString() : ''
           return (
             <Card key={p.id} className="bg-card border-border">
@@ -1254,15 +1248,16 @@ export const AdminDashboard: React.FC = () => {
         ))}
       </div>
 
-      {activeDispute && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setActiveDispute(null)}>
-          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-card" onClick={(e)=>e.stopPropagation()}>
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Case {activeDispute.case}</h3>
-              <button className="text-sm text-muted-foreground" onClick={()=>setActiveDispute(null)}>Close</button>
-            </div>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">{activeDispute.issue}</p>
+      <AlertDialog open={!!activeDispute} onOpenChange={(open) => {
+        if (!open) setActiveDispute(null)
+      }}>
+        {activeDispute && (
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Case {activeDispute.case}</AlertDialogTitle>
+              <AlertDialogDescription>{activeDispute.issue}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 py-4">
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Client:</span> <span className="text-foreground">{activeDispute.client}</span></div>
                 <div><span className="text-muted-foreground">Trainer:</span> <span className="text-foreground">{activeDispute.trainer}</span></div>
@@ -1270,29 +1265,30 @@ export const AdminDashboard: React.FC = () => {
                 <div><span className="text-muted-foreground">Submitted:</span> <span className="text-foreground">{activeDispute.submittedAt}</span></div>
               </div>
               <div>
-                <Label htmlFor="notes">Internal notes</Label>
-                <Input id="notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={async ()=>{
-                  if(activeDispute){
-                    try {
-                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
-                      setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
-                      setActiveDispute(null)
-                      toast({ title: 'Success', description: 'Notes saved' })
-                    } catch (err: any) {
-                      console.error('Save error:', err)
-                      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
-                    }
-                  }
-                }}>Save</Button>
-                <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+                <Label htmlFor="dispute-notes">Internal notes</Label>
+                <Input id="dispute-notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
               </div>
             </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogFooter>
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button variant="outline" onClick={async ()=>{
+                if(activeDispute){
+                  try {
+                    await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
+                    setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
+                    setActiveDispute(null)
+                    toast({ title: 'Success', description: 'Notes saved' })
+                  } catch (err: any) {
+                    console.error('Save error:', err)
+                    toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
+                  }
+                }
+              }}>Save Notes</Button>
+              <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
 
       {showRefundModal && refundDispute && (
         <RefundModal
@@ -1313,30 +1309,42 @@ export const AdminDashboard: React.FC = () => {
         />
       )}
 
-      {activeIssue && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setActiveIssue(null)}>
-          <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-card" onClick={(e)=>e.stopPropagation()}>
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <h3 className="font-semibold text-foreground">Issue {activeIssue.id}</h3>
-              <button className="text-sm text-muted-foreground" onClick={()=>setActiveIssue(null)}>Close</button>
-            </div>
-            <div className="p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Type: {activeIssue.complaint_type}</p>
-              <p className="text-sm text-muted-foreground">Description: {activeIssue.description}</p>
-              <p className="text-sm text-muted-foreground">Booking ref: {activeIssue.booking_reference || '���'}</p>
-              <div className="grid grid-cols-1 gap-2">
-                {(activeIssue.attachments || []).map((a:any,i:number)=>(
-                  <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
-                ))}
+      <AlertDialog open={!!activeIssue} onOpenChange={(open) => {
+        if (!open) setActiveIssue(null)
+      }}>
+        {activeIssue && (
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Issue {activeIssue.id}</AlertDialogTitle>
+              <AlertDialogDescription>Type: {activeIssue.complaint_type}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 py-4">
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">Description</p>
+                <p className="text-sm text-muted-foreground">{activeIssue.description}</p>
               </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={()=>{ setActiveIssue(null) }}>Close</Button>
-                <Button onClick={()=>{ markIssueResolved(activeIssue); setActiveIssue(null) }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">Booking Reference</p>
+                <p className="text-sm text-muted-foreground">{activeIssue.booking_reference || 'Not provided'}</p>
               </div>
+              {(activeIssue.attachments || []).length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(activeIssue.attachments || []).map((a:any,i:number)=>(
+                      <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+            <AlertDialogFooter>
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button onClick={()=>{ markIssueResolved(activeIssue); setActiveIssue(null) }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
 
     </div>
   )
@@ -1503,7 +1511,6 @@ export const AdminDashboard: React.FC = () => {
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => deleteUser(u.user_id)}>Delete</Button>
 
-                        {/* Approve trainer (if applicable) */}
                         {String(u.user_type || '').toLowerCase() === 'trainer' && !approvedOf(u) && (
                           <Button size="sm" variant="outline" onClick={() => approveTrainer(u.user_id)}>Approve</Button>
                         )}
@@ -1626,7 +1633,6 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Theme toggle for admins */}
           <div className="mt-4">
             <Label>Theme</Label>
             <div className="flex items-center gap-4 mt-2">
@@ -2041,13 +2047,10 @@ export const AdminDashboard: React.FC = () => {
       <div className="container mx-auto p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="">
           <div className="flex flex-col md:flex-row gap-6">
-            {/* Sidebar */}
             <AdminSidebar value={activeTab} onChange={setActiveTab} onSignOut={handleSignOut} />
 
-            {/* Main content area */}
             <main className="flex-1">
               <div className="hidden md:block mb-4">
-                {/* Desktop horizontal nav fallback (optional) */}
               </div>
 
               <div className="space-y-6">
@@ -2066,6 +2069,35 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </Tabs>
       </div>
+
+      <AlertDialog open={confirmModal.open} onOpenChange={(open) => {
+        if (!open) setConfirmModal({ ...confirmModal, open: false })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmModal.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmModal.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmLoading(true)
+                try {
+                  await confirmModal.action()
+                } finally {
+                  setConfirmLoading(false)
+                  setConfirmModal({ ...confirmModal, open: false })
+                }
+              }}
+              disabled={confirmLoading}
+              className={confirmModal.isDestructive ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+            >
+              {confirmLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
