@@ -609,15 +609,22 @@ export const AdminDashboard: React.FC = () => {
 
   // Delete a user
   const deleteUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return
-    try {
-      await apiService.deleteUser(userId)
-      setUsers(users.filter(u => u.user_id !== userId))
-      toast({ title: 'Success', description: 'User deleted' })
-    } catch (err: any) {
-      console.error('Delete user error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Delete User',
+      description: 'Are you sure you want to delete this user? This action cannot be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.deleteUser(userId)
+          setUsers(users.filter(u => u.user_id !== userId))
+          toast({ title: 'Success', description: 'User deleted' })
+        } catch (err: any) {
+          console.error('Delete user error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete user', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   // Update user type
