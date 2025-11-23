@@ -2,7 +2,7 @@
   "appId": "co.skatryk.trainer",
   "appName": "Skatryk Trainer",
   "webDir": "dist",
-  "bundledWebRuntime": false,
+  "bundledWebRuntime": true,
   "server": {
     "url": "https://trainer.skatryk.co.ke",
     "cleartext": false
