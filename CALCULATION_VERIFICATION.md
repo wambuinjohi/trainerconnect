@@ -172,12 +172,16 @@ Manual verification:
 ## Consistency Checks
 
 The system ensures:
-1. ✓ Client pays: base + (platformChargeClient + compensationFee) + maintenance + transport
+1. ✓ Client pays: base + (platformChargeClient + compensationFee) + transport
+   - Does NOT include maintenance fee (internal revenue)
 2. ✓ Trainer receives: base + transport - (platformChargeTrainer + trainer's maintenance share)
-3. ✓ All percentages are properly clamped to 0-100% range
-4. ✓ Rounding is consistent (2 decimal places)
-5. ✓ Transport fees are never subject to platform charges
-6. ✓ Maintenance fee is applied on sum of all charges, not base amount
+3. ✓ Maintenance fee: (sum of all charges) × maintenanceFeePercent
+   - Deducted proportionally from trainer (based on trainer's charge portion)
+   - NOT shown to or charged to client
+4. ✓ All percentages are properly clamped to 0-100% range
+5. ✓ Rounding is consistent (2 decimal places)
+6. ✓ Transport fees are never subject to platform charges or maintenance
+7. ✓ Maintenance fee is applied on sum of all charges, not base amount
 
 ---
 
