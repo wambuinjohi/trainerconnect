@@ -337,9 +337,17 @@ export const TrainerDashboard: React.FC = () => {
             <DollarSign className="h-4 w-4" />
             <span className="text-sm">Payouts</span>
           </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setShowDisputes(true)}>
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">Disputes</span>
+          </Button>
           <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={openPromote}>
             <Star className="h-4 w-4" />
             <span className="text-sm">Promote</span>
+          </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setShowReport(true)}>
+            <MessageSquare className="h-4 w-4" />
+            <span className="text-sm">Report Issue</span>
           </Button>
         </div>
       </div>
