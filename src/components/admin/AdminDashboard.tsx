@@ -143,6 +143,13 @@ export const AdminDashboard: React.FC = () => {
   const [analyticsPoints, setAnalyticsPoints] = useState<AnalyticsPoint[]>([])
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([])
   const [adminApiAvailable, setAdminApiAvailable] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
+  const [catLoading, setCatLoading] = useState(false)
+  const [promotions, setPromotions] = useState<any[]>([])
+  const [payoutRequests, setPayoutRequests] = useState<any[]>([])
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
 
   useEffect(() => {
     const loaded = loadSettings()
