@@ -52,7 +52,11 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
 
     try {
       setLoading(true)
-      const result = await apiService.getIssues({ trainerId: user.id })
+      const result = await apiRequest('select', {
+        table: 'reported_issues',
+        where: `user_id = '${user.id}' OR trainer_id = '${user.id}'`,
+        order: 'created_at DESC',
+      })
 
       if (result?.data && Array.isArray(result.data)) {
         const transformedDisputes = result.data.map((issue: any) => ({
