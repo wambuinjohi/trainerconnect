@@ -3763,7 +3763,7 @@ switch ($action) {
     // GET PROMOTION REQUESTS (for admin)
     case 'promotion_requests_get':
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
-        $sql = "SELECT pr.*, up.full_name, up.phone FROM promotion_requests pr
+        $sql = "SELECT pr.*, up.full_name, up.phone_number FROM promotion_requests pr
                 LEFT JOIN user_profiles up ON pr.trainer_id = up.user_id
                 WHERE pr.status = '$status'
                 ORDER BY pr.requested_at DESC";
