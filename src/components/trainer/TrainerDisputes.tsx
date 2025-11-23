@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { apiRequest, withAuth } from '@/lib/api'
 import * as apiService from '@/lib/api-service'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
