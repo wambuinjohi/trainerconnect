@@ -679,14 +679,16 @@ export const AdminDashboard: React.FC = () => {
     setTestStkResult(null)
 
     try {
-      const response = await fetch('https://trainer.skatryk.co.ke/api.php', {
+      const response = await fetch('/api.php', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'stk_push_initiate',
           phone: testStkPhone,
           amount: Number(testStkAmount),
-          account_reference: 'AdminTest',
+          account_reference: 'admin_test',
+          transaction_description: 'Admin STK Push Test',
+          booking_id: null,
         }),
       })
 
