@@ -43,7 +43,7 @@ import * as apiService from '@/lib/api-service'
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
 type Dispute = {
-  id: number
+  id: string | number
   case: string
   client: string
   trainer: string
@@ -143,6 +143,13 @@ export const AdminDashboard: React.FC = () => {
   const [analyticsPoints, setAnalyticsPoints] = useState<AnalyticsPoint[]>([])
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([])
   const [adminApiAvailable, setAdminApiAvailable] = useState(false)
+  const [categories, setCategories] = useState<any[]>([])
+  const [users, setUsers] = useState<any[]>([])
+  const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
+  const [catLoading, setCatLoading] = useState(false)
+  const [promotions, setPromotions] = useState<any[]>([])
+  const [payoutRequests, setPayoutRequests] = useState<any[]>([])
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
 
   useEffect(() => {
     const loaded = loadSettings()
@@ -462,24 +469,64 @@ export const AdminDashboard: React.FC = () => {
     ...rows.map(r => [r.case,r.client,r.trainer,`"${r.issue}"`,r.amount,r.status,r.submittedAt,!!r.refunded].join(','))
   ].join('\n')
 
+  const issueToDispute = (issue: any, usersList: any[]): Dispute => {
+    const clientUser = usersList.find((u: any) => u.user_id === issue.user_id)
+    const trainerUser = usersList.find((u: any) => u.user_id === issue.trainer_id)
+    const statusMap: Record<string, DisputeStatus> = {
+      'open': 'pending',
+      'pending': 'pending',
+      'investigating': 'investigating',
+      'resolved': 'resolved',
+    }
+    const mappedStatus = statusMap[String(issue.status || 'open').toLowerCase()] || 'pending'
+    return {
+      id: issue.id,
+      case: `#${issue.id?.substring(0, 8) || Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      client: clientUser?.full_name || issue.user_id || 'Unknown Client',
+      trainer: trainerUser?.full_name || issue.trainer_id || 'N/A',
+      issue: issue.description || 'No description',
+      amount: 0,
+      status: mappedStatus,
+      submittedAt: issue.created_at ? new Date(issue.created_at).toLocaleDateString() : 'Unknown',
+      refunded: false,
+      notes: issue.resolution || undefined,
+    }
+  }
+
+  const transformedDisputes = useMemo(() => {
+    return issues.map(issue => issueToDispute(issue, users))
+  }, [issues, users])
+
   const filtered = useMemo(() => {
-    return disputes.filter(d => {
+    return transformedDisputes.filter(d => {
       const q = query.toLowerCase()
       const matches = !q || [d.case,d.client,d.trainer,d.issue].some(v => String(v).toLowerCase().includes(q))
       const statusOk = statusFilter === 'all' ? true : d.status === statusFilter
       return matches && statusOk
     })
-  }, [disputes, query, statusFilter])
+  }, [transformedDisputes, query, statusFilter])
 
-  const setStatus = (id: number, status: DisputeStatus) => setDisputes(ds => ds.map(d => d.id===id?{...d,status}:d))
-  const resolve = (id: number) => setStatus(id,'resolved')
-  const refund = async (id: number) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+  const setStatus = async (id: any, status: DisputeStatus) => {
+    const issueId = String(id)
+    try {
+      await apiService.updateIssueStatus(issueId, status)
+      setIssues(iss => iss.map(i => i.id === issueId ? { ...i, status } : i))
+      if (activeDispute?.id === id) {
+        setActiveDispute({ ...activeDispute, status })
+      }
+      toast({ title: 'Success', description: `Dispute status updated to ${status}` })
+    } catch (err: any) {
+      console.error('Update dispute status error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to update dispute status', variant: 'destructive' })
+    }
   }
 
-  const [promotions, setPromotions] = useState<any[]>([])
-  const [payoutRequests, setPayoutRequests] = useState<any[]>([])
-  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
+  const resolve = (id: any) => setStatus(id, 'resolved')
+
+  const refund = async (id: any) => {
+    toast({ title: 'Feature unavailable', description: 'Refund functionality not yet implemented', variant: 'destructive' })
+  }
+
   const payoutsFiltered = useMemo(() => {
     return payoutRequests.filter((p:any) => {
       const status = String(p.status || 'requested').toLowerCase()
@@ -492,10 +539,6 @@ export const AdminDashboard: React.FC = () => {
     const pending = total - paid
     return { total, paid, pending }
   }, [payoutsFiltered])
-  const [categories, setCategories] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
-  const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
-  const [catLoading, setCatLoading] = useState(false)
 
   // Normalize approval checks helper
   const approvedOf = (u:any) => {
@@ -667,11 +710,21 @@ export const AdminDashboard: React.FC = () => {
           setCategories(categoriesData.data)
         }
 
+        // Load issues (reported_issues) from database
+        try {
+          const result = await apiService.getIssues()
+          if (result?.data) {
+            setIssues(result.data)
+            const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
+            setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+          }
+        } catch (err) {
+          console.warn('Failed to load issues', err)
+        }
+
         // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
-        setDisputes([])
-        setIssues([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
@@ -734,7 +787,19 @@ export const AdminDashboard: React.FC = () => {
   const viewIssue = (it: any) => setActiveIssue(it)
 
   const markIssueResolved = async (it: any) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+    if (!it?.id) {
+      toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
+      return
+    }
+    try {
+      await apiService.updateIssueStatus(it.id, 'resolved')
+      setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
+      setActiveIssue(null)
+      toast({ title: 'Success', description: 'Issue marked as resolved' })
+    } catch (err: any) {
+      console.error('Mark issue resolved error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+    }
   }
 
   const deleteCategory = async (id: any) => {
@@ -1077,7 +1142,19 @@ export const AdminDashboard: React.FC = () => {
                 <Input id="notes" value={activeDispute.notes || ''} onChange={(e)=>setActiveDispute({...activeDispute, notes:e.target.value})} className="bg-input border-border" />
               </div>
               <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={()=>{ if(activeDispute){ setDisputes(ds=>ds.map(d=>d.id===activeDispute.id?{...activeDispute}:d)); setActiveDispute(null);} }}>Save</Button>
+                <Button variant="outline" onClick={async ()=>{
+                  if(activeDispute){
+                    try {
+                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
+                      setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
+                      setActiveDispute(null)
+                      toast({ title: 'Success', description: 'Notes saved' })
+                    } catch (err: any) {
+                      console.error('Save error:', err)
+                      toast({ title: 'Error', description: 'Failed to save notes', variant: 'destructive' })
+                    }
+                  }
+                }}>Save</Button>
                 <Button onClick={()=>{ if(activeDispute){ resolve(activeDispute.id); setActiveDispute(null);} }} className="bg-gradient-primary text-white">Mark Resolved</Button>
               </div>
             </div>
