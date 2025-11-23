@@ -345,6 +345,35 @@ export const AdminPayoutManager: React.FC = () => {
           </Card>
         </>
       )}
+
+      <AlertDialog open={confirmModal.open} onOpenChange={(open) => {
+        if (!open) setConfirmModal({ ...confirmModal, open: false })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmModal.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmModal.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmLoading(true)
+                try {
+                  await confirmModal.action()
+                } finally {
+                  setConfirmLoading(false)
+                  setConfirmModal({ ...confirmModal, open: false })
+                }
+              }}
+              disabled={confirmLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {confirmLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
