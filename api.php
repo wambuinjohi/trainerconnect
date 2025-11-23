@@ -1800,24 +1800,60 @@ switch ($action) {
         }
 
         $userId = $conn->real_escape_string($input['user_id']);
-        $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : NULL;
-        $bookingReference = isset($input['booking_reference']) ? $conn->real_escape_string($input['booking_reference']) : NULL;
-        $complaintType = isset($input['complaint_type']) ? $conn->real_escape_string($input['complaint_type']) : NULL;
+        $trainerId = isset($input['trainer_id']) && !empty($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : NULL;
+        $bookingReference = isset($input['booking_reference']) && !empty($input['booking_reference']) ? $conn->real_escape_string($input['booking_reference']) : NULL;
+        $complaintType = isset($input['complaint_type']) && !empty($input['complaint_type']) ? $conn->real_escape_string($input['complaint_type']) : NULL;
         $title = isset($input['title']) ? $conn->real_escape_string($input['title']) : 'Support Issue';
         $description = $conn->real_escape_string($input['description']);
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'open';
         $priority = isset($input['priority']) ? $conn->real_escape_string($input['priority']) : 'normal';
-        $attachments = isset($input['attachments']) ? $conn->real_escape_string($input['attachments']) : NULL;
+        $attachments = isset($input['attachments']) && !empty($input['attachments']) ? $conn->real_escape_string($input['attachments']) : NULL;
         $issueId = 'issue_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        $stmt = $conn->prepare("
+        $conn->query("
+            CREATE TABLE IF NOT EXISTS `reported_issues` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `user_id` VARCHAR(36) NOT NULL,
+                `trainer_id` VARCHAR(36),
+                `booking_reference` VARCHAR(100),
+                `complaint_type` VARCHAR(100),
+                `title` VARCHAR(255),
+                `description` TEXT NOT NULL,
+                `status` VARCHAR(50) DEFAULT 'open',
+                `priority` VARCHAR(50) DEFAULT 'normal',
+                `attachments` JSON,
+                `resolution` TEXT,
+                `resolved_at` TIMESTAMP NULL,
+                `assigned_to` VARCHAR(36),
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                CONSTRAINT `fk_reported_issues_user_id`
+                    FOREIGN KEY (`user_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`),
+                INDEX `idx_status` (`status`)
+            )
+        ");
+
+        $sql = "
             INSERT INTO reported_issues (
                 id, user_id, trainer_id, booking_reference, complaint_type,
                 title, description, status, priority, attachments, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->bind_param("ssssssssssss", $issueId, $userId, $trainerId, $bookingReference, $complaintType, $title, $description, $status, $priority, $attachments, $now, $now);
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param(
+            "ssssssssssss",
+            $issueId, $userId, $trainerId, $bookingReference, $complaintType,
+            $title, $description, $status, $priority, $attachments, $now, $now
+        );
 
         if ($stmt->execute()) {
             $stmt->close();
