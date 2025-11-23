@@ -2547,17 +2547,34 @@ switch ($action) {
 
             if (!$userId) continue;
 
+            // Try to insert with all columns, fall back to basic columns if booking_id or action_type don't exist
             $stmt = $conn->prepare("
                 INSERT INTO notifications (
                     id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
 
-            if ($stmt->execute()) {
-                $inserted++;
+            if (!$stmt) {
+                // If the statement fails, try without booking_id and action_type
+                $stmt = $conn->prepare("
+                    INSERT INTO notifications (
+                        id, user_id, title, body, message, type, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                if ($stmt) {
+                    $stmt->bind_param("ssssssss", $notifId, $userId, $title, $body, $body, $type, $now, $now);
+                }
+            } else {
+                $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
             }
-            $stmt->close();
+
+            if ($stmt && $stmt->execute()) {
+                $inserted++;
+            } else if ($stmt) {
+                // Log error but continue with other notifications
+                error_log("Failed to insert notification: " . $conn->error);
+            }
+            if ($stmt) $stmt->close();
         }
 
         respond("success", "Notifications created successfully.", ["inserted" => $inserted]);
