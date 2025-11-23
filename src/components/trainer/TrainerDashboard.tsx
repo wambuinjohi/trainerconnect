@@ -274,6 +274,7 @@ export const TrainerDashboard: React.FC = () => {
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
+      <AnnouncementBanner userId={user?.id} userType="trainer" />
       {profileData.profile_image && (
         <div className="mb-6 rounded-lg overflow-hidden h-48 w-full">
           <img
