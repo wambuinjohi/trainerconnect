@@ -26,14 +26,15 @@ describe('Fee Calculations', () => {
 
     // Step 3: Apply maintenance fee on sum
     // maintenanceFee: 350 × 15% = 52.50
+    // (This is platform/developer revenue, NOT charged to client)
     expect(breakdown.maintenanceFee).toBe(52.5)
 
-    // Step 4: Client total
+    // Step 4: Client total (maintenance fee NOT included)
     // Client charges: platformChargeClient + compensationFee = 150 + 100 = 250
-    // Client total: base + client charges + maintenance = 1000 + 250 + 52.50 = 1302.50
-    expect(breakdown.clientTotal).toBe(1302.5)
+    // Client total: base + client charges + transport = 1000 + 250 + 0 = 1250
+    expect(breakdown.clientTotal).toBe(1250)
 
-    // Step 5: Trainer net
+    // Step 5: Trainer net (deducts trainer's share of maintenance)
     // Trainer share of maintenance: (platformChargeTrainer / sumOfCharges) × maintenanceFee
     // = (100 / 350) × 52.50 = 15
     // Trainer net: base + transport - platformChargeTrainer - trainer's share of maintenance
