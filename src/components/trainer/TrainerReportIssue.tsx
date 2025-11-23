@@ -71,12 +71,14 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const clonedResponse = response.clone()
+        const data = await clonedResponse.json()
         if (data.data?.uploaded && Array.isArray(data.data.uploaded)) {
           uploadedUrls.push(...data.data.uploaded.map((f: any) => f.url))
         }
       } else {
-        const responseText = await response.text()
+        const clonedResponse = response.clone()
+        const responseText = await clonedResponse.text()
         console.error('Upload failed:', responseText)
         toast({ title: 'Upload failed', description: 'Could not upload files', variant: 'destructive' })
       }
