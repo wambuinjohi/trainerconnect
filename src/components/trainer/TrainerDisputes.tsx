@@ -252,10 +252,10 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
                 <p className="text-sm text-muted-foreground">{activeDispute.description}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-foreground">Client ID</p>
-                  <p className="text-sm text-muted-foreground">{activeDispute.user_id}</p>
+                  <p className="text-sm text-muted-foreground break-all">{activeDispute.user_id}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Status</p>
