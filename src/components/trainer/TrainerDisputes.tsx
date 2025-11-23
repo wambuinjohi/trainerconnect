@@ -286,22 +286,23 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
                 />
               </div>
 
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1 sm:gap-2 flex-wrap">
                 {(['pending', 'investigating', 'resolved'] as const).map(status => (
                   <Button
                     key={status}
                     variant={activeDispute.status === status ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => handleStatusChange(status)}
+                    className="text-xs sm:text-sm"
                   >
                     Mark {status.charAt(0).toUpperCase() + status.slice(1)}
                   </Button>
                 ))}
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setActiveDispute(null)}>Close</Button>
-                <Button onClick={saveNotes}>Save Notes</Button>
+              <div className="flex justify-end gap-2 flex-col-reverse sm:flex-row">
+                <Button variant="outline" onClick={() => setActiveDispute(null)} className="w-full sm:w-auto">Close</Button>
+                <Button onClick={saveNotes} className="w-full sm:w-auto">Save Notes</Button>
               </div>
             </CardContent>
           </Card>
