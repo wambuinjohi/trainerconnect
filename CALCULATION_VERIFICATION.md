@@ -40,7 +40,8 @@ maintenanceFeePercent: 15%         // Applied to sum of all charges
 #### Step 4: Calculate Client Total
 - Client charges = platformChargeClient + compensationFee
 - Client charges = 150 + 100 = **Ksh 250**
-- Client total = 1000 + 250 + 52.50 = **Ksh 1,302.50**
+- Client total = 1000 + 250 = **Ksh 1,250.00**
+- **Note**: Maintenance fee is NOT added to client payment (it's internal platform revenue)
 
 #### Step 5: Calculate Trainer Net Amount
 - Trainer's share of maintenance = (100 / 350) × 52.50 = **Ksh 15.00**
