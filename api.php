@@ -504,23 +504,48 @@ switch ($action) {
         $table = $conn->real_escape_string($input['table']);
         $data = $input['data'];
         $updates = [];
+        $types = "";
+        $values = [];
 
         foreach ($data as $key => $value) {
-            $escapedKey = $conn->real_escape_string($key);
+            $escapedKey = "`" . $conn->real_escape_string($key) . "`";
             if ($value === null || $value === 'null') {
-                $updates[] = "`$escapedKey` = NULL";
+                $updates[] = "$escapedKey = NULL";
             } else {
-                $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-                $updates[] = "`$escapedKey` = '" . $conn->real_escape_string($stringValue) . "'";
+                $updates[] = "$escapedKey = ?";
+                if (is_array($value) || is_object($value)) {
+                    $values[] = json_encode($value);
+                } else {
+                    $values[] = (string)$value;
+                }
+                $types .= "s";
             }
         }
 
         $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE " . $input['where'];
 
-        if ($conn->query($sql)) {
-            respond("success", "Record updated successfully.", ["affected_rows" => $conn->affected_rows]);
+        if (empty($values)) {
+            if ($conn->query($sql)) {
+                respond("success", "Record updated successfully.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Update failed: " . $conn->error, null, 500);
+            }
         } else {
-            respond("error", "Update failed: " . $conn->error, null, 500);
+            $stmt = $conn->prepare($sql);
+            if (!$stmt) {
+                respond("error", "Failed to prepare update: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param($types, ...$values);
+
+            if ($stmt->execute()) {
+                $affectedRows = $stmt->affected_rows;
+                $stmt->close();
+                respond("success", "Record updated successfully.", ["affected_rows" => $affectedRows]);
+            } else {
+                $stmt->close();
+                respond("error", "Update failed: " . $conn->error, null, 500);
+            }
         }
         break;
 
