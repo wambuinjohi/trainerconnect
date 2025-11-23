@@ -150,8 +150,50 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
 
               <div>
                 <Label>Attachments (optional)</Label>
-                <input type="file" multiple onChange={() => {}} />
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,application/pdf,.doc,.docx"
+                    onChange={handleFileSelect}
+                    disabled={loading}
+                    className="block w-full text-sm border border-border rounded-md p-2 bg-input cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">Max 5MB per file. Accepted: images, PDF, Word docs</p>
+                </div>
               </div>
+
+              {filePreviews.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Attached Files ({selectedFiles.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {filePreviews.map((preview, index) => (
+                      <div key={index} className="relative">
+                        {selectedFiles[index]?.type.startsWith('image/') ? (
+                          <img
+                            src={preview}
+                            alt={selectedFiles[index]?.name}
+                            className="w-full h-24 object-cover rounded-md border border-border"
+                          />
+                        ) : (
+                          <div className="w-full h-24 rounded-md border border-border bg-muted flex items-center justify-center">
+                            <span className="text-xs text-center text-muted-foreground px-1 truncate">
+                              {selectedFiles[index]?.name}
+                            </span>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="absolute -top-2 -right-2 bg-destructive rounded-full p-1 text-white hover:bg-destructive/90"
+                          disabled={loading}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => onDone?.()} disabled={loading}>Cancel</Button>
