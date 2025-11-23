@@ -465,6 +465,13 @@ export const AdminDashboard: React.FC = () => {
   const issueToDispute = (issue: any): Dispute => {
     const clientUser = users.find((u: any) => u.user_id === issue.user_id)
     const trainerUser = users.find((u: any) => u.user_id === issue.trainer_id)
+    const statusMap: Record<string, DisputeStatus> = {
+      'open': 'pending',
+      'pending': 'pending',
+      'investigating': 'investigating',
+      'resolved': 'resolved',
+    }
+    const mappedStatus = statusMap[String(issue.status || 'open').toLowerCase()] || 'pending'
     return {
       id: issue.id,
       case: `#${issue.id?.substring(0, 8) || Math.random().toString(36).slice(2, 8).toUpperCase()}`,
@@ -472,7 +479,7 @@ export const AdminDashboard: React.FC = () => {
       trainer: trainerUser?.full_name || issue.trainer_id || 'N/A',
       issue: issue.description || 'No description',
       amount: 0,
-      status: (issue.status || 'open') as DisputeStatus,
+      status: mappedStatus,
       submittedAt: issue.created_at ? new Date(issue.created_at).toLocaleDateString() : 'Unknown',
       refunded: false,
       notes: issue.resolution || undefined,
