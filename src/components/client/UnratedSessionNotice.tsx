@@ -16,11 +16,13 @@ interface UnratedSession {
 }
 
 interface UnratedSessionNoticeProps {
+  bookings?: any[]
   onRateClick?: (booking: UnratedSession) => void
   onDismiss?: () => void
 }
 
 export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
+  bookings,
   onRateClick,
   onDismiss
 }) => {
@@ -30,10 +32,35 @@ export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
   const [loading, setLoading] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
+  // Use provided bookings if available, otherwise fetch
   useEffect(() => {
-    if (!user?.id) return
-    loadUnratedSessions()
-  }, [user?.id])
+    if (bookings) {
+      deriveUnratedSessions(bookings)
+    } else if (!user?.id) {
+      return
+    } else {
+      loadUnratedSessions()
+    }
+  }, [user?.id, bookings])
+
+  const deriveUnratedSessions = (bookingsData: any[]) => {
+    const unrated = (bookingsData as any[])
+      .filter(
+        booking =>
+          booking.status === 'completed' &&
+          !booking.rating_submitted &&
+          !booking.client_rating
+      )
+      .map(booking => ({
+        ...booking,
+        id: booking.id || booking.booking_id,
+        trainer_name: booking.trainer_name || 'Trainer',
+        trainer_id: booking.trainer_id,
+        session_date: booking.session_date,
+        total_amount: booking.total_amount || 0,
+      }))
+    setUnratedSessions(unrated)
+  }
 
   const loadUnratedSessions = async () => {
     if (!user?.id) return
@@ -41,22 +68,7 @@ export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
     try {
       const bookingsData = await apiService.getBookings(user.id, 'client')
       if (bookingsData?.data) {
-        const unrated = (bookingsData.data as any[])
-          .filter(
-            booking =>
-              booking.status === 'completed' &&
-              !booking.rating_submitted &&
-              !booking.client_rating
-          )
-          .map(booking => ({
-            ...booking,
-            id: booking.id || booking.booking_id,
-            trainer_name: booking.trainer_name || 'Trainer',
-            trainer_id: booking.trainer_id,
-            session_date: booking.session_date,
-            total_amount: booking.total_amount || 0,
-          }))
-        setUnratedSessions(unrated)
+        deriveUnratedSessions(bookingsData.data)
       }
     } catch (err) {
       console.warn('Failed to load unrated sessions', err)
