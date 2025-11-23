@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { ArrowLeft, MessageSquare, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiRequest, withAuth } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import * as apiService from '@/lib/api-service'
 
