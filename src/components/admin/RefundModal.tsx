@@ -66,6 +66,9 @@ export const RefundModal: React.FC<RefundModalProps> = ({
   const processRefund = async () => {
     setLoading(true)
     try {
+      // Normalize phone number to M-Pesa format (254xxxxxxxxx)
+      const normalizedPhone = normalizePhoneNumber(phone)
+
       // Step 1: Get user details to determine user_id from phone
       const userResult = await apiRequest('select', {
         table: 'users',
@@ -88,7 +91,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
           id: b2cPaymentId,
           user_id: dispute.client,
           user_type: 'client',
-          phone_number: phone,
+          phone_number: normalizedPhone,
           amount: dispute.amount,
           reference_id: referenceId,
           status: 'pending',
@@ -100,7 +103,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
       // Step 3: Initiate B2C payment (refund)
       const initiateResult = await apiRequest('b2c_payment_initiate', {
         b2c_payment_id: b2cPaymentId,
-        phone_number: phone,
+        phone_number: normalizedPhone,
         amount: dispute.amount,
       })
 
