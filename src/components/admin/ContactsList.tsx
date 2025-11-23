@@ -83,7 +83,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
     }
 
     try {
-      const response = await apiRequest('insert', {
+      await apiRequest('insert', {
         table: 'contacts',
         data: {
           id: generateId(),
@@ -95,27 +95,20 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
         }
       })
 
-      if (response.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Contact added successfully'
-        })
-        setFormData({ name: '', phone: '', user_type: 'client' })
-        setIsAddDialogOpen(false)
-        await fetchContacts()
-        onRefresh?.()
-      } else {
-        toast({
-          title: 'Error',
-          description: response.message || 'Failed to add contact',
-          variant: 'destructive'
-        })
-      }
+      toast({
+        title: 'Success',
+        description: 'Contact added successfully'
+      })
+      setFormData({ name: '', phone: '', user_type: 'client' })
+      setIsAddDialogOpen(false)
+      await fetchContacts()
+      onRefresh?.()
     } catch (error) {
       console.error('Error adding contact:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add contact'
       toast({
         title: 'Error',
-        description: 'Failed to add contact',
+        description: errorMessage,
         variant: 'destructive'
       })
     }
