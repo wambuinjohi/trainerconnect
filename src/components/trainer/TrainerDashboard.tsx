@@ -9,6 +9,7 @@ import {
   Star,
   Users,
   MessageCircle,
+  MessageSquare,
   Clock,
   MapPin,
   Settings,
@@ -34,6 +35,7 @@ import { PromoteProfile } from './PromoteProfile'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
 import { TrainerReportIssue } from './TrainerReportIssue'
+import { TrainerDisputes } from './TrainerDisputes'
 import * as apiService from '@/lib/api-service'
 
 export const TrainerDashboard: React.FC = () => {
@@ -210,6 +212,7 @@ export const TrainerDashboard: React.FC = () => {
   const [editingAvailability, setEditingAvailability] = useState(false)
   const [showServiceArea, setShowServiceArea] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const [showDisputes, setShowDisputes] = useState(false)
 
   useEffect(() => {
     const loadTrainerProfile = async () => {
@@ -335,9 +338,17 @@ export const TrainerDashboard: React.FC = () => {
             <DollarSign className="h-4 w-4" />
             <span className="text-sm">Payouts</span>
           </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setShowDisputes(true)}>
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-sm">Disputes</span>
+          </Button>
           <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={openPromote}>
             <Star className="h-4 w-4" />
             <span className="text-sm">Promote</span>
+          </Button>
+          <Button variant="outline" className="w-full h-14 flex flex-col items-center justify-center gap-1" onClick={() => setShowReport(true)}>
+            <MessageSquare className="h-4 w-4" />
+            <span className="text-sm">Report Issue</span>
           </Button>
         </div>
       </div>
@@ -445,11 +456,18 @@ export const TrainerDashboard: React.FC = () => {
     </div>
   )
 
+  const renderDisputesContent = () => (
+    <div className="space-y-6">
+      <TrainerDisputes onClose={() => setActiveTab('home')} />
+    </div>
+  )
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home': return renderHomeContent()
       case 'bookings': return renderBookingsContent()
       case 'profile': return renderProfileContent()
+      case 'disputes': return renderDisputesContent()
       default: return renderHomeContent()
     }
   }
@@ -480,6 +498,13 @@ export const TrainerDashboard: React.FC = () => {
       {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
       {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
       {showReport && <TrainerReportIssue onClose={() => setShowReport(false)} />}
+      {showDisputes && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-background rounded-lg p-6">
+            <TrainerDisputes onClose={() => setShowDisputes(false)} />
+          </div>
+        </div>
+      )}
       {chatBooking && <TrainerChat booking={chatBooking} onClose={closeChat} />}
     </div>
   )

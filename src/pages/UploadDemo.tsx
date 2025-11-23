@@ -146,7 +146,7 @@ const UploadDemo = () => {
             <div>
               <p className="font-medium mb-1">Endpoint:</p>
               <code className="bg-blue-100 px-2 py-1 rounded text-xs">
-                https://trainer.skatryk.co.ke/api_upload.php
+                https://trainer.skatryk.co.ke/api.php
               </code>
             </div>
             <div>

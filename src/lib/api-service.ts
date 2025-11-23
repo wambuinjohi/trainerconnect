@@ -364,6 +364,9 @@ export async function getIssues(filter?: Record<string, any>) {
   if (filter?.userId) {
     where += ` AND user_id = '${filter.userId}'`
   }
+  if (filter?.trainerId) {
+    where += ` AND trainer_id = '${filter.trainerId}'`
+  }
   if (filter?.status) {
     where += ` AND status = '${filter.status}'`
   }
@@ -378,6 +381,14 @@ export async function updateIssueStatus(issueId: string, status: string) {
   return apiRequest('update', {
     table: 'reported_issues',
     data: { status },
+    where: `id = '${issueId}'`,
+  })
+}
+
+export async function updateIssue(issueId: string, data: Record<string, any>) {
+  return apiRequest('update', {
+    table: 'reported_issues',
+    data,
     where: `id = '${issueId}'`,
   })
 }
