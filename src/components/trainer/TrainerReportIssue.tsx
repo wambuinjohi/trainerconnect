@@ -63,7 +63,11 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
         formData.append('files[]', file)
       })
 
-      const response = await fetch('/api_upload.php', {
+      const uploadUrl = process.env.VITE_API_BASE_URL
+        ? `${process.env.VITE_API_BASE_URL}/api_upload.php`
+        : 'https://trainer.skatryk.co.ke/api_upload.php'
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
       })
@@ -74,10 +78,13 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
           uploadedUrls.push(...data.data.uploaded.map((f: any) => f.url))
         }
       } else {
-        console.error('Upload response:', await response.text())
+        const responseText = await response.text()
+        console.error('Upload failed:', responseText)
+        toast({ title: 'Upload failed', description: 'Could not upload files', variant: 'destructive' })
       }
     } catch (err) {
       console.error('File upload error:', err)
+      toast({ title: 'Upload error', description: String(err), variant: 'destructive' })
     }
     return uploadedUrls
   }
