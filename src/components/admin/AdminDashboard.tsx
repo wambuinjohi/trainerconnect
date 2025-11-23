@@ -542,7 +542,18 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const resolve = (id: any) => setStatus(id, 'resolved')
+  const resolve = (id: any) => {
+    const dispute = filtered.find(d => d.id === id)
+    const caseLabel = dispute?.case || `Case #${id}`
+    setConfirmModal({
+      open: true,
+      title: 'Resolve Dispute',
+      description: `Are you sure you want to mark ${caseLabel} as resolved? Make sure all necessary actions (refund, notes) have been completed.`,
+      action: async () => {
+        await setStatus(id, 'resolved')
+      },
+    })
+  }
 
   const refund = (id: any) => {
     const dispute = filtered.find(d => d.id === id)
