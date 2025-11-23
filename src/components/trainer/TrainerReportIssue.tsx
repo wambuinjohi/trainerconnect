@@ -17,6 +17,69 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [filePreviews, setFilePreviews] = useState<string[]>([])
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+
+    const maxSize = 5 * 1024 * 1024
+    const validFiles: File[] = []
+    const previews: string[] = []
+
+    files.forEach(file => {
+      if (file.size > maxSize) {
+        toast({ title: 'File too large', description: `${file.name} exceeds 5MB limit`, variant: 'destructive' })
+        return
+      }
+
+      validFiles.push(file)
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          previews.push(event.target.result as string)
+          if (previews.length === validFiles.length) {
+            setFilePreviews(prev => [...prev, ...previews])
+          }
+        }
+      }
+      reader.readAsDataURL(file)
+    })
+
+    setSelectedFiles(prev => [...prev, ...validFiles])
+  }
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+    setFilePreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadFiles = async (issueId: string): Promise<string[]> => {
+    if (selectedFiles.length === 0) return []
+
+    const uploadedIds: string[] = []
+    for (const file of selectedFiles) {
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('issue_id', issueId)
+
+        const response = await fetch('/api/upload_attachment.php', {
+          method: 'POST',
+          headers: withAuth(),
+          body: formData,
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.id) uploadedIds.push(data.id)
+        }
+      } catch (err) {
+        console.error('File upload error:', err)
+      }
+    }
+    return uploadedIds
+  }
+
   const submit = async () => {
     if (!user) {
       toast({ title: 'Not signed in', description: 'Please sign in to report an issue', variant: 'destructive' })
@@ -39,9 +102,14 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
         created_at: new Date().toISOString(),
       }
       const data = await apiRequest('issue_insert', payload, { headers: withAuth() })
-      const ref = data?.id || ('ISSUE-' + Math.random().toString(36).slice(2, 9).toUpperCase())
-      toast({ title: 'Reported', description: `Issue reported: ${String(ref)}` })
-      onDone?.(String(ref))
+      const issueId = data?.id || ('ISSUE-' + Math.random().toString(36).slice(2, 9).toUpperCase())
+
+      if (selectedFiles.length > 0) {
+        await uploadFiles(issueId)
+      }
+
+      toast({ title: 'Reported', description: `Issue reported: ${String(issueId)}` })
+      onDone?.(String(issueId))
     } catch (err) {
       console.error('Report error', err)
       toast({ title: 'Failed', description: 'Could not report issue', variant: 'destructive' })
