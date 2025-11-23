@@ -89,9 +89,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
           id: generateId(),
           name: formData.name.trim(),
           phone: formData.phone.trim(),
-          user_type: formData.user_type,
-          created_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
-          updated_at: new Date().toISOString().slice(0, 19).replace('T', ' ')
+          user_type: formData.user_type
         }
       })
 
