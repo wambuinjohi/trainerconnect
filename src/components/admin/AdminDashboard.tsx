@@ -8,6 +8,7 @@ import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
 import { RefundModal } from './RefundModal'
 import { AdminPayoutManager } from './AdminPayoutManager'
+import { EmojiPickerComponent } from './EmojiPickerComponent'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -1143,8 +1144,12 @@ export const AdminDashboard: React.FC = () => {
             <Input value={catForm.name} onChange={(e)=>setCatForm({...catForm, name:e.target.value})} className="bg-input border-border" />
           </div>
           <div>
-            <Label>Icon (emoji or char)</Label>
-            <Input value={catForm.icon} onChange={(e)=>setCatForm({...catForm, icon:e.target.value})} className="bg-input border-border" />
+            <Label>Icon (emoji)</Label>
+            <EmojiPickerComponent
+              value={catForm.icon}
+              onChange={(emoji) => setCatForm({...catForm, icon: emoji})}
+              placeholder="Select emoji"
+            />
           </div>
           <div className="md:col-span-2">
             <Label>Description</Label>
