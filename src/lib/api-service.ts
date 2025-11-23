@@ -377,6 +377,43 @@ export async function getIssues(filter?: Record<string, any>) {
   })
 }
 
+export async function getIssuesWithPagination(options?: {
+  page?: number
+  pageSize?: number
+  status?: string
+  userId?: string
+  trainerId?: string
+  searchQuery?: string
+}) {
+  const page = Math.max(1, options?.page || 1)
+  const pageSize = Math.max(1, Math.min(100, options?.pageSize || 20))
+  const offset = (page - 1) * pageSize
+
+  let where = '1=1'
+  if (options?.userId) {
+    where += ` AND user_id = '${options.userId}'`
+  }
+  if (options?.trainerId) {
+    where += ` AND trainer_id = '${options.trainerId}'`
+  }
+  if (options?.status) {
+    where += ` AND status = '${options.status}'`
+  }
+  if (options?.searchQuery) {
+    const query = options.searchQuery.replace(/'/g, "\\'")
+    where += ` AND (description LIKE '%${query}%' OR complaint_type LIKE '%${query}%' OR title LIKE '%${query}%')`
+  }
+
+  return apiRequest('select', {
+    table: 'reported_issues',
+    where,
+    order: 'created_at DESC',
+    limit: pageSize,
+    offset: offset,
+    count: 'exact',
+  })
+}
+
 export async function updateIssueStatus(issueId: string, status: string) {
   return apiRequest('update', {
     table: 'reported_issues',
@@ -389,6 +426,22 @@ export async function updateIssue(issueId: string, data: Record<string, any>) {
   return apiRequest('update', {
     table: 'reported_issues',
     data,
+    where: `id = '${issueId}'`,
+  })
+}
+
+export async function softDeleteIssue(issueId: string) {
+  return apiRequest('update', {
+    table: 'reported_issues',
+    data: { deleted_at: new Date().toISOString() },
+    where: `id = '${issueId}'`,
+  })
+}
+
+export async function restoreIssue(issueId: string) {
+  return apiRequest('update', {
+    table: 'reported_issues',
+    data: { deleted_at: null },
     where: `id = '${issueId}'`,
   })
 }
