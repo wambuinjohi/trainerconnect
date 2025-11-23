@@ -178,6 +178,87 @@ function calculateTransportFee($distanceKm, $hourlyRateByRadius) {
     return 0;
 }
 
+// Load platform settings with defaults
+function loadPlatformSettings() {
+    global $conn;
+
+    $defaults = [
+        'platformChargeClientPercent' => 15,
+        'platformChargeTrainerPercent' => 10,
+        'compensationFeePercent' => 10,
+        'maintenanceFeePercent' => 15,
+    ];
+
+    $settings = $defaults;
+
+    // Try to load from database
+    if ($conn) {
+        $settingsSql = "SELECT setting_key, value FROM platform_settings WHERE setting_key IN ('platformChargeClientPercent', 'platformChargeTrainerPercent', 'compensationFeePercent', 'maintenanceFeePercent')";
+        $result = $conn->query($settingsSql);
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $key = $row['setting_key'];
+                $value = floatval($row['value']);
+                if (in_array($key, array_keys($defaults))) {
+                    $settings[$key] = $value;
+                }
+            }
+        }
+    }
+
+    return $settings;
+}
+
+// Calculate fee breakdown using new calculation order
+function calculateFeeBreakdown($baseAmount, $settings, $transportFee = 0) {
+    $baseAmount = max(0, floatval($baseAmount));
+    $transportFee = max(0, floatval($transportFee));
+
+    // Clamp percentages to 0-100
+    $clientPct = max(0, min(100, floatval($settings['platformChargeClientPercent'] ?? 15)));
+    $trainerPct = max(0, min(100, floatval($settings['platformChargeTrainerPercent'] ?? 10)));
+    $compPct = max(0, min(100, floatval($settings['compensationFeePercent'] ?? 10)));
+    $maintPct = max(0, min(100, floatval($settings['maintenanceFeePercent'] ?? 15)));
+
+    // Step 1: Calculate all charges on base amount
+    $platformChargeClient = round(($baseAmount * $clientPct) / 100, 2);
+    $platformChargeTrainer = round(($baseAmount * $trainerPct) / 100, 2);
+    $compensationFee = round(($baseAmount * $compPct) / 100, 2);
+
+    // Step 2: Sum all charges
+    $sumOfCharges = round($platformChargeClient + $platformChargeTrainer + $compensationFee, 2);
+
+    // Step 3: Apply maintenance fee on the sum of charges
+    $maintenanceFee = round(($sumOfCharges * $maintPct) / 100, 2);
+
+    // Step 4: Calculate client total
+    // Client pays: base + client charges + compensation fee + maintenance fee + transport
+    $clientCharges = $platformChargeClient + $compensationFee;
+    $clientTotal = round($baseAmount + $clientCharges + $maintenanceFee + $transportFee, 2);
+
+    // Step 5: Calculate trainer net
+    // Trainer receives: base + transport - trainer charges - trainer's share of maintenance
+    // Trainer's share of maintenance is proportional to their charges
+    $trainerShareOfMaintenance = 0;
+    if ($sumOfCharges > 0) {
+        $trainerShareOfMaintenance = round(($platformChargeTrainer / $sumOfCharges) * $maintenanceFee, 2);
+    }
+    $trainerNetAmount = round($baseAmount + $transportFee - $platformChargeTrainer - $trainerShareOfMaintenance, 2);
+
+    return [
+        'baseAmount' => $baseAmount,
+        'platformChargeClient' => $platformChargeClient,
+        'platformChargeTrainer' => $platformChargeTrainer,
+        'compensationFee' => $compensationFee,
+        'sumOfCharges' => $sumOfCharges,
+        'maintenanceFee' => $maintenanceFee,
+        'transportFee' => $transportFee,
+        'clientTotal' => $clientTotal,
+        'trainerNetAmount' => $trainerNetAmount,
+    ];
+}
+
 // =============================
 // HANDLE FILE UPLOADS (MULTIPART)
 // =============================
