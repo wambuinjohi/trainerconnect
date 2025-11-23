@@ -560,12 +560,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
           <div>
             <Label htmlFor="disciplines">Disciplines (comma separated)</Label>
-            <Input id="disciplines" value={(profile.disciplines && Array.isArray(profile.disciplines)) ? (profile.disciplines as string[]).join(', ') : (profile.disciplines as any) || ''} onChange={(e) => handleChange('disciplines', e.target.value)} />
+            <Input id="disciplines" value={cleanAndParseArray(profile.disciplines).join(', ')} onChange={(e) => handleChange('disciplines', e.target.value)} />
           </div>
 
           <div>
             <Label htmlFor="certifications">Certifications (comma separated)</Label>
-            <Input id="certifications" value={(profile.certifications && Array.isArray(profile.certifications)) ? (profile.certifications as string[]).join(', ') : (profile.certifications as any) || ''} onChange={(e) => handleChange('certifications', e.target.value)} />
+            <Input id="certifications" value={cleanAndParseArray(profile.certifications).join(', ')} onChange={(e) => handleChange('certifications', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
