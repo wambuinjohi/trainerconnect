@@ -250,7 +250,7 @@ export const AdminPayoutManager: React.FC = () => {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <p className="font-semibold text-lg">{req.full_name}</p>
-                          <p className="text-sm text-muted-foreground">{req.phone}</p>
+                          <p className="text-sm text-muted-foreground">{req.phone_number}</p>
                           <p className="text-xs text-muted-foreground mt-1">{req.location_label}</p>
                         </div>
                         <div className="text-right">
