@@ -46,10 +46,10 @@ describe('Fee Calculations', () => {
     const breakdown = calculateFeeBreakdown(1000, testSettings, 200)
 
     // Transport fee should be added to both client total and trainer net
-    // Client: 1302.50 + 200 = 1502.50
-    expect(breakdown.clientTotal).toBe(1502.5)
-    
-    // Trainer: 885 + 200 = 1085
+    // Client: 1250 + 200 = 1450 (maintenance fee NOT included)
+    expect(breakdown.clientTotal).toBe(1450)
+
+    // Trainer: 885 + 200 = 1085 (already deducted trainer's maintenance share)
     expect(breakdown.trainerNetAmount).toBe(1085)
   })
 
