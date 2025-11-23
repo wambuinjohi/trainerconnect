@@ -194,10 +194,10 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2 sm:space-y-4">
           {filtered.map(dispute => (
             <Card key={dispute.id} className="bg-card border-border cursor-pointer hover:bg-card/80 transition" onClick={() => setActiveDispute(dispute)}>
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
