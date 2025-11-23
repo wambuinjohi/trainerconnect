@@ -7,10 +7,12 @@ import * as apiService from '@/lib/api-service'
 
 interface UnratedSession {
   id: string
+  booking_id?: string
   trainer_name: string
   trainer_id: string
   session_date: string
   total_amount: number
+  [key: string]: any
 }
 
 interface UnratedSessionNoticeProps {
