@@ -136,7 +136,7 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
     }
 
     try {
-      const response = await apiRequest('update', {
+      await apiRequest('update', {
         table: 'contacts',
         data: {
           name: formData.name.trim(),
@@ -147,28 +147,21 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
         where: `id = '${selectedContact.id}'`
       })
 
-      if (response.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Contact updated successfully'
-        })
-        setFormData({ name: '', phone: '', user_type: 'client' })
-        setIsEditDialogOpen(false)
-        setSelectedContact(null)
-        await fetchContacts()
-        onRefresh?.()
-      } else {
-        toast({
-          title: 'Error',
-          description: response.message || 'Failed to update contact',
-          variant: 'destructive'
-        })
-      }
+      toast({
+        title: 'Success',
+        description: 'Contact updated successfully'
+      })
+      setFormData({ name: '', phone: '', user_type: 'client' })
+      setIsEditDialogOpen(false)
+      setSelectedContact(null)
+      await fetchContacts()
+      onRefresh?.()
     } catch (error) {
       console.error('Error updating contact:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update contact'
       toast({
         title: 'Error',
-        description: 'Failed to update contact',
+        description: errorMessage,
         variant: 'destructive'
       })
     }
