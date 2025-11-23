@@ -77,9 +77,10 @@ export function calculateFeeBreakdown(
   const maintenanceFee = round((sumOfCharges * maintPct) / 100)
 
   // Step 4: Calculate client total
-  // Client pays: base + client charges + compensation fee + maintenance fee
+  // Client pays: base + client charges (platformChargeClient + compensationFee) + transport
+  // NOTE: Maintenance fee is NOT charged to client (it's internal platform revenue)
   const clientCharges = platformChargeClient + compensationFee
-  const clientTotal = round(baseAmount + clientCharges + maintenanceFee + transportFee)
+  const clientTotal = round(baseAmount + clientCharges + transportFee)
 
   // Step 5: Calculate trainer net
   // Trainer receives: base + transport - trainer charges - trainer's share of maintenance
