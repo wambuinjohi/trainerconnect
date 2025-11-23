@@ -6,12 +6,13 @@ This document verifies that the new fee calculation system is implemented correc
 
 1. **Base booking amount**: Ksh 1000
 2. **Calculate all charges on the base amount**:
-   - platformChargeClient %: Applied to client
-   - platformChargeTrainer %: Applied to trainer deduction
-   - compensationFee %: Applied to sum calculation
+   - platformChargeClient %: Charged to client
+   - platformChargeTrainer %: Deducted from trainer
+   - compensationFee %: Charged to client (operational fee)
 3. **Sum all these charges**
-4. **Apply maintenance fee on the sum of charges** (not on base amount)
-5. **Add to client's payment** (plus transport fee)
+4. **Apply maintenance fee on the sum of charges** (platform/developer revenue, NOT charged to client)
+5. **Client payment** = Base + (platformChargeClient + compensationFee) + Transport
+   - Does NOT include maintenance fee
 
 ## Implementation Details
 
