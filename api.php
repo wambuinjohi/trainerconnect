@@ -2893,10 +2893,19 @@ switch ($action) {
     // GET PAYOUT REQUESTS (for admin)
     case 'payout_requests_get':
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'pending';
+        $page = isset($input['page']) ? max(1, intval($input['page'])) : 1;
+        $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 20;
+        $offset = ($page - 1) * $limit;
+
+        $countSql = "SELECT COUNT(*) as total FROM payout_requests WHERE status = '$status'";
+        $countResult = $conn->query($countSql);
+        $totalCount = $countResult ? $countResult->fetch_assoc()['total'] : 0;
+
         $sql = "SELECT pr.*, up.full_name, up.phone, up.location_label FROM payout_requests pr
                 LEFT JOIN user_profiles up ON pr.trainer_id = up.user_id
                 WHERE pr.status = '$status'
-                ORDER BY pr.requested_at DESC";
+                ORDER BY pr.requested_at DESC
+                LIMIT $limit OFFSET $offset";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -2908,7 +2917,13 @@ switch ($action) {
             $requests[] = $row;
         }
 
-        respond("success", "Payout requests fetched successfully.", ["data" => $requests]);
+        respond("success", "Payout requests fetched successfully.", [
+            "data" => $requests,
+            "page" => $page,
+            "limit" => $limit,
+            "total" => $totalCount,
+            "totalPages" => ceil($totalCount / $limit)
+        ]);
         break;
 
     // APPROVE PAYOUT REQUEST AND INITIATE B2C
@@ -3264,6 +3279,9 @@ switch ($action) {
     case 'b2c_payments_get':
         $trainerId = isset($input['trainer_id']) ? $conn->real_escape_string($input['trainer_id']) : null;
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : null;
+        $page = isset($input['page']) ? max(1, intval($input['page'])) : 1;
+        $limit = isset($input['limit']) ? max(1, min(100, intval($input['limit']))) : 20;
+        $offset = ($page - 1) * $limit;
 
         $where = "1=1";
         if ($trainerId) {
@@ -3273,11 +3291,16 @@ switch ($action) {
             $where .= " AND bp.status = '$status'";
         }
 
+        $countSql = "SELECT COUNT(*) as total FROM b2c_payments bp WHERE $where";
+        $countResult = $conn->query($countSql);
+        $totalCount = $countResult ? $countResult->fetch_assoc()['total'] : 0;
+
         $sql = "SELECT bp.*, bc.result_code, bc.result_description, bc.transaction_id
                 FROM b2c_payments bp
                 LEFT JOIN b2c_payment_callbacks bc ON bp.reference_id = bc.reference_id
                 WHERE $where
-                ORDER BY bp.initiated_at DESC LIMIT 100";
+                ORDER BY bp.initiated_at DESC
+                LIMIT $limit OFFSET $offset";
 
         $result = $conn->query($sql);
 
@@ -3290,7 +3313,13 @@ switch ($action) {
             $payments[] = $row;
         }
 
-        respond("success", "B2C payments fetched.", ["data" => $payments]);
+        respond("success", "B2C payments fetched.", [
+            "data" => $payments,
+            "page" => $page,
+            "limit" => $limit,
+            "total" => $totalCount,
+            "totalPages" => ceil($totalCount / $limit)
+        ]);
         break;
 
     // ============================================================================
