@@ -63,11 +63,9 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
         formData.append('files[]', file)
       })
 
-      const uploadUrl = process.env.VITE_API_BASE_URL
-        ? `${process.env.VITE_API_BASE_URL}/api_upload.php`
-        : 'https://trainer.skatryk.co.ke/api_upload.php'
+      const apiBaseUrl = process.env.VITE_API_BASE_URL || 'https://trainer.skatryk.co.ke'
 
-      const response = await fetch(uploadUrl, {
+      const response = await fetch(`${apiBaseUrl}/api.php`, {
         method: 'POST',
         body: formData,
       })
