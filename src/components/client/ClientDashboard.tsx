@@ -697,6 +697,23 @@ export const ClientDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <div className="sticky top-0 z-40 bg-background border-b border-border">
+        <div className="container max-w-md mx-auto flex justify-end p-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowNotifications(true)}
+            className="relative text-muted-foreground hover:text-foreground"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotificationsClient > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-destructive-foreground rounded-full text-xs">
+                {unreadNotificationsClient > 9 ? '9+' : unreadNotificationsClient}
+              </Badge>
+            )}
+          </Button>
+        </div>
+      </div>
       <div className="flex-1 overflow-auto pb-20 container max-w-md mx-auto p-4">
         {activeTab === 'home' && renderHomeContent()}
         {activeTab === 'explore' && renderExploreContent()}
