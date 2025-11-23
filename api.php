@@ -3973,53 +3973,28 @@ switch ($action) {
         $title = $conn->real_escape_string($input['title']);
         $message = $conn->real_escape_string($input['message']);
         $target = isset($input['target']) ? $conn->real_escape_string($input['target']) : 'all';
-        $adminId = isset($input['admin_id']) ? $conn->real_escape_string($input['admin_id']) : null;
+        $createdBy = isset($input['created_by']) ? $conn->real_escape_string($input['created_by']) : null;
+        $isActive = isset($input['is_active']) ? (intval($input['is_active']) ? 1 : 0) : 1;
+        $startsAt = isset($input['starts_at']) ? $conn->real_escape_string($input['starts_at']) : null;
+        $endsAt = isset($input['ends_at']) ? $conn->real_escape_string($input['ends_at']) : null;
 
         if (!in_array($target, ['all', 'clients', 'trainers', 'admins'])) {
             respond("error", "Invalid target. Must be: all, clients, trainers, or admins.", null, 400);
         }
 
-        $createTableSql = "
-            CREATE TABLE IF NOT EXISTS `announcements` (
-                `id` VARCHAR(36) PRIMARY KEY,
-                `title` VARCHAR(255) NOT NULL,
-                `message` LONGTEXT NOT NULL,
-                `target_user_type` VARCHAR(50) NOT NULL COMMENT 'all, clients, trainers, admins',
-                `admin_id` VARCHAR(36),
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX `idx_target` (`target_user_type`),
-                INDEX `idx_created_at` (`created_at` DESC)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-        $conn->query($createTableSql);
-
-        $createReadTableSql = "
-            CREATE TABLE IF NOT EXISTS `announcement_reads` (
-                `id` VARCHAR(36) PRIMARY KEY,
-                `announcement_id` VARCHAR(36) NOT NULL,
-                `user_id` VARCHAR(36) NOT NULL,
-                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
-                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
-                INDEX `idx_user_id` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-        $conn->query($createReadTableSql);
-
         $announcementId = 'ann_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
         $stmt = $conn->prepare("
-            INSERT INTO announcements (id, title, message, target_user_type, admin_id, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO announcements (id, title, message, target_audience, created_by, is_active, starts_at, ends_at, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         if (!$stmt) {
             respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
         }
 
-        $stmt->bind_param("sssssss", $announcementId, $title, $message, $target, $adminId, $now, $now);
+        $stmt->bind_param("sssssisss", $announcementId, $title, $message, $target, $createdBy, $isActive, $startsAt, $endsAt, $now, $now);
 
         if (!$stmt->execute()) {
             $stmt->close();
@@ -4030,7 +4005,7 @@ switch ($action) {
         logEvent('announcement_created', [
             'announcement_id' => $announcementId,
             'target' => $target,
-            'admin_id' => $adminId,
+            'created_by' => $createdBy,
             'title' => $title
         ]);
 
