@@ -2473,8 +2473,26 @@ switch ($action) {
         } else if (isset($input['trainer_id']) && isset($input['client_id'])) {
             $trainerId = $conn->real_escape_string($input['trainer_id']);
             $clientId = $conn->real_escape_string($input['client_id']);
-            $senderId = isset($input['client_id']) ? $clientId : $trainerId;
-            $recipientId = isset($input['trainer_id']) ? $trainerId : $clientId;
+
+            // Determine sender based on read_by_trainer/read_by_client flags
+            // If trainer sent it: read_by_trainer=true, read_by_client=false
+            // If client sent it: read_by_trainer=false, read_by_client=true
+            $rbt = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+            $rbc = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
+
+            if ($rbt && !$rbc) {
+                // Trainer sent this message
+                $senderId = $trainerId;
+                $recipientId = $clientId;
+            } else if ($rbc && !$rbt) {
+                // Client sent this message
+                $senderId = $clientId;
+                $recipientId = $trainerId;
+            } else {
+                // Fallback: use trainer as sender
+                $senderId = $trainerId;
+                $recipientId = $clientId;
+            }
         } else {
             respond("error", "Missing sender_id/recipient_id or trainer_id/client_id.", null, 400);
         }
@@ -2535,32 +2553,110 @@ switch ($action) {
         $inserted = 0;
         $now = date('Y-m-d H:i:s');
 
+        // Check which columns exist in notifications table (cache for performance)
+        static $columnsCache = null;
+        if ($columnsCache === null) {
+            $columnsCache = ['hasBookingId' => false, 'hasActionType' => false];
+
+            $result = @$conn->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME='notifications' AND TABLE_SCHEMA=DATABASE()");
+            if ($result) {
+                while ($row = $result->fetch_assoc()) {
+                    if ($row['COLUMN_NAME'] === 'booking_id') $columnsCache['hasBookingId'] = true;
+                    if ($row['COLUMN_NAME'] === 'action_type') $columnsCache['hasActionType'] = true;
+                }
+            }
+        }
+
         foreach ($notifications as $notif) {
             $userId = isset($notif['user_id']) ? $conn->real_escape_string($notif['user_id']) : null;
-            $bookingId = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
             $title = isset($notif['title']) ? $conn->real_escape_string($notif['title']) : '';
             $message = isset($notif['message']) ? $conn->real_escape_string($notif['message']) : '';
             $body = isset($notif['body']) ? $conn->real_escape_string($notif['body']) : $message;
             $type = isset($notif['type']) ? $conn->real_escape_string($notif['type']) : 'info';
-            $actionType = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             $notifId = 'notif_' . uniqid();
 
             if (!$userId) continue;
 
-            $stmt = $conn->prepare("
-                INSERT INTO notifications (
-                    id, user_id, booking_id, title, body, message, type, action_type, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-            $stmt->bind_param("ssssssssss", $notifId, $userId, $bookingId, $title, $body, $body, $type, $actionType, $now, $now);
+            // Build INSERT statement based on available columns
+            $sql = "INSERT INTO notifications (id, user_id";
+            $params = "ss";
+            $values = [$notifId, $userId];
 
-            if ($stmt->execute()) {
-                $inserted++;
+            if ($columnsCache['hasBookingId']) {
+                $sql .= ", booking_id";
+                $params .= "s";
+                $values[] = isset($notif['booking_id']) ? $conn->real_escape_string($notif['booking_id']) : null;
             }
-            $stmt->close();
+
+            $sql .= ", title, body, message, type";
+            $params .= "ssss";
+            $values[] = $title;
+            $values[] = $body;
+            $values[] = $body;
+            $values[] = $type;
+
+            if ($columnsCache['hasActionType']) {
+                $sql .= ", action_type";
+                $params .= "s";
+                $values[] = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
+            }
+
+            $sql .= ", created_at, updated_at) VALUES (";
+            $placeholders = array_fill(0, count($values) + 2, "?");
+            $sql .= implode(",", $placeholders) . ")";
+            $params .= "ss";
+            $values[] = $now;
+            $values[] = $now;
+
+            $stmt = $conn->prepare($sql);
+            if ($stmt) {
+                $stmt->bind_param($params, ...$values);
+                if ($stmt->execute()) {
+                    $inserted++;
+                } else {
+                    error_log("Failed to insert notification: " . $stmt->error);
+                }
+                $stmt->close();
+            } else {
+                error_log("Failed to prepare notification insert statement: " . $conn->error);
+            }
         }
 
         respond("success", "Notifications created successfully.", ["inserted" => $inserted]);
+        break;
+
+    // MARK NOTIFICATIONS AS READ
+    case 'notifications_mark_read':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $notificationIds = isset($input['notification_ids']) && is_array($input['notification_ids']) ? $input['notification_ids'] : [];
+
+        if (empty($notificationIds)) {
+            // Mark all notifications for this user as read
+            $sql = "UPDATE notifications SET `read` = TRUE WHERE user_id = '$userId'";
+            if ($conn->query($sql)) {
+                respond("success", "All notifications marked as read.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Failed to mark notifications as read: " . $conn->error, null, 500);
+            }
+        } else {
+            // Mark specific notifications as read
+            $escapedIds = array_map(function($id) use ($conn) {
+                return "'" . $conn->real_escape_string($id) . "'";
+            }, $notificationIds);
+            $idList = implode(',', $escapedIds);
+
+            $sql = "UPDATE notifications SET `read` = TRUE WHERE id IN ($idList) AND user_id = '$userId'";
+            if ($conn->query($sql)) {
+                respond("success", "Notifications marked as read.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Failed to mark notifications as read: " . $conn->error, null, 500);
+            }
+        }
         break;
 
     // GET REFERRAL

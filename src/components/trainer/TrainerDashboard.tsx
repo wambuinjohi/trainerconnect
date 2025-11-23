@@ -20,7 +20,8 @@ import {
   Home,
   Briefcase,
   ArrowLeft,
-  LogOut
+  LogOut,
+  Bell
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiRequest, withAuth } from '@/lib/api'
@@ -38,6 +39,7 @@ import { TrainerReportIssue } from './TrainerReportIssue'
 import { TrainerDisputes } from './TrainerDisputes'
 import * as apiService from '@/lib/api-service'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
+import { NotificationsCenter } from '@/components/client/NotificationsCenter'
 
 export const TrainerDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -70,6 +72,8 @@ export const TrainerDashboard: React.FC = () => {
   const [chatBooking, setChatBooking] = useState<any | null>(null)
   const [showPayouts, setShowPayouts] = useState(false)
   const [showTopUp, setShowTopUp] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [unreadNotificationsTrainer, setUnreadNotificationsTrainer] = useState(0)
   const [profileData, setProfileData] = useState<any>({
     name: user?.email,
     bio: 'Professional Trainer',
@@ -266,13 +270,49 @@ export const TrainerDashboard: React.FC = () => {
     loadTrainerProfile()
   }, [user?.id])
 
+  const loadNotifications = async () => {
+    if (!user?.id) return
+    try {
+      const notifData = await apiRequest('notifications_get', { user_id: user.id }, { headers: withAuth() })
+      const notifs = Array.isArray(notifData) ? notifData : (notifData?.data || [])
+      const unreadCount = notifs.filter((n: any) => !n.read).length
+      setUnreadNotificationsTrainer(unreadCount)
+    } catch (err) {
+      console.warn('Failed to load notifications', err)
+    }
+  }
+
+  // Load notifications on mount and poll periodically
+  useEffect(() => {
+    if (!user?.id) return
+    loadNotifications()
+
+    const notificationInterval = setInterval(loadNotifications, 10000) // Poll every 10 seconds
+    return () => clearInterval(notificationInterval)
+  }, [user?.id])
+
   const renderHomeContent = () => (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-4">
         <div></div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowNotifications(true)}
+            className="relative text-muted-foreground hover:text-foreground"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotificationsTrainer > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-destructive-foreground rounded-full text-xs">
+                {unreadNotificationsTrainer > 9 ? '9+' : unreadNotificationsTrainer}
+              </Badge>
+            )}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
       <AnnouncementBanner userId={user?.id} userType="trainer" />
       {profileData.profile_image && (
@@ -500,6 +540,7 @@ export const TrainerDashboard: React.FC = () => {
       {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
       {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
       {showReport && <TrainerReportIssue onDone={() => setShowReport(false)} />}
+      {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
       {showDisputes && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 overflow-y-auto">
           <div className="w-full max-w-2xl bg-background rounded-lg p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
