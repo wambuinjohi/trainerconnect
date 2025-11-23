@@ -364,6 +364,9 @@ export async function getIssues(filter?: Record<string, any>) {
   if (filter?.userId) {
     where += ` AND user_id = '${filter.userId}'`
   }
+  if (filter?.trainerId) {
+    where += ` AND trainer_id = '${filter.trainerId}'`
+  }
   if (filter?.status) {
     where += ` AND status = '${filter.status}'`
   }
