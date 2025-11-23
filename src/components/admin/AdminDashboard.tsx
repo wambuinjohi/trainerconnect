@@ -462,6 +462,23 @@ export const AdminDashboard: React.FC = () => {
     ...rows.map(r => [r.case,r.client,r.trainer,`"${r.issue}"`,r.amount,r.status,r.submittedAt,!!r.refunded].join(','))
   ].join('\n')
 
+  const issueToDispute = (issue: any): Dispute => {
+    const clientUser = users.find((u: any) => u.user_id === issue.user_id)
+    const trainerUser = users.find((u: any) => u.user_id === issue.trainer_id)
+    return {
+      id: parseInt(issue.id) || Math.random(),
+      case: `#${issue.id?.substring(0, 8) || Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+      client: clientUser?.full_name || issue.user_id || 'Unknown Client',
+      trainer: trainerUser?.full_name || issue.trainer_id || 'N/A',
+      issue: issue.description || 'No description',
+      amount: 0,
+      status: (issue.status || 'pending') as DisputeStatus,
+      submittedAt: issue.created_at ? new Date(issue.created_at).toLocaleDateString() : 'Unknown',
+      refunded: false,
+      notes: issue.resolution || undefined,
+    }
+  }
+
   const filtered = useMemo(() => {
     return disputes.filter(d => {
       const q = query.toLowerCase()
