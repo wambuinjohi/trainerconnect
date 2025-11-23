@@ -668,11 +668,13 @@ export const AdminDashboard: React.FC = () => {
         }
 
         // Load issues (reported_issues) from database
+        let issuesData: any = { data: [] }
         try {
-          const issuesData = await apiService.getIssues()
-          if (issuesData?.data) {
-            setIssues(issuesData.data)
-            const openIssuesCount = issuesData.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
+          const result = await apiService.getIssues()
+          if (result?.data) {
+            issuesData = result
+            setIssues(result.data)
+            const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
             setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
           }
         } catch (err) {
