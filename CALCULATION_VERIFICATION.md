@@ -120,10 +120,15 @@ When booking_create is called, returns:
   "maintenance_fee": 52.50,
   "sum_of_charges": 350,
   "trainer_net_amount": 885,
-  "client_surcharge": 252.50,
-  "total_amount": 1502.50
+  "client_surcharge": 250,
+  "total_amount": 1450
 }
 ```
+
+**Note**:
+- `client_surcharge` = platformChargeClient + compensationFee (NOT including maintenance)
+- `total_amount` = client payment (NOT including maintenance fee)
+- `maintenance_fee` is internal platform revenue
 
 ---
 
