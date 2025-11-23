@@ -33,6 +33,45 @@ interface Category {
   description?: string
 }
 
+// Helper function to clean and parse disciplines/certifications
+const cleanAndParseArray = (value: any): string[] => {
+  if (!value) return []
+
+  // If already an array, filter out empty/whitespace-only values
+  if (Array.isArray(value)) {
+    return value
+      .map(item => String(item).trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  // If string, try to parse as JSON first
+  if (typeof value === 'string') {
+    let stringValue = value.trim()
+
+    // Try JSON parsing
+    if (stringValue.startsWith('[') || stringValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(stringValue)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map(item => String(item).trim().replace(/['"\\]/g, ''))
+            .filter(Boolean)
+        }
+      } catch {
+        // If JSON parsing fails, treat as raw string
+      }
+    }
+
+    // Clean the string and split by comma
+    return stringValue
+      .split(',')
+      .map(item => item.trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  return []
+}
+
 export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
   const userId = user?.id
