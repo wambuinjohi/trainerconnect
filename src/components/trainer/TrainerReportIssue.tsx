@@ -28,7 +28,7 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
     try {
       const payload: any = {
         user_id: user.id,
-        trainer_id: null,
+        trainer_id: user.id,
         description,
         status: 'open',
         complaint_type: type,
