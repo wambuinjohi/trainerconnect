@@ -383,7 +383,7 @@ function getMpesaCredentialsForAdmin() {
     if (!$creds) {
         return null;
     }
-    
+
     // Return with masked secrets for display
     return [
         'environment' => $creds['environment'],
@@ -394,6 +394,8 @@ function getMpesaCredentialsForAdmin() {
         'resultUrl' => $creds['result_url'],
         'initiatorName' => $creds['initiator_name'],
         'securityCredential' => maskSecret($creds['security_credential']),
+        'c2bCallbackUrl' => $creds['c2b_callback_url'] ?? '',
+        'b2cCallbackUrl' => $creds['b2c_callback_url'] ?? '',
         'source' => $creds['source']
     ];
 }
