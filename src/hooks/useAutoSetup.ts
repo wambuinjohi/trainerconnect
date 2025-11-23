@@ -29,7 +29,8 @@ export function useAutoSetup() {
           throw new Error(`Server error: ${checkResponse.status} ${checkResponse.statusText}`);
         }
 
-        const responseText = await checkResponse.text();
+        const clonedCheckResponse = checkResponse.clone();
+        const responseText = await clonedCheckResponse.text();
         if (!responseText) {
           throw new Error('Server returned empty response');
         }
