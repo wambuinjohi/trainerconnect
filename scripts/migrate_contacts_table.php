@@ -1,6 +1,6 @@
 <?php
 /**
- * Migration: Create contacts table
+ * Migration: Create contacts table with updated_at column
  * Usage: php scripts/migrate_contacts_table.php
  */
 
@@ -23,10 +23,28 @@ CREATE TABLE IF NOT EXISTS `contacts` (
 ";
 
 if ($conn->query($sql)) {
-    echo "✓ Migration successful: contacts table created or already exists\n";
-    exit(0);
+    echo "✓ contacts table created or already exists\n";
 } else {
-    echo "✗ Migration failed: " . $conn->error . "\n";
+    echo "✗ Failed to create contacts table: " . $conn->error . "\n";
     exit(1);
 }
+
+// Add updated_at column if it doesn't exist
+$checkColumn = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='contacts' AND COLUMN_NAME='updated_at' AND TABLE_SCHEMA='" . $conn->real_escape_string($GLOBALS['database']) . "'";
+$result = $conn->query($checkColumn);
+
+if ($result && $result->num_rows === 0) {
+    $alterSql = "ALTER TABLE `contacts` ADD COLUMN `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP";
+    if ($conn->query($alterSql)) {
+        echo "✓ Added updated_at column to contacts table\n";
+    } else {
+        echo "✗ Failed to add updated_at column: " . $conn->error . "\n";
+        exit(1);
+    }
+} else {
+    echo "✓ updated_at column already exists\n";
+}
+
+echo "✓ Migration completed successfully\n";
+exit(0);
 ?>
