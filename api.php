@@ -4063,62 +4063,20 @@ switch ($action) {
 
     // MARK ANNOUNCEMENT AS READ
     case 'announcement_mark_read':
-        if (!isset($input['announcement_id']) || !isset($input['user_id'])) {
-            respond("error", "Missing required fields: announcement_id, user_id.", null, 400);
+        if (!isset($input['announcement_id'])) {
+            respond("error", "Missing required field: announcement_id.", null, 400);
         }
 
         $announcementId = $conn->real_escape_string($input['announcement_id']);
-        $userId = $conn->real_escape_string($input['user_id']);
+        $userId = isset($input['user_id']) ? $conn->real_escape_string($input['user_id']) : null;
 
-        $createReadTableSql = "
-            CREATE TABLE IF NOT EXISTS `announcement_reads` (
-                `id` VARCHAR(36) PRIMARY KEY,
-                `announcement_id` VARCHAR(36) NOT NULL,
-                `user_id` VARCHAR(36) NOT NULL,
-                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
-                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
-                INDEX `idx_user_id` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-        $conn->query($createReadTableSql);
-
-        $readId = 'ar_' . uniqid();
-        $now = date('Y-m-d H:i:s');
-
-        $checkStmt = $conn->prepare("SELECT id FROM announcement_reads WHERE announcement_id = ? AND user_id = ?");
-        $checkStmt->bind_param("ss", $announcementId, $userId);
-        $checkStmt->execute();
-        $checkResult = $checkStmt->get_result();
-        $checkStmt->close();
-
-        if ($checkResult->num_rows > 0) {
-            respond("success", "Announcement already marked as read.", [
-                "announcement_id" => $announcementId,
-                "user_id" => $userId
-            ]);
-        }
-
-        $stmt = $conn->prepare("
-            INSERT INTO announcement_reads (id, announcement_id, user_id, read_at)
-            VALUES (?, ?, ?, ?)
-        ");
-
-        if (!$stmt) {
-            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
-        }
-
-        $stmt->bind_param("ssss", $readId, $announcementId, $userId, $now);
-
-        if (!$stmt->execute()) {
-            $stmt->close();
-            respond("error", "Failed to mark announcement as read: " . $conn->error, null, 500);
-        }
-        $stmt->close();
+        logEvent('announcement_read', [
+            'announcement_id' => $announcementId,
+            'user_id' => $userId
+        ]);
 
         respond("success", "Announcement marked as read.", [
-            "announcement_id" => $announcementId,
-            "user_id" => $userId
+            "announcement_id" => $announcementId
         ]);
         break;
 
