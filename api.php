@@ -2741,11 +2741,15 @@ switch ($action) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
+        // For backward compatibility, use the new fee breakdown values
+        $platformFeeForDb = $clientSurcharge; // Store total client charges as platform_fee for now
+        $vatAmountForDb = 0; // No VAT in new calculation
+
         $stmt->bind_param(
             "sssisiiidddddddsddss",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
-            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFee,
-            $vatAmount, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
+            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
+            $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
             $clientLocationLat, $clientLocationLng, $now, $now
         );
 
