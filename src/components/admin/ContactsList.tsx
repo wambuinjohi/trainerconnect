@@ -171,32 +171,25 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
     if (!selectedContact) return
 
     try {
-      const response = await apiRequest('delete', {
+      await apiRequest('delete', {
         table: 'contacts',
         where: `id = '${selectedContact.id}'`
       })
 
-      if (response.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Contact deleted successfully'
-        })
-        setIsDeleteDialogOpen(false)
-        setSelectedContact(null)
-        await fetchContacts()
-        onRefresh?.()
-      } else {
-        toast({
-          title: 'Error',
-          description: response.message || 'Failed to delete contact',
-          variant: 'destructive'
-        })
-      }
+      toast({
+        title: 'Success',
+        description: 'Contact deleted successfully'
+      })
+      setIsDeleteDialogOpen(false)
+      setSelectedContact(null)
+      await fetchContacts()
+      onRefresh?.()
     } catch (error) {
       console.error('Error deleting contact:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete contact'
       toast({
         title: 'Error',
-        description: 'Failed to delete contact',
+        description: errorMessage,
         variant: 'destructive'
       })
     }
