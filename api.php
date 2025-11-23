@@ -178,6 +178,88 @@ function calculateTransportFee($distanceKm, $hourlyRateByRadius) {
     return 0;
 }
 
+// Load platform settings with defaults
+function loadPlatformSettings() {
+    global $conn;
+
+    $defaults = [
+        'platformChargeClientPercent' => 15,
+        'platformChargeTrainerPercent' => 10,
+        'compensationFeePercent' => 10,
+        'maintenanceFeePercent' => 15,
+    ];
+
+    $settings = $defaults;
+
+    // Try to load from database
+    if ($conn) {
+        $settingsSql = "SELECT setting_key, value FROM platform_settings WHERE setting_key IN ('platformChargeClientPercent', 'platformChargeTrainerPercent', 'compensationFeePercent', 'maintenanceFeePercent')";
+        $result = $conn->query($settingsSql);
+
+        if ($result) {
+            while ($row = $result->fetch_assoc()) {
+                $key = $row['setting_key'];
+                $value = floatval($row['value']);
+                if (in_array($key, array_keys($defaults))) {
+                    $settings[$key] = $value;
+                }
+            }
+        }
+    }
+
+    return $settings;
+}
+
+// Calculate fee breakdown using new calculation order
+function calculateFeeBreakdown($baseAmount, $settings, $transportFee = 0) {
+    $baseAmount = max(0, floatval($baseAmount));
+    $transportFee = max(0, floatval($transportFee));
+
+    // Clamp percentages to 0-100
+    $clientPct = max(0, min(100, floatval($settings['platformChargeClientPercent'] ?? 15)));
+    $trainerPct = max(0, min(100, floatval($settings['platformChargeTrainerPercent'] ?? 10)));
+    $compPct = max(0, min(100, floatval($settings['compensationFeePercent'] ?? 10)));
+    $maintPct = max(0, min(100, floatval($settings['maintenanceFeePercent'] ?? 15)));
+
+    // Step 1: Calculate all charges on base amount
+    $platformChargeClient = round(($baseAmount * $clientPct) / 100, 2);
+    $platformChargeTrainer = round(($baseAmount * $trainerPct) / 100, 2);
+    $compensationFee = round(($baseAmount * $compPct) / 100, 2);
+
+    // Step 2: Sum all charges
+    $sumOfCharges = round($platformChargeClient + $platformChargeTrainer + $compensationFee, 2);
+
+    // Step 3: Apply maintenance fee on the sum of charges
+    $maintenanceFee = round(($sumOfCharges * $maintPct) / 100, 2);
+
+    // Step 4: Calculate client total
+    // Client pays: base + client charges (platformChargeClient + compensationFee) + transport
+    // NOTE: Maintenance fee is NOT charged to client (it's internal platform revenue)
+    $clientCharges = $platformChargeClient + $compensationFee;
+    $clientTotal = round($baseAmount + $clientCharges + $transportFee, 2);
+
+    // Step 5: Calculate trainer net
+    // Trainer receives: base + transport - trainer charges - trainer's share of maintenance
+    // Trainer's share of maintenance is proportional to their charges
+    $trainerShareOfMaintenance = 0;
+    if ($sumOfCharges > 0) {
+        $trainerShareOfMaintenance = round(($platformChargeTrainer / $sumOfCharges) * $maintenanceFee, 2);
+    }
+    $trainerNetAmount = round($baseAmount + $transportFee - $platformChargeTrainer - $trainerShareOfMaintenance, 2);
+
+    return [
+        'baseAmount' => $baseAmount,
+        'platformChargeClient' => $platformChargeClient,
+        'platformChargeTrainer' => $platformChargeTrainer,
+        'compensationFee' => $compensationFee,
+        'sumOfCharges' => $sumOfCharges,
+        'maintenanceFee' => $maintenanceFee,
+        'transportFee' => $transportFee,
+        'clientTotal' => $clientTotal,
+        'trainerNetAmount' => $trainerNetAmount,
+    ];
+}
+
 // =============================
 // HANDLE FILE UPLOADS (MULTIPART)
 // =============================
@@ -2628,28 +2710,24 @@ switch ($action) {
             }
         }
 
-        // Calculate fees
-        // IMPORTANT: Platform fee is calculated ONLY on base service amount, NOT on transport fees
-        // This ensures transport fees are never subject to commission deductions
-        // Platform fee percentage (10%)
-        $platformFeePct = 10;
-        $platformFee = round(($baseServiceAmount * $platformFeePct) / 100, 2);
+        // Load settings and calculate fees using new calculation order
+        $settings = loadPlatformSettings();
+        $feeBreakdown = calculateFeeBreakdown($baseServiceAmount, $settings, $transportFee);
 
-        // VAT percentage (16%)
-        $vatPct = 16;
-        $vatAmount = round((($baseServiceAmount + $platformFee) * $vatPct) / 100, 2);
+        // Extract calculated values
+        $platformChargeClient = $feeBreakdown['platformChargeClient'];
+        $platformChargeTrainer = $feeBreakdown['platformChargeTrainer'];
+        $compensationFee = $feeBreakdown['compensationFee'];
+        $maintenanceFee = $feeBreakdown['maintenanceFee'];
+        $totalAmount = $feeBreakdown['clientTotal'];
+        $trainerNetAmount = $feeBreakdown['trainerNetAmount'];
 
-        // Client surcharge (what client sees as platform fee)
-        $clientSurcharge = $platformFee;
+        // Client surcharge shown to client (charges that client directly pays)
+        // Does NOT include maintenance fee (which is internal platform revenue)
+        $clientSurcharge = $platformChargeClient + $compensationFee;
 
-        // Trainer net amount = what trainer receives after platform deduction
-        // Includes both base service AND transport fee, minus only the platform commission
-        // Formula: base_service_amount + transport_fee - platform_fee
-        // Note: platform_fee is calculated ONLY on base_service_amount, never on transport_fee
-        $trainerNetAmount = round($baseServiceAmount + $transportFee - $platformFee, 2);
-
-        // Total amount client pays
-        $totalAmount = round($baseServiceAmount + $transportFee + $platformFee + $vatAmount, 2);
+        // For backward compatibility with VAT field (if needed)
+        $vatAmount = 0;
 
         // Generate booking ID
         $bookingId = 'booking_' . uniqid();
@@ -2665,11 +2743,15 @@ switch ($action) {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
+        // For backward compatibility, use the new fee breakdown values
+        $platformFeeForDb = $clientSurcharge; // Store total client charges as platform_fee for now
+        $vatAmountForDb = 0; // No VAT in new calculation
+
         $stmt->bind_param(
             "sssisiiidddddddsddss",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
-            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFee,
-            $vatAmount, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
+            $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
+            $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
             $clientLocationLat, $clientLocationLng, $now, $now
         );
 
@@ -2694,8 +2776,11 @@ switch ($action) {
                 "booking_id" => $bookingId,
                 "base_service_amount" => $baseServiceAmount,
                 "transport_fee" => $transportFee,
-                "platform_fee" => $platformFee,
-                "vat_amount" => $vatAmount,
+                "platform_charge_client" => $platformChargeClient,
+                "platform_charge_trainer" => $platformChargeTrainer,
+                "compensation_fee" => $compensationFee,
+                "maintenance_fee" => $maintenanceFee,
+                "sum_of_charges" => $feeBreakdown['sumOfCharges'],
                 "trainer_net_amount" => $trainerNetAmount,
                 "client_surcharge" => $clientSurcharge,
                 "total_amount" => $totalAmount

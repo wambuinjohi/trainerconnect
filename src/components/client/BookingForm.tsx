@@ -6,6 +6,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
+import { calculateFeeBreakdown } from '@/lib/fee-calculations'
 import * as apiService from '@/lib/api-service'
 
 export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ trainer, onDone }) => {
@@ -22,9 +23,15 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
 
   const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
   const settings = loadSettings()
-  const clientChargePct = Math.max(0, Math.min(100, Number(settings.platformChargeClientPercent || 0)))
-  const trainerChargePct = Math.max(0, Math.min(100, Number(settings.platformChargeTrainerPercent || 0)))
-  const vatPct = Math.max(0, Math.min(100, Number(settings.taxRate || 0)))
+
+  // Get fee breakdown using new calculation utility
+  const baseAmount = computeBaseAmount() - appliedDiscount
+  const feeBreakdown = calculateFeeBreakdown(baseAmount, {
+    platformChargeClientPercent: settings.platformChargeClientPercent || 15,
+    platformChargeTrainerPercent: settings.platformChargeTrainerPercent || 10,
+    compensationFeePercent: settings.compensationFeePercent || 10,
+    maintenanceFeePercent: settings.maintenanceFeePercent || 15,
+  }, 0) // transportFee will be calculated server-side
 
   const submit = async () => {
     if (!user) return
@@ -233,14 +240,16 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
         <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
           <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
           <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{sessions}</span></div>
-          <div className="flex justify-between"><span>Service Amount</span><span className="font-semibold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+          <div className="flex justify-between"><span>Base Service Amount</span><span className="font-semibold">Ksh {baseAmount}</span></div>
           {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Referral Discount</span><span>−Ksh {appliedDiscount}</span></div>}
           <div className="border-t border-border my-2 pt-2">
-            <div className="text-xs text-muted-foreground mb-2">Breakdown (calculated server-side):</div>
-            <div className="flex justify-between text-xs"><span>Transport fee (distance-based)</span><span>Ksh 0</span></div>
-            <div className="flex justify-between text-xs"><span>Platform fee (10%)</span><span>Ksh 0</span></div>
-            <div className="flex justify-between text-xs"><span>VAT (16%)</span><span>Ksh 0</span></div>
-            <div className="flex justify-between mt-2"><span className="font-medium">Total (incl. all fees)</span><span className="font-bold">Ksh {computeBaseAmount() - appliedDiscount}</span></div>
+            <div className="text-xs text-muted-foreground mb-2">Fee Breakdown:</div>
+            <div className="flex justify-between text-xs"><span>Platform Charge (Client)</span><span>Ksh {feeBreakdown.platformChargeClient}</span></div>
+            <div className="flex justify-between text-xs"><span>Compensation Fee</span><span>Ksh {feeBreakdown.compensationFee}</span></div>
+            <div className="flex justify-between text-xs text-muted-foreground"><span>Maintenance Fee (system revenue)</span><span>Ksh {feeBreakdown.maintenanceFee}</span></div>
+            <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Transport fee (distance-based)</span><span>Ksh 0 (server-calculated)</span></div>
+            <div className="flex justify-between mt-2"><span className="font-medium">Estimated Total (excl. transport)</span><span className="font-bold">Ksh {feeBreakdown.clientTotal}</span></div>
+            <div className="text-xs text-muted-foreground mt-1">*Transport fee will be added based on distance at checkout</div>
           </div>
         </div>
 
