@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { X } from 'lucide-react'
 
 export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> = ({ onDone }) => {
   const { user } = useAuth()
@@ -13,6 +14,8 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
   const [bookingRef, setBookingRef] = useState('')
   const [description, setDescription] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [filePreviews, setFilePreviews] = useState<string[]>([])
 
   const submit = async () => {
     if (!user) {
