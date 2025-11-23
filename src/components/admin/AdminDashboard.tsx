@@ -861,17 +861,24 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const softDeleteIssue = async (issueId: string) => {
-    if (!window.confirm('Are you sure you want to delete this issue? This action can be undone.')) return
-    try {
-      await apiService.softDeleteIssue(issueId)
-      setIssues(issues.filter(iss => iss.id !== issueId))
-      setActiveIssue(null)
-      toast({ title: 'Success', description: 'Issue deleted' })
-    } catch (err: any) {
-      console.error('Soft delete issue error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to delete issue', variant: 'destructive' })
-    }
+  const softDeleteIssue = (issueId: string) => {
+    setConfirmModal({
+      open: true,
+      title: 'Delete Issue',
+      description: 'Are you sure you want to delete this issue? This action can be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.softDeleteIssue(issueId)
+          setIssues(issues.filter(iss => iss.id !== issueId))
+          setActiveIssue(null)
+          toast({ title: 'Success', description: 'Issue deleted' })
+        } catch (err: any) {
+          console.error('Soft delete issue error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete issue', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const restoreIssue = async (issueId: string) => {
