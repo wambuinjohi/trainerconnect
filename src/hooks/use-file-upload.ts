@@ -114,7 +114,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         onError?.(errorMsg);
         toast.error(errorMsg);
       } else {
-        const apiBaseUrl = process.env.VITE_API_BASE_URL || 'https://trainer.skatryk.co.ke'
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://trainer.skatryk.co.ke'
         const uploaded = (data.data?.uploaded || []).map((file: UploadedFile) => ({
           ...file,
           url: file.url.startsWith('http') ? file.url : `${apiBaseUrl}${file.url}`
