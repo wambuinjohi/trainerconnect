@@ -65,7 +65,8 @@ export function useAutoSetup() {
           signal: AbortSignal.timeout(10000), // 10 second timeout
         });
 
-        const migrateText = await migrateResponse.text();
+        const clonedMigrateResponse = migrateResponse.clone();
+        const migrateText = await clonedMigrateResponse.text();
         let migrateResult;
 
         try {
