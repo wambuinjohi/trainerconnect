@@ -141,7 +141,9 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
       return null
     }
 
-    const responseText = await response.text()
+    // Clone response to safely read body
+    const clonedResponse = response.clone()
+    const responseText = await clonedResponse.text()
     const contentType = response.headers.get('content-type')
 
     if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {
@@ -177,7 +179,9 @@ export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
       return false
     }
 
-    const responseText = await response.text()
+    // Clone response to safely read body
+    const clonedResponse = response.clone()
+    const responseText = await clonedResponse.text()
     const contentType = response.headers.get('content-type')
 
     if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {

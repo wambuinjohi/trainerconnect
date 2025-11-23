@@ -706,7 +706,8 @@ export const AdminDashboard: React.FC = () => {
 
       let responseText = ''
       try {
-        responseText = await response.text()
+        const clonedResponse = response.clone()
+        responseText = await clonedResponse.text()
       } catch (err) {
         throw new Error('Failed to read response body')
       }

@@ -29,7 +29,8 @@ export function useAutoSetup() {
           throw new Error(`Server error: ${checkResponse.status} ${checkResponse.statusText}`);
         }
 
-        const responseText = await checkResponse.text();
+        const clonedCheckResponse = checkResponse.clone();
+        const responseText = await clonedCheckResponse.text();
         if (!responseText) {
           throw new Error('Server returned empty response');
         }
@@ -64,7 +65,8 @@ export function useAutoSetup() {
           signal: AbortSignal.timeout(10000), // 10 second timeout
         });
 
-        const migrateText = await migrateResponse.text();
+        const clonedMigrateResponse = migrateResponse.clone();
+        const migrateText = await clonedMigrateResponse.text();
         let migrateResult;
 
         try {
@@ -85,7 +87,8 @@ export function useAutoSetup() {
           signal: AbortSignal.timeout(10000), // 10 second timeout
         });
 
-        const seedText = await seedResponse.text();
+        const clonedSeedResponse = seedResponse.clone();
+        const seedText = await clonedSeedResponse.text();
         let seedResult;
 
         try {

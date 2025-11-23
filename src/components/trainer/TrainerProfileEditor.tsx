@@ -33,6 +33,45 @@ interface Category {
   description?: string
 }
 
+// Helper function to clean and parse disciplines/certifications
+const cleanAndParseArray = (value: any): string[] => {
+  if (!value) return []
+
+  // If already an array, filter out empty/whitespace-only values
+  if (Array.isArray(value)) {
+    return value
+      .map(item => String(item).trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  // If string, try to parse as JSON first
+  if (typeof value === 'string') {
+    let stringValue = value.trim()
+
+    // Try JSON parsing
+    if (stringValue.startsWith('[') || stringValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(stringValue)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map(item => String(item).trim().replace(/['"\\]/g, ''))
+            .filter(Boolean)
+        }
+      } catch {
+        // If JSON parsing fails, treat as raw string
+      }
+    }
+
+    // Clean the string and split by comma
+    return stringValue
+      .split(',')
+      .map(item => item.trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  return []
+}
+
 export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
   const userId = user?.id
@@ -219,14 +258,10 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       }
 
       // Certifications normalization
-      const certifications = Array.isArray(profile.certifications)
-        ? profile.certifications
-        : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
+      const certifications = cleanAndParseArray(profile.certifications)
 
       // Disciplines normalization
-      const disciplines = Array.isArray(profile.disciplines)
-        ? profile.disciplines
-        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
+      const disciplines = cleanAndParseArray(profile.disciplines)
 
       // Hourly rate validation
       const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
@@ -521,12 +556,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
           <div>
             <Label htmlFor="disciplines">Disciplines (comma separated)</Label>
-            <Input id="disciplines" value={(profile.disciplines && Array.isArray(profile.disciplines)) ? (profile.disciplines as string[]).join(', ') : (profile.disciplines as any) || ''} onChange={(e) => handleChange('disciplines', e.target.value)} />
+            <Input id="disciplines" value={cleanAndParseArray(profile.disciplines).join(', ')} onChange={(e) => handleChange('disciplines', e.target.value)} />
           </div>
 
           <div>
             <Label htmlFor="certifications">Certifications (comma separated)</Label>
-            <Input id="certifications" value={(profile.certifications && Array.isArray(profile.certifications)) ? (profile.certifications as string[]).join(', ') : (profile.certifications as any) || ''} onChange={(e) => handleChange('certifications', e.target.value)} />
+            <Input id="certifications" value={cleanAndParseArray(profile.certifications).join(', ')} onChange={(e) => handleChange('certifications', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
