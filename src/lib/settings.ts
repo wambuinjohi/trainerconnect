@@ -12,6 +12,8 @@ export type MpesaSettings = {
   queueTimeoutUrl: string
   commandId: string
   transactionType: string
+  c2bCallbackUrl: string
+  b2cCallbackUrl: string
 }
 
 export type PlatformSettings = {
@@ -67,6 +69,8 @@ export const defaultMpesaSettings: MpesaSettings = {
   queueTimeoutUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
   commandId: 'BusinessPayment',
   transactionType: 'BusinessPayment',
+  c2bCallbackUrl: 'https://trainer.skatryk.co.ke/c2b_callback.php',
+  b2cCallbackUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
 }
 
 export const defaultSettings: PlatformSettings = {

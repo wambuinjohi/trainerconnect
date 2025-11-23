@@ -14,7 +14,7 @@ function getMpesaCredentials() {
     // Try to get from admin settings table first
     $sql = "SELECT value FROM platform_settings WHERE setting_key = 'mpesa_credentials' LIMIT 1";
     $result = $conn->query($sql);
-    
+
     if ($result && $result->num_rows > 0) {
         $row = $result->fetch_assoc();
         $settings = json_decode($row['value'], true);
@@ -28,6 +28,8 @@ function getMpesaCredentials() {
                 'result_url' => $settings['resultUrl'] ?? '',
                 'initiator_name' => $settings['initiatorName'] ?? '',
                 'security_credential' => $settings['securityCredential'] ?? '',
+                'c2b_callback_url' => $settings['c2bCallbackUrl'] ?? '',
+                'b2c_callback_url' => $settings['b2cCallbackUrl'] ?? '',
                 'source' => 'admin_settings'
             ];
         }
@@ -43,6 +45,8 @@ function getMpesaCredentials() {
         'result_url' => getenv('MPESA_RESULT_URL'),
         'initiator_name' => getenv('MPESA_INITIATOR_NAME') ?? '',
         'security_credential' => getenv('MPESA_SECURITY_CREDENTIAL') ?? '',
+        'c2b_callback_url' => getenv('MPESA_C2B_CALLBACK_URL') ?? '',
+        'b2c_callback_url' => getenv('MPESA_B2C_CALLBACK_URL') ?? '',
         'source' => 'environment'
     ];
     
@@ -379,7 +383,7 @@ function getMpesaCredentialsForAdmin() {
     if (!$creds) {
         return null;
     }
-    
+
     // Return with masked secrets for display
     return [
         'environment' => $creds['environment'],
@@ -390,6 +394,8 @@ function getMpesaCredentialsForAdmin() {
         'resultUrl' => $creds['result_url'],
         'initiatorName' => $creds['initiator_name'],
         'securityCredential' => maskSecret($creds['security_credential']),
+        'c2bCallbackUrl' => $creds['c2b_callback_url'] ?? '',
+        'b2cCallbackUrl' => $creds['b2c_callback_url'] ?? '',
         'source' => $creds['source']
     ];
 }

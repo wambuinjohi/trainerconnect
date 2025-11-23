@@ -1785,6 +1785,14 @@ export const AdminDashboard: React.FC = () => {
             <Label>Queue Timeout URL</Label>
             <Input value={mpesa.queueTimeoutUrl} onChange={(e)=>setMpesa({...mpesa, queueTimeoutUrl:e.target.value})} className="bg-input border-border" />
           </div>
+          <div>
+            <Label>C2B Callback URL</Label>
+            <Input value={mpesa.c2bCallbackUrl} onChange={(e)=>setMpesa({...mpesa, c2bCallbackUrl:e.target.value})} className="bg-input border-border" />
+          </div>
+          <div>
+            <Label>B2C Callback URL</Label>
+            <Input value={mpesa.b2cCallbackUrl} onChange={(e)=>setMpesa({...mpesa, b2cCallbackUrl:e.target.value})} className="bg-input border-border" />
+          </div>
           <div className="md:col-span-2">
             <Label>Command ID</Label>
             <Input value={mpesa.commandId} onChange={(e)=>setMpesa({...mpesa, commandId:e.target.value})} className="bg-input border-border" />
