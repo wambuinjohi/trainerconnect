@@ -9,6 +9,7 @@ import {
   Star,
   Users,
   MessageCircle,
+  MessageSquare,
   Clock,
   MapPin,
   Settings,
