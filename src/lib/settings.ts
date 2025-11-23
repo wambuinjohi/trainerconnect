@@ -12,6 +12,8 @@ export type MpesaSettings = {
   queueTimeoutUrl: string
   commandId: string
   transactionType: string
+  c2bCallbackUrl: string
+  b2cCallbackUrl: string
 }
 
 export type PlatformSettings = {
