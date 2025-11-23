@@ -1169,6 +1169,25 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {showRefundModal && refundDispute && (
+        <RefundModal
+          dispute={{
+            id: refundDispute.id,
+            client: refundDispute.client,
+            amount: refundDispute.amount,
+            issue: refundDispute.issue,
+          }}
+          clientPhone=""
+          onClose={() => {
+            setShowRefundModal(false)
+            setRefundDispute(null)
+          }}
+          onSuccess={() => {
+            setIssues(iss => iss.map(i => i.id === refundDispute.id ? { ...i, status: 'resolved' } : i))
+          }}
+        />
+      )}
+
       {activeIssue && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={()=>setActiveIssue(null)}>
           <div className="w-full max-w-lg rounded-lg border border-border bg-background shadow-card" onClick={(e)=>e.stopPropagation()}>
