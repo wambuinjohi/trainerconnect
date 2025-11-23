@@ -19,7 +19,8 @@ import {
   ChevronRight,
   ArrowLeft,
   LogOut,
-  DollarSign
+  DollarSign,
+  Bell
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
