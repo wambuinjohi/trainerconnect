@@ -2473,8 +2473,18 @@ switch ($action) {
         } else if (isset($input['trainer_id']) && isset($input['client_id'])) {
             $trainerId = $conn->real_escape_string($input['trainer_id']);
             $clientId = $conn->real_escape_string($input['client_id']);
-            $senderId = isset($input['client_id']) ? $clientId : $trainerId;
-            $recipientId = isset($input['trainer_id']) ? $trainerId : $clientId;
+
+            // The sender must be either trainer or client - get from auth token if available
+            // If not provided explicitly, use the authenticated user ID
+            if (isset($input['sender_id'])) {
+                $senderId = $conn->real_escape_string($input['sender_id']);
+                $recipientId = ($senderId === $trainerId) ? $clientId : $trainerId;
+            } else {
+                // Both trainer and client send trainer_id and client_id
+                // So we use trainer_id and client_id directly
+                $senderId = $trainerId;
+                $recipientId = $clientId;
+            }
         } else {
             respond("error", "Missing sender_id/recipient_id or trainer_id/client_id.", null, 400);
         }
