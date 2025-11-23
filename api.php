@@ -1807,20 +1807,21 @@ switch ($action) {
         $description = $conn->real_escape_string($input['description']);
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'open';
         $priority = isset($input['priority']) ? $conn->real_escape_string($input['priority']) : 'normal';
+        $attachments = isset($input['attachments']) ? $conn->real_escape_string($input['attachments']) : NULL;
         $issueId = 'issue_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
         $stmt = $conn->prepare("
             INSERT INTO reported_issues (
                 id, user_id, trainer_id, booking_reference, complaint_type,
-                title, description, status, priority, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                title, description, status, priority, attachments, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
-        $stmt->bind_param("sssssssssss", $issueId, $userId, $trainerId, $bookingReference, $complaintType, $title, $description, $status, $priority, $now, $now);
+        $stmt->bind_param("ssssssssssss", $issueId, $userId, $trainerId, $bookingReference, $complaintType, $title, $description, $status, $priority, $attachments, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
-            logEvent('issue_reported', ['issue_id' => $issueId, 'user_id' => $userId]);
+            logEvent('issue_reported', ['issue_id' => $issueId, 'user_id' => $userId, 'has_attachments' => !is_null($attachments)]);
             respond("success", "Issue reported successfully.", ["id" => $issueId]);
         } else {
             $stmt->close();
