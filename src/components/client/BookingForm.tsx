@@ -6,6 +6,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
+import { calculateFeeBreakdown } from '@/lib/fee-calculations'
 import * as apiService from '@/lib/api-service'
 
 export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ trainer, onDone }) => {
@@ -22,9 +23,15 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
 
   const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
   const settings = loadSettings()
-  const clientChargePct = Math.max(0, Math.min(100, Number(settings.platformChargeClientPercent || 0)))
-  const trainerChargePct = Math.max(0, Math.min(100, Number(settings.platformChargeTrainerPercent || 0)))
-  const vatPct = Math.max(0, Math.min(100, Number(settings.taxRate || 0)))
+
+  // Get fee breakdown using new calculation utility
+  const baseAmount = computeBaseAmount() - appliedDiscount
+  const feeBreakdown = calculateFeeBreakdown(baseAmount, {
+    platformChargeClientPercent: settings.platformChargeClientPercent || 15,
+    platformChargeTrainerPercent: settings.platformChargeTrainerPercent || 10,
+    compensationFeePercent: settings.compensationFeePercent || 10,
+    maintenanceFeePercent: settings.maintenanceFeePercent || 15,
+  }, 0) // transportFee will be calculated server-side
 
   const submit = async () => {
     if (!user) return
