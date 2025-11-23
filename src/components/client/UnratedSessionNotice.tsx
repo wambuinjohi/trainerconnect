@@ -41,12 +41,21 @@ export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
     try {
       const bookingsData = await apiService.getBookings(user.id, 'client')
       if (bookingsData?.data) {
-        const unrated = (bookingsData.data as any[]).filter(
-          booking =>
-            booking.status === 'completed' &&
-            !booking.rating_submitted &&
-            !booking.client_rating
-        )
+        const unrated = (bookingsData.data as any[])
+          .filter(
+            booking =>
+              booking.status === 'completed' &&
+              !booking.rating_submitted &&
+              !booking.client_rating
+          )
+          .map(booking => ({
+            ...booking,
+            id: booking.id || booking.booking_id,
+            trainer_name: booking.trainer_name || 'Trainer',
+            trainer_id: booking.trainer_id,
+            session_date: booking.session_date,
+            total_amount: booking.total_amount || 0,
+          }))
         setUnratedSessions(unrated)
       }
     } catch (err) {
