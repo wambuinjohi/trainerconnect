@@ -341,6 +341,7 @@ export const ClientDashboard: React.FC = () => {
         </div>
         <AnnouncementBanner userId={user?.id} userType="client" />
         <UnratedSessionNotice
+          bookings={bookings}
           onRateClick={(booking) => setReviewBooking(booking)}
           onDismiss={() => loadBookings()}
         />
