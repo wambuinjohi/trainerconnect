@@ -697,6 +697,7 @@ export const ClientDashboard: React.FC = () => {
         setReviewByBooking(reviewBooking.id)
         setReviewBooking(null)
         setBookings(bookings.map(b => b.id === reviewBooking.id ? { ...b, rating_submitted: true } : b))
+        loadBookings()
       }} />}
       {nextSessionBooking && <NextSessionModal previous={nextSessionBooking} onClose={() => setNextSessionBooking(null)} onBooked={() => { setNextSessionBooking(null); loadBookings() }} />}
 
