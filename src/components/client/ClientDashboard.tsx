@@ -342,7 +342,7 @@ export const ClientDashboard: React.FC = () => {
         <AnnouncementBanner userId={user?.id} userType="client" />
         <UnratedSessionNotice
           onRateClick={(booking) => setReviewBooking(booking)}
-          onDismiss={() => {}}
+          onDismiss={() => loadBookings()}
         />
         <div className="text-center py-6">
           <h1 className="text-3xl font-bold text-foreground mb-2">Find Your Perfect Trainer</h1>
