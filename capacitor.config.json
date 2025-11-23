@@ -3,10 +3,6 @@
   "appName": "Skatryk Trainer",
   "webDir": "dist",
   "bundledWebRuntime": true,
-  "server": {
-    "url": "https://trainer.skatryk.co.ke",
-    "cleartext": false
-  },
   "plugins": {
     "Geolocation": {
       "permissions": [
