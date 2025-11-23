@@ -1169,12 +1169,17 @@ export const AdminDashboard: React.FC = () => {
             <CardContent className="p-4 flex items-center justify-between gap-3">
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg">{c.icon || '🏷️'}</div>
+                  <div
+                    className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg cursor-pointer hover:opacity-80 transition-opacity"
+                    title="Click to change emoji"
+                  >
+                    {c.icon || '🏷️'}
+                  </div>
                   <Input value={c.name || ''} onChange={(e)=>setCategories(cs=>cs.map(x=>x.id===c.id?{...x,name:e.target.value}:x))} className="bg-input border-border" />
                 </div>
                 <Input value={c.description || ''} onChange={(e)=>setCategories(cs=>cs.map(x=>x.id===c.id?{...x,description:e.target.value}:x))} className="bg-input border-border" />
                 <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="outline" onClick={()=>updateCategory(c.id,{ name:c.name, description:c.description })}>
+                  <Button size="sm" variant="outline" onClick={()=>updateCategory(c.id,{ name:c.name, description:c.description, icon:c.icon })}>
                     <Save className="h-4 w-4 mr-1"/> Save
                   </Button>
                   <Button size="sm" variant="outline" className="border-destructive text-destructive" onClick={()=>deleteCategory(c.id)}>
