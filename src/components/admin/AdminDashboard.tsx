@@ -574,29 +574,48 @@ export const AdminDashboard: React.FC = () => {
     return ['1','true','yes','y','t'].includes(s)
   }
 
-  const approveTrainer = async (userId: string) => {
-    try {
-      await apiService.approveTrainer(userId)
-      toast({ title: 'Success', description: 'Trainer approved' })
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    } catch (err: any) {
-      console.error('Approve trainer error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
-    }
+  const approveTrainer = (userId: string) => {
+    const trainer = approvals.find(t => t.user_id === userId)
+    const trainerName = trainer?.full_name || userId
+    setConfirmModal({
+      open: true,
+      title: 'Approve Trainer',
+      description: `Are you sure you want to approve ${trainerName} as a trainer? They will have access to the platform immediately.`,
+      action: async () => {
+        try {
+          await apiService.approveTrainer(userId)
+          toast({ title: 'Success', description: 'Trainer approved' })
+          setTimeout(() => {
+            window.location.reload()
+          }, 1000)
+        } catch (err: any) {
+          console.error('Approve trainer error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
+        }
+      },
+    })
   }
 
-  const rejectTrainer = async (userId: string) => {
-    try {
-      await apiService.rejectTrainer(userId)
-      setUsers(users.filter(u => u.user_id !== userId))
-      setApprovals(approvals.filter(a => a.user_id !== userId))
-      toast({ title: 'Success', description: 'Trainer rejected' })
-    } catch (err: any) {
-      console.error('Reject trainer error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
-    }
+  const rejectTrainer = (userId: string) => {
+    const trainer = approvals.find(t => t.user_id === userId)
+    const trainerName = trainer?.full_name || userId
+    setConfirmModal({
+      open: true,
+      title: 'Reject Trainer',
+      description: `Are you sure you want to reject ${trainerName}? This action cannot be undone.`,
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.rejectTrainer(userId)
+          setUsers(users.filter(u => u.user_id !== userId))
+          setApprovals(approvals.filter(a => a.user_id !== userId))
+          toast({ title: 'Success', description: 'Trainer rejected' })
+        } catch (err: any) {
+          console.error('Reject trainer error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const deleteUser = async (userId: string) => {
