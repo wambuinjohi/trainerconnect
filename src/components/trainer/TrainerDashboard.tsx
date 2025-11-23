@@ -455,11 +455,18 @@ export const TrainerDashboard: React.FC = () => {
     </div>
   )
 
+  const renderDisputesContent = () => (
+    <div className="space-y-6">
+      <TrainerDisputes onClose={() => setActiveTab('home')} />
+    </div>
+  )
+
   const renderContent = () => {
     switch (activeTab) {
       case 'home': return renderHomeContent()
       case 'bookings': return renderBookingsContent()
       case 'profile': return renderProfileContent()
+      case 'disputes': return renderDisputesContent()
       default: return renderHomeContent()
     }
   }
