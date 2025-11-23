@@ -207,17 +207,17 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-2">{dispute.description}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       <div>
                         <span className="text-muted-foreground">Client ID: </span>
-                        <span className="text-foreground">{dispute.user_id}</span>
+                        <span className="text-foreground break-all">{dispute.user_id}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Submitted: </span>
                         <span className="text-foreground">{new Date(dispute.submittedAt).toLocaleDateString()}</span>
                       </div>
                       {dispute.booking_reference && (
-                        <div className="col-span-2">
+                        <div className="col-span-1 sm:col-span-2">
                           <span className="text-muted-foreground">Booking Ref: </span>
                           <span className="text-foreground">{dispute.booking_reference}</span>
                         </div>
