@@ -14,7 +14,7 @@ function getMpesaCredentials() {
     // Try to get from admin settings table first
     $sql = "SELECT value FROM platform_settings WHERE setting_key = 'mpesa_credentials' LIMIT 1";
     $result = $conn->query($sql);
-    
+
     if ($result && $result->num_rows > 0) {
         $row = $result->fetch_assoc();
         $settings = json_decode($row['value'], true);
@@ -28,6 +28,8 @@ function getMpesaCredentials() {
                 'result_url' => $settings['resultUrl'] ?? '',
                 'initiator_name' => $settings['initiatorName'] ?? '',
                 'security_credential' => $settings['securityCredential'] ?? '',
+                'c2b_callback_url' => $settings['c2bCallbackUrl'] ?? '',
+                'b2c_callback_url' => $settings['b2cCallbackUrl'] ?? '',
                 'source' => 'admin_settings'
             ];
         }
