@@ -863,20 +863,28 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const markIssueResolved = async (it: any) => {
+  const markIssueResolved = (it: any) => {
     if (!it?.id) {
       toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
       return
     }
-    try {
-      await apiService.updateIssueStatus(it.id, 'resolved')
-      setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
-      setActiveIssue(null)
-      toast({ title: 'Success', description: 'Issue marked as resolved' })
-    } catch (err: any) {
-      console.error('Mark issue resolved error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
-    }
+    const issueTitle = it.complaint_type || 'Issue'
+    setConfirmModal({
+      open: true,
+      title: 'Resolve Issue',
+      description: `Are you sure you want to mark "${issueTitle}" as resolved?`,
+      action: async () => {
+        try {
+          await apiService.updateIssueStatus(it.id, 'resolved')
+          setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
+          setActiveIssue(null)
+          toast({ title: 'Success', description: 'Issue marked as resolved' })
+        } catch (err: any) {
+          console.error('Mark issue resolved error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const softDeleteIssue = (issueId: string) => {
