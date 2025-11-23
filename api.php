@@ -2563,6 +2563,39 @@ switch ($action) {
         respond("success", "Notifications created successfully.", ["inserted" => $inserted]);
         break;
 
+    // MARK NOTIFICATIONS AS READ
+    case 'notifications_mark_read':
+        if (!isset($input['user_id'])) {
+            respond("error", "Missing user_id.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $notificationIds = isset($input['notification_ids']) && is_array($input['notification_ids']) ? $input['notification_ids'] : [];
+
+        if (empty($notificationIds)) {
+            // Mark all notifications for this user as read
+            $sql = "UPDATE notifications SET `read` = TRUE WHERE user_id = '$userId'";
+            if ($conn->query($sql)) {
+                respond("success", "All notifications marked as read.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Failed to mark notifications as read: " . $conn->error, null, 500);
+            }
+        } else {
+            // Mark specific notifications as read
+            $escapedIds = array_map(function($id) use ($conn) {
+                return "'" . $conn->real_escape_string($id) . "'";
+            }, $notificationIds);
+            $idList = implode(',', $escapedIds);
+
+            $sql = "UPDATE notifications SET `read` = TRUE WHERE id IN ($idList) AND user_id = '$userId'";
+            if ($conn->query($sql)) {
+                respond("success", "Notifications marked as read.", ["affected_rows" => $conn->affected_rows]);
+            } else {
+                respond("error", "Failed to mark notifications as read: " . $conn->error, null, 500);
+            }
+        }
+        break;
+
     // GET REFERRAL
     case 'referral_get':
         if (!isset($input['code'])) {
