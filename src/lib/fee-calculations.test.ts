@@ -127,10 +127,11 @@ describe('Fee Calculations', () => {
     expect(breakdown.maintenanceFee).toBe(1500)
   })
 
-  test('Calculation matches user example', () => {
-    // User's simplified example: if all charges sum to 150, maintenance = 22.50, client pays 1172.50
-    // This is to verify the calculation order, not the exact values (which depend on the percentages)
-    
+  test('Calculation matches user specification', () => {
+    // Verify the calculation order matches the specification:
+    // 1. Base amount + charges on base = client amount
+    // 2. Maintenance is internal (deducted from trainer, not charged to client)
+
     const breakdown = calculateFeeBreakdown(1000, testSettings, 0)
 
     // Verify the calculation order by checking the intermediate values
@@ -140,10 +141,15 @@ describe('Fee Calculations', () => {
     const maintenance = Math.round((breakdown.sumOfCharges * testSettings.maintenanceFeePercent) / 100 * 100) / 100
     expect(maintenance).toBe(breakdown.maintenanceFee)
 
-    // Client should pay: base + charges that apply to client + maintenance
+    // Client should pay: base + charges that apply to client (NOT maintenance fee)
     const clientCharges = breakdown.platformChargeClient + breakdown.compensationFee
-    const expectedClientTotal = breakdown.baseAmount + clientCharges + breakdown.maintenanceFee
+    const expectedClientTotal = breakdown.baseAmount + clientCharges
     expect(breakdown.clientTotal).toBe(expectedClientTotal)
+
+    // Trainer should have maintenance deducted (proportionally)
+    const trainerShareOfMaintenance = (breakdown.platformChargeTrainer / breakdown.sumOfCharges) * breakdown.maintenanceFee
+    const expectedTrainerNet = breakdown.baseAmount - breakdown.platformChargeTrainer - trainerShareOfMaintenance
+    expect(breakdown.trainerNetAmount).toBe(expectedTrainerNet)
   })
 })
 
