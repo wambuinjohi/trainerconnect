@@ -794,7 +794,15 @@ export const AdminDashboard: React.FC = () => {
           console.warn('Failed to load analytics data', err)
         }
 
-        setPromotions([])
+        try {
+          const promotionsData = await apiService.getPromotionRequestsForAdmin('pending')
+          if (promotionsData?.data) {
+            setPromotions(Array.isArray(promotionsData.data) ? promotionsData.data : [promotionsData.data])
+          }
+        } catch (err) {
+          console.warn('Failed to load promotions', err)
+        }
+
         setPayoutRequests([])
         setActivityFeed([])
       } catch (err) {
