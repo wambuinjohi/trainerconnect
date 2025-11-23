@@ -2,6 +2,14 @@
 
 This document verifies that the new fee calculation system is implemented correctly according to the specified calculation order.
 
+## Key Point: Maintenance Fee
+
+**The maintenance fee is system developer revenue and is NOT charged to the client.**
+
+- Client sees and pays: Base + (Platform Charge Client % + Compensation Fee %) + Transport
+- Maintenance fee is deducted from trainer earnings (proportional to their charges)
+- Maintenance fee = (Sum of all charges) × Maintenance Fee %
+
 ## Calculation Order (Confirmed by User)
 
 1. **Base booking amount**: Ksh 1000
