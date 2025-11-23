@@ -151,6 +151,8 @@ export const AdminDashboard: React.FC = () => {
   const [promotions, setPromotions] = useState<any[]>([])
   const [payoutRequests, setPayoutRequests] = useState<any[]>([])
   const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
+  const [showRefundModal, setShowRefundModal] = useState(false)
+  const [refundDispute, setRefundDispute] = useState<Dispute | null>(null)
 
   useEffect(() => {
     const loaded = loadSettings()
