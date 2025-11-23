@@ -211,6 +211,7 @@ export const TrainerDashboard: React.FC = () => {
   const [editingAvailability, setEditingAvailability] = useState(false)
   const [showServiceArea, setShowServiceArea] = useState(false)
   const [showReport, setShowReport] = useState(false)
+  const [showDisputes, setShowDisputes] = useState(false)
 
   useEffect(() => {
     const loadTrainerProfile = async () => {
