@@ -30,6 +30,7 @@ import { FiltersModal } from './FiltersModal'
 import { ReviewModal } from './ReviewModal'
 import { NextSessionModal } from './NextSessionModal'
 import { LocationSelector } from './LocationSelector'
+import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 
 // Helper functions for formatting trainer data
 function parseDisciplines(disciplines: any): string {
