@@ -20,6 +20,18 @@ export const AdminPayoutManager: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
   const [b2cPayments, setB2cPayments] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'pending' | 'processed'>('pending')
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    action: () => Promise<void>
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: async () => {},
+  })
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Load payout requests
   useEffect(() => {
