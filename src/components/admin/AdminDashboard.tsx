@@ -7,6 +7,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import AdminSidebar from './AdminSidebar'
 import ThemeToggleAdmin from './ThemeToggleAdmin'
 import { RefundModal } from './RefundModal'
+import { AdminPayoutManager } from './AdminPayoutManager'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -152,8 +153,6 @@ export const AdminDashboard: React.FC = () => {
   const [catForm, setCatForm] = useState({ name: '', icon: '', description: '' })
   const [catLoading, setCatLoading] = useState(false)
   const [promotions, setPromotions] = useState<any[]>([])
-  const [payoutRequests, setPayoutRequests] = useState<any[]>([])
-  const [payoutStatusFilter, setPayoutStatusFilter] = useState<'all'|'requested'|'paid'|'failed'>('all')
   const [showRefundModal, setShowRefundModal] = useState(false)
   const [refundDispute, setRefundDispute] = useState<Dispute | null>(null)
   const [issuePage, setIssuePage] = useState(1)
@@ -565,18 +564,6 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const payoutsFiltered = useMemo(() => {
-    return payoutRequests.filter((p:any) => {
-      const status = String(p.status || 'requested').toLowerCase()
-      return payoutStatusFilter === 'all' ? true : status === payoutStatusFilter
-    })
-  }, [payoutRequests, payoutStatusFilter])
-  const payoutStats = useMemo(() => {
-    const total = payoutsFiltered.reduce((s:number, p:any) => s + (Number(p.amount) || 0), 0)
-    const paid = payoutsFiltered.filter((p:any) => String(p.status || '').toLowerCase() === 'paid').reduce((s:number, p:any) => s + (Number(p.amount) || 0), 0)
-    const pending = total - paid
-    return { total, paid, pending }
-  }, [payoutsFiltered])
 
   const approvedOf = (u:any) => {
     const v = u && (u.is_approved !== undefined ? u.is_approved : u)
@@ -803,7 +790,6 @@ export const AdminDashboard: React.FC = () => {
           console.warn('Failed to load promotions', err)
         }
 
-        setPayoutRequests([])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
@@ -993,10 +979,6 @@ export const AdminDashboard: React.FC = () => {
         }
       },
     })
-  }
-
-  const processPayout = async (id: number) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
   }
 
   const renderIssues = () => {
@@ -1198,68 +1180,6 @@ export const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         ))}
-      </div>
-    </div>
-  )
-
-  const renderPayouts = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <h1 className="text-2xl font-bold text-foreground">Payout Requests</h1>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{payoutsFiltered.length}</Badge>
-          <Select value={payoutStatusFilter} onValueChange={(v)=>setPayoutStatusFilter(v as any)}>
-            <SelectTrigger className="w-40 bg-input border-border"><SelectValue placeholder="All statuses"/></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="requested">Requested</SelectItem>
-              <SelectItem value="paid">Paid</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" className="border-border" onClick={()=>{
-            const rows = payoutsFiltered.map((p:any)=>({ id:p.id, trainer_id: p.trainer_id || p.trainer_user_id || p.trainer, amount: Number(p.amount)||0, status: p.status || 'requested', requested_at: p.requested_at || p.created_at || '', paid_at: p.paid_at || '' }))
-            exportCSV('payouts.csv', rows)
-          }}>
-            <Download className="h-4 w-4 mr-2" /> Export
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Total (filtered)</span><span className="font-semibold text-foreground">{formatKes(payoutStats.total)}</span></div>
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Paid</span><span className="font-semibold text-foreground">{formatKes(payoutStats.paid)}</span></div>
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Pending</span><span className="font-semibold text-foreground">{formatKes(payoutStats.pending)}</span></div>
-          </CardContent>
-        </Card>
-        {payoutsFiltered.length === 0 ? (
-          <Card className="bg-card border-border">
-            <CardContent className="p-6 text-sm text-muted-foreground">No payout requests.</CardContent>
-          </Card>
-        ) : payoutsFiltered.map((p) => {
-          const trainer = users.find((u:any) => u.user_id === (p.trainer_id || p.trainer_user_id || p.trainer))
-          const trainerLabel = trainer?.full_name || trainer?.user_id || p.trainer_id || p.trainer_user_id || 'Unknown'
-          const requestedAt = p.requested_at || p.created_at || ''
-          return (
-            <Card key={p.id} className="bg-card border-border">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-semibold text-foreground">Trainer: {trainerLabel}</h3>
-                    <p className="text-sm text-muted-foreground">Amount: {formatKes(Number(p.amount)||0)}</p>
-                    <p className="text-sm text-muted-foreground">Status: {p.status || 'requested'} {requestedAt ? `• ${new Date(requestedAt).toLocaleString()}` : ''}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => processPayout(p.id)} disabled={String(p.status || '').toLowerCase() === 'paid'}>{String(p.status || '').toLowerCase() === 'paid' ? 'Paid' : 'Mark Paid'}</Button>
-                    <Button size="sm" variant="outline" disabled title="Admin API not configured">Send MPesa</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
       </div>
     </div>
   )
@@ -2157,7 +2077,7 @@ export const AdminDashboard: React.FC = () => {
                 <TabsContent value="issues">{renderIssues()}</TabsContent>
                 <TabsContent value="analytics">{renderAnalytics()}</TabsContent>
                 <TabsContent value="promotions">{renderPromotions()}</TabsContent>
-                <TabsContent value="payouts">{renderPayouts()}</TabsContent>
+                <TabsContent value="payouts"><AdminPayoutManager /></TabsContent>
                 <TabsContent value="categories">{renderCategories()}</TabsContent>
                 <TabsContent value="settings">{renderSettings()}</TabsContent>
               </div>
