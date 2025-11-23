@@ -3961,6 +3961,225 @@ switch ($action) {
         }
         break;
 
+    // ANNOUNCEMENTS SYSTEM
+    // ============================================================================
+
+    // CREATE ANNOUNCEMENT
+    case 'announcement_create':
+        if (!isset($input['title']) || !isset($input['message'])) {
+            respond("error", "Missing required fields: title, message.", null, 400);
+        }
+
+        $title = $conn->real_escape_string($input['title']);
+        $message = $conn->real_escape_string($input['message']);
+        $target = isset($input['target']) ? $conn->real_escape_string($input['target']) : 'all';
+        $adminId = isset($input['admin_id']) ? $conn->real_escape_string($input['admin_id']) : null;
+
+        if (!in_array($target, ['all', 'clients', 'trainers', 'admins'])) {
+            respond("error", "Invalid target. Must be: all, clients, trainers, or admins.", null, 400);
+        }
+
+        $createTableSql = "
+            CREATE TABLE IF NOT EXISTS `announcements` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `title` VARCHAR(255) NOT NULL,
+                `message` LONGTEXT NOT NULL,
+                `target_user_type` VARCHAR(50) NOT NULL COMMENT 'all, clients, trainers, admins',
+                `admin_id` VARCHAR(36),
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX `idx_target` (`target_user_type`),
+                INDEX `idx_created_at` (`created_at` DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createTableSql);
+
+        $createReadTableSql = "
+            CREATE TABLE IF NOT EXISTS `announcement_reads` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `announcement_id` VARCHAR(36) NOT NULL,
+                `user_id` VARCHAR(36) NOT NULL,
+                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
+                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createReadTableSql);
+
+        $announcementId = 'ann_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO announcements (id, title, message, target_user_type, admin_id, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("sssssss", $announcementId, $title, $message, $target, $adminId, $now, $now);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to create announcement: " . $conn->error, null, 500);
+        }
+        $stmt->close();
+
+        logEvent('announcement_created', [
+            'announcement_id' => $announcementId,
+            'target' => $target,
+            'admin_id' => $adminId,
+            'title' => $title
+        ]);
+
+        respond("success", "Announcement created successfully.", [
+            "announcement_id" => $announcementId,
+            "title" => $title,
+            "target" => $target
+        ]);
+        break;
+
+    // GET ANNOUNCEMENTS FOR USER
+    case 'announcements_get':
+        if (!isset($input['user_id']) || !isset($input['user_type'])) {
+            respond("error", "Missing required fields: user_id, user_type.", null, 400);
+        }
+
+        $userId = $conn->real_escape_string($input['user_id']);
+        $userType = $conn->real_escape_string($input['user_type']);
+
+        $createTableSql = "
+            CREATE TABLE IF NOT EXISTS `announcements` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `title` VARCHAR(255) NOT NULL,
+                `message` LONGTEXT NOT NULL,
+                `target_user_type` VARCHAR(50) NOT NULL COMMENT 'all, clients, trainers, admins',
+                `admin_id` VARCHAR(36),
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX `idx_target` (`target_user_type`),
+                INDEX `idx_created_at` (`created_at` DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createTableSql);
+
+        $createReadTableSql = "
+            CREATE TABLE IF NOT EXISTS `announcement_reads` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `announcement_id` VARCHAR(36) NOT NULL,
+                `user_id` VARCHAR(36) NOT NULL,
+                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
+                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createReadTableSql);
+
+        $limit = isset($input['limit']) ? intval($input['limit']) : 50;
+        $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+
+        $sql = "
+            SELECT a.*,
+                   CASE
+                       WHEN ar.id IS NOT NULL THEN true
+                       ELSE false
+                   END as is_read
+            FROM announcements a
+            LEFT JOIN announcement_reads ar ON a.id = ar.announcement_id AND ar.user_id = ?
+            WHERE a.target_user_type = 'all'
+               OR a.target_user_type = ?
+            ORDER BY a.created_at DESC
+            LIMIT ? OFFSET ?
+        ";
+
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("ssii", $userId, $userType, $limit, $offset);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to fetch announcements: " . $conn->error, null, 500);
+        }
+
+        $result = $stmt->get_result();
+        $announcements = [];
+        while ($row = $result->fetch_assoc()) {
+            $announcements[] = $row;
+        }
+        $stmt->close();
+
+        respond("success", "Announcements retrieved successfully.", [
+            "announcements" => $announcements,
+            "count" => count($announcements)
+        ]);
+        break;
+
+    // MARK ANNOUNCEMENT AS READ
+    case 'announcement_mark_read':
+        if (!isset($input['announcement_id']) || !isset($input['user_id'])) {
+            respond("error", "Missing required fields: announcement_id, user_id.", null, 400);
+        }
+
+        $announcementId = $conn->real_escape_string($input['announcement_id']);
+        $userId = $conn->real_escape_string($input['user_id']);
+
+        $createReadTableSql = "
+            CREATE TABLE IF NOT EXISTS `announcement_reads` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `announcement_id` VARCHAR(36) NOT NULL,
+                `user_id` VARCHAR(36) NOT NULL,
+                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
+                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
+                INDEX `idx_user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+        $conn->query($createReadTableSql);
+
+        $readId = 'ar_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $checkStmt = $conn->prepare("SELECT id FROM announcement_reads WHERE announcement_id = ? AND user_id = ?");
+        $checkStmt->bind_param("ss", $announcementId, $userId);
+        $checkStmt->execute();
+        $checkResult = $checkStmt->get_result();
+        $checkStmt->close();
+
+        if ($checkResult->num_rows > 0) {
+            respond("success", "Announcement already marked as read.", [
+                "announcement_id" => $announcementId,
+                "user_id" => $userId
+            ]);
+        }
+
+        $stmt = $conn->prepare("
+            INSERT INTO announcement_reads (id, announcement_id, user_id, read_at)
+            VALUES (?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("ssss", $readId, $announcementId, $userId, $now);
+
+        if (!$stmt->execute()) {
+            $stmt->close();
+            respond("error", "Failed to mark announcement as read: " . $conn->error, null, 500);
+        }
+        $stmt->close();
+
+        respond("success", "Announcement marked as read.", [
+            "announcement_id" => $announcementId,
+            "user_id" => $userId
+        ]);
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
