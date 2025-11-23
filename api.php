@@ -233,9 +233,10 @@ function calculateFeeBreakdown($baseAmount, $settings, $transportFee = 0) {
     $maintenanceFee = round(($sumOfCharges * $maintPct) / 100, 2);
 
     // Step 4: Calculate client total
-    // Client pays: base + client charges + compensation fee + maintenance fee + transport
+    // Client pays: base + client charges (platformChargeClient + compensationFee) + transport
+    // NOTE: Maintenance fee is NOT charged to client (it's internal platform revenue)
     $clientCharges = $platformChargeClient + $compensationFee;
-    $clientTotal = round($baseAmount + $clientCharges + $maintenanceFee + $transportFee, 2);
+    $clientTotal = round($baseAmount + $clientCharges + $transportFee, 2);
 
     // Step 5: Calculate trainer net
     // Trainer receives: base + transport - trainer charges - trainer's share of maintenance
