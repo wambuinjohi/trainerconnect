@@ -43,7 +43,7 @@ import * as apiService from '@/lib/api-service'
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
 type Dispute = {
-  id: number
+  id: string | number
   case: string
   client: string
   trainer: string
