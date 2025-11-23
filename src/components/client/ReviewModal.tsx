@@ -8,7 +8,7 @@ import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
-export const ReviewModal: React.FC<{ booking: any, onClose?: () => void, onSubmitted?: () => void }> = ({ booking, onClose, onSubmitted }) => {
+export const ReviewModal: React.FC<{ booking: any, onClose?: () => void, onSubmitted?: () => Promise<void> | void }> = ({ booking, onClose, onSubmitted }) => {
   const { user } = useAuth()
   const [rating, setRating] = useState<number>(5)
   const [hover, setHover] = useState<number>(0)
