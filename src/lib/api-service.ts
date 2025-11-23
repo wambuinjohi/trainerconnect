@@ -174,6 +174,13 @@ export async function getBookingDetails(bookingId: string) {
   })
 }
 
+export async function getAllBookings() {
+  return apiRequest('select', {
+    table: 'bookings',
+    order: 'created_at DESC',
+  })
+}
+
 // ============================================================================
 // TRAINER SERVICES
 // ============================================================================
