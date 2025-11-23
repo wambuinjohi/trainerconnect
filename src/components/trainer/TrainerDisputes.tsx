@@ -89,7 +89,7 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
     if (!activeDispute) return
 
     try {
-      await apiRequest('issue_update', { id: activeDispute.id, notes }, { headers: withAuth() })
+      await apiService.updateIssue(String(activeDispute.id), { notes })
       setDisputes(disputes.map(d => d.id === activeDispute.id ? { ...d, notes } : d))
       setActiveDispute({ ...activeDispute, notes })
       toast({ title: 'Success', description: 'Notes saved' })
@@ -103,7 +103,7 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
     if (!activeDispute) return
 
     try {
-      await apiRequest('issue_update', { id: activeDispute.id, status }, { headers: withAuth() })
+      await apiService.updateIssueStatus(String(activeDispute.id), status)
       const updated = { ...activeDispute, status }
       setActiveDispute(updated)
       setDisputes(disputes.map(d => d.id === activeDispute.id ? updated : d))
