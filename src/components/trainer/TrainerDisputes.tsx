@@ -167,16 +167,17 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
             placeholder="Search disputes..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full px-3 py-2 border border-border rounded-md bg-input text-foreground"
+            className="w-full px-2 sm:px-3 py-2 text-sm border border-border rounded-md bg-input text-foreground"
           />
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1 sm:gap-2 flex-wrap">
           {(['all', 'pending', 'investigating', 'resolved'] as const).map(status => (
             <Button
               key={status}
               variant={statusFilter === status ? 'default' : 'outline'}
               size="sm"
               onClick={() => setStatusFilter(status)}
+              className="text-xs sm:text-sm"
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
             </Button>
