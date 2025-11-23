@@ -92,7 +92,9 @@ const buildAnalyticsPoints = (rows: any[]): AnalyticsPoint[] => {
     if (!date) return
     const key = date.toISOString().slice(0, 10)
     const summary = buckets.get(key) || { revenue: 0, bookings: 0 }
-    summary.revenue += Number(row?.total_amount) || 0
+    // Support multiple field names for amount
+    const amount = Number(row?.total_amount || row?.amount || row?.price || 0)
+    summary.revenue += amount
     summary.bookings += 1
     buckets.set(key, summary)
   })
@@ -542,7 +544,18 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const resolve = (id: any) => setStatus(id, 'resolved')
+  const resolve = (id: any) => {
+    const dispute = filtered.find(d => d.id === id)
+    const caseLabel = dispute?.case || `Case #${id}`
+    setConfirmModal({
+      open: true,
+      title: 'Resolve Dispute',
+      description: `Are you sure you want to mark ${caseLabel} as resolved? Make sure all necessary actions (refund, notes) have been completed.`,
+      action: async () => {
+        await setStatus(id, 'resolved')
+      },
+    })
+  }
 
   const refund = (id: any) => {
     const dispute = filtered.find(d => d.id === id)
@@ -574,29 +587,48 @@ export const AdminDashboard: React.FC = () => {
     return ['1','true','yes','y','t'].includes(s)
   }
 
-  const approveTrainer = async (userId: string) => {
-    try {
-      await apiService.approveTrainer(userId)
-      toast({ title: 'Success', description: 'Trainer approved' })
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    } catch (err: any) {
-      console.error('Approve trainer error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
-    }
+  const approveTrainer = (userId: string) => {
+    const trainer = approvals.find(t => t.user_id === userId)
+    const trainerName = trainer?.full_name || userId
+    setConfirmModal({
+      open: true,
+      title: 'Approve Trainer',
+      description: `Are you sure you want to approve ${trainerName} as a trainer? They will have access to the platform immediately.`,
+      action: async () => {
+        try {
+          await apiService.approveTrainer(userId)
+          toast({ title: 'Success', description: 'Trainer approved' })
+          setTimeout(() => {
+            window.location.reload()
+          }, 1000)
+        } catch (err: any) {
+          console.error('Approve trainer error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to approve trainer', variant: 'destructive' })
+        }
+      },
+    })
   }
 
-  const rejectTrainer = async (userId: string) => {
-    try {
-      await apiService.rejectTrainer(userId)
-      setUsers(users.filter(u => u.user_id !== userId))
-      setApprovals(approvals.filter(a => a.user_id !== userId))
-      toast({ title: 'Success', description: 'Trainer rejected' })
-    } catch (err: any) {
-      console.error('Reject trainer error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
-    }
+  const rejectTrainer = (userId: string) => {
+    const trainer = approvals.find(t => t.user_id === userId)
+    const trainerName = trainer?.full_name || userId
+    setConfirmModal({
+      open: true,
+      title: 'Reject Trainer',
+      description: `Are you sure you want to reject ${trainerName}? This action cannot be undone.`,
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.rejectTrainer(userId)
+          setUsers(users.filter(u => u.user_id !== userId))
+          setApprovals(approvals.filter(a => a.user_id !== userId))
+          toast({ title: 'Success', description: 'Trainer rejected' })
+        } catch (err: any) {
+          console.error('Reject trainer error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to reject trainer', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const deleteUser = async (userId: string) => {
@@ -747,7 +779,30 @@ export const AdminDashboard: React.FC = () => {
           console.warn('Failed to load issues', err)
         }
 
-        setPromotions([])
+        try {
+          const bookingsData = await apiService.getAllBookings()
+          if (bookingsData?.data) {
+            const analyticsData = buildAnalyticsPoints(bookingsData.data)
+            setAnalyticsPoints(analyticsData)
+            if (analyticsData.length > 0) {
+              const totalRevenue = analyticsData.reduce((sum, point) => sum + point.revenue, 0)
+              const totalBookings = analyticsData.reduce((sum, point) => sum + point.bookings, 0)
+              setStats(prev => ({ ...prev, totalRevenue, totalBookings }))
+            }
+          }
+        } catch (err) {
+          console.warn('Failed to load analytics data', err)
+        }
+
+        try {
+          const promotionsData = await apiService.getPromotionRequestsForAdmin('pending')
+          if (promotionsData?.data) {
+            setPromotions(Array.isArray(promotionsData.data) ? promotionsData.data : [promotionsData.data])
+          }
+        } catch (err) {
+          console.warn('Failed to load promotions', err)
+        }
+
         setPayoutRequests([])
         setActivityFeed([])
       } catch (err) {
@@ -766,12 +821,45 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const approvePromotion = async (id: number) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+  const approvePromotion = (id: string | number) => {
+    const promotion = promotions.find(p => p.id === id)
+    const trainerName = promotion?.full_name || 'Unknown'
+    setConfirmModal({
+      open: true,
+      title: 'Approve Promotion Request',
+      description: `Are you sure you want to approve the promotion request from ${trainerName}?`,
+      action: async () => {
+        try {
+          await apiService.approvePromotionRequest(String(id), user?.id)
+          setPromotions(promotions.filter(p => p.id !== id))
+          toast({ title: 'Success', description: 'Promotion request approved' })
+        } catch (err: any) {
+          console.error('Approve promotion error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to approve promotion', variant: 'destructive' })
+        }
+      },
+    })
   }
 
-  const rejectPromotion = async (id: number) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+  const rejectPromotion = (id: string | number) => {
+    const promotion = promotions.find(p => p.id === id)
+    const trainerName = promotion?.full_name || 'Unknown'
+    setConfirmModal({
+      open: true,
+      title: 'Reject Promotion Request',
+      description: `Are you sure you want to reject the promotion request from ${trainerName}?`,
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.rejectPromotionRequest(String(id), user?.id)
+          setPromotions(promotions.filter(p => p.id !== id))
+          toast({ title: 'Success', description: 'Promotion request rejected' })
+        } catch (err: any) {
+          console.error('Reject promotion error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to reject promotion', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const addCategory = async () => {
@@ -833,20 +921,28 @@ export const AdminDashboard: React.FC = () => {
     }
   }
 
-  const markIssueResolved = async (it: any) => {
+  const markIssueResolved = (it: any) => {
     if (!it?.id) {
       toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
       return
     }
-    try {
-      await apiService.updateIssueStatus(it.id, 'resolved')
-      setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
-      setActiveIssue(null)
-      toast({ title: 'Success', description: 'Issue marked as resolved' })
-    } catch (err: any) {
-      console.error('Mark issue resolved error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
-    }
+    const issueTitle = it.complaint_type || 'Issue'
+    setConfirmModal({
+      open: true,
+      title: 'Resolve Issue',
+      description: `Are you sure you want to mark "${issueTitle}" as resolved?`,
+      action: async () => {
+        try {
+          await apiService.updateIssueStatus(it.id, 'resolved')
+          setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
+          setActiveIssue(null)
+          toast({ title: 'Success', description: 'Issue marked as resolved' })
+        } catch (err: any) {
+          console.error('Mark issue resolved error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const softDeleteIssue = (issueId: string) => {

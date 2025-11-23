@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertCircle, CheckCircle, Send, Loader2, AlertTriangle } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { toast } from '@/hooks/use-toast'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
@@ -19,6 +20,18 @@ export const AdminPayoutManager: React.FC = () => {
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null)
   const [b2cPayments, setB2cPayments] = useState<any[]>([])
   const [activeTab, setActiveTab] = useState<'pending' | 'processed'>('pending')
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean
+    title: string
+    description: string
+    action: () => Promise<void>
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: async () => {},
+  })
+  const [confirmLoading, setConfirmLoading] = useState(false)
 
   // Load payout requests
   useEffect(() => {
@@ -54,57 +67,77 @@ export const AdminPayoutManager: React.FC = () => {
     }
   }
 
-  const approveRequest = async (request: any) => {
+  const approveRequest = (request: any) => {
     if (!request.id) {
       toast({ title: 'Error', description: 'Invalid request ID', variant: 'destructive' })
       return
     }
 
-    setProcessingId(request.id)
-    try {
-      const data = await apiRequest('payout_request_approve', {
-        payout_request_id: request.id,
-        commission_percentage: commissionPercent
-      }, { headers: withAuth() })
+    const trainerName = request.full_name || 'Unknown'
+    const amount = request.amount ? `Ksh ${Number(request.amount).toFixed(2)}` : 'Unknown amount'
 
-      if (data?.status === 'success') {
-        toast({ title: 'Payout approved', description: `B2C payment created: ${data.data?.reference_id}` })
-        loadRequests()
-      } else {
-        toast({ title: 'Error', description: data?.message || 'Failed to approve payout', variant: 'destructive' })
-      }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to approve payout', variant: 'destructive' })
-    } finally {
-      setProcessingId(null)
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Approve Payout Request',
+      description: `Approve payout of ${amount} to ${trainerName} (after ${commissionPercent}% commission)? This will create a B2C payment.`,
+      action: async () => {
+        setProcessingId(request.id)
+        try {
+          const data = await apiRequest('payout_request_approve', {
+            payout_request_id: request.id,
+            commission_percentage: commissionPercent
+          }, { headers: withAuth() })
+
+          if (data?.status === 'success') {
+            toast({ title: 'Payout approved', description: `B2C payment created: ${data.data?.reference_id}` })
+            loadRequests()
+          } else {
+            toast({ title: 'Error', description: data?.message || 'Failed to approve payout', variant: 'destructive' })
+          }
+        } catch (err: any) {
+          toast({ title: 'Error', description: err?.message || 'Failed to approve payout', variant: 'destructive' })
+        } finally {
+          setProcessingId(null)
+        }
+      },
+    })
   }
 
-  const initiateB2CPayment = async (payment: any) => {
+  const initiateB2CPayment = (payment: any) => {
     if (!payment.id) {
       toast({ title: 'Error', description: 'Invalid payment ID', variant: 'destructive' })
       return
     }
 
-    setProcessingId(payment.id)
-    try {
-      const data = await apiRequest('b2c_payment_initiate', {
-        b2c_payment_id: payment.id,
-        phone_number: payment.phone_number,
-        amount: payment.amount
-      }, { headers: withAuth() })
+    const amount = payment.amount ? `Ksh ${Number(payment.amount).toFixed(2)}` : 'Unknown amount'
+    const phone = payment.phone_number || 'Unknown number'
 
-      if (data?.status === 'success') {
-        toast({ title: 'B2C payment initiated', description: `Reference: ${data.data?.reference_id}` })
-        loadB2CPayments()
-      } else {
-        toast({ title: 'Error', description: data?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
-      }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
-    } finally {
-      setProcessingId(null)
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Initiate B2C Payment',
+      description: `Confirm M-Pesa payment of ${amount} to ${phone}? This action will transfer funds immediately.`,
+      action: async () => {
+        setProcessingId(payment.id)
+        try {
+          const data = await apiRequest('b2c_payment_initiate', {
+            b2c_payment_id: payment.id,
+            phone_number: payment.phone_number,
+            amount: payment.amount
+          }, { headers: withAuth() })
+
+          if (data?.status === 'success') {
+            toast({ title: 'B2C payment initiated', description: `Reference: ${data.data?.reference_id}` })
+            loadB2CPayments()
+          } else {
+            toast({ title: 'Error', description: data?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
+          }
+        } catch (err: any) {
+          toast({ title: 'Error', description: err?.message || 'Failed to initiate B2C payment', variant: 'destructive' })
+        } finally {
+          setProcessingId(null)
+        }
+      },
+    })
   }
 
   const getStatusColor = (status: string) => {
@@ -312,6 +345,35 @@ export const AdminPayoutManager: React.FC = () => {
           </Card>
         </>
       )}
+
+      <AlertDialog open={confirmModal.open} onOpenChange={(open) => {
+        if (!open) setConfirmModal({ ...confirmModal, open: false })
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmModal.title}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmModal.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setConfirmLoading(true)
+                try {
+                  await confirmModal.action()
+                } finally {
+                  setConfirmLoading(false)
+                  setConfirmModal({ ...confirmModal, open: false })
+                }
+              }}
+              disabled={confirmLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {confirmLoading ? 'Processing...' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
