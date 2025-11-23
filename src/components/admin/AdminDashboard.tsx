@@ -900,16 +900,22 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const deleteCategory = async (id: any) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return
-
-    try {
-      await apiService.deleteCategory(id)
-      setCategories(categories.filter(c => c.id !== id))
-      toast({ title: 'Success', description: 'Category deleted' })
-    } catch (err: any) {
-      console.error('Delete category error:', err)
-      toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Delete Category',
+      description: 'Are you sure you want to delete this category? This action cannot be undone.',
+      isDestructive: true,
+      action: async () => {
+        try {
+          await apiService.deleteCategory(id)
+          setCategories(categories.filter(c => c.id !== id))
+          toast({ title: 'Success', description: 'Category deleted' })
+        } catch (err: any) {
+          console.error('Delete category error:', err)
+          toast({ title: 'Error', description: err?.message || 'Failed to delete category', variant: 'destructive' })
+        }
+      },
+    })
   }
 
   const processPayout = async (id: number) => {
