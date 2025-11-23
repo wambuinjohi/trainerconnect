@@ -156,6 +156,27 @@ export const ClientDashboard: React.FC = () => {
     }
   }, [bookings])
 
+  const loadNotifications = async () => {
+    if (!user?.id) return
+    try {
+      const notifData = await apiRequest('notifications_get', { user_id: user.id }, { headers: withAuth() })
+      const notifs = Array.isArray(notifData) ? notifData : (notifData?.data || [])
+      const unreadCount = notifs.filter((n: any) => !n.read).length
+      setUnreadNotificationsClient(unreadCount)
+    } catch (err) {
+      console.warn('Failed to load notifications', err)
+    }
+  }
+
+  // Load notifications on mount and poll periodically
+  useEffect(() => {
+    if (!user?.id) return
+    loadNotifications()
+
+    const notificationInterval = setInterval(loadNotifications, 10000) // Poll every 10 seconds
+    return () => clearInterval(notificationInterval)
+  }, [user?.id])
+
   useEffect(() => {
     const loadCategories = async () => {
       try {
