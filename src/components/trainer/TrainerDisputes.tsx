@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiRequest, withAuth } from '@/lib/api'
 import { toast } from '@/hooks/use-toast'
 import * as apiService from '@/lib/api-service'
-import { Textarea } from '@/components/ui/textarea'
 
 type DisputeStatus = 'pending' | 'investigating' | 'resolved'
 
