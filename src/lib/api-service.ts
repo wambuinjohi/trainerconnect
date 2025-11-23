@@ -498,6 +498,24 @@ export async function getPromotionRequests(filter?: Record<string, any>) {
   })
 }
 
+export async function getPromotionRequestsForAdmin(status: string = 'pending') {
+  return apiRequest('promotion_requests_get', { status })
+}
+
+export async function approvePromotionRequest(promotionRequestId: string, adminId?: string) {
+  return apiRequest('promotion_request_approve', {
+    promotion_request_id: promotionRequestId,
+    admin_id: adminId,
+  })
+}
+
+export async function rejectPromotionRequest(promotionRequestId: string, adminId?: string) {
+  return apiRequest('promotion_request_reject', {
+    promotion_request_id: promotionRequestId,
+    admin_id: adminId,
+  })
+}
+
 // ============================================================================
 // GENERIC DATABASE OPERATIONS (for flexibility)
 // ============================================================================
