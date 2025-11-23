@@ -134,7 +134,7 @@ export const RefundModal: React.FC<RefundModalProps> = ({
 
       toast({
         title: 'Success',
-        description: `Refund of Ksh ${dispute.amount} initiated to ${phone}. Waiting for M-Pesa confirmation.`,
+        description: `Refund of Ksh ${dispute.amount} initiated to ${normalizedPhone}. Waiting for M-Pesa confirmation.`,
       })
 
       onSuccess()
