@@ -233,11 +233,11 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
       )}
 
       {activeDispute && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <Card className="w-full max-w-lg">
-            <CardHeader>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/40 overflow-y-auto">
+          <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <CardHeader className="sticky top-0 bg-background">
               <div className="flex items-center justify-between">
-                <CardTitle>Dispute Details</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">Dispute Details</CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setActiveDispute(null)}>✕</Button>
               </div>
             </CardHeader>
