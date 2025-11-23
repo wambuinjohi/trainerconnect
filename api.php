@@ -1807,7 +1807,17 @@ switch ($action) {
         $description = $conn->real_escape_string($input['description']);
         $status = isset($input['status']) ? $conn->real_escape_string($input['status']) : 'open';
         $priority = isset($input['priority']) ? $conn->real_escape_string($input['priority']) : 'normal';
-        $attachments = isset($input['attachments']) && !empty($input['attachments']) ? $conn->real_escape_string($input['attachments']) : NULL;
+        $attachments = NULL;
+        if (isset($input['attachments']) && !empty($input['attachments'])) {
+            if (is_array($input['attachments']) || is_object($input['attachments'])) {
+                $attachments = json_encode($input['attachments'], JSON_UNESCAPED_SLASHES);
+            } else {
+                $attachments = $input['attachments'];
+                if (!json_decode($attachments)) {
+                    $attachments = json_encode(['error' => 'Invalid attachment format']);
+                }
+            }
+        }
         $issueId = 'issue_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
