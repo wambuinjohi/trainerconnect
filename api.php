@@ -2770,8 +2770,11 @@ switch ($action) {
                 "booking_id" => $bookingId,
                 "base_service_amount" => $baseServiceAmount,
                 "transport_fee" => $transportFee,
-                "platform_fee" => $platformFee,
-                "vat_amount" => $vatAmount,
+                "platform_charge_client" => $platformChargeClient,
+                "platform_charge_trainer" => $platformChargeTrainer,
+                "compensation_fee" => $compensationFee,
+                "maintenance_fee" => $maintenanceFee,
+                "sum_of_charges" => $feeBreakdown['sumOfCharges'],
                 "trainer_net_amount" => $trainerNetAmount,
                 "client_surcharge" => $clientSurcharge,
                 "total_amount" => $totalAmount
