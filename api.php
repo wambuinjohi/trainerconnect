@@ -371,8 +371,13 @@ switch ($action) {
                     if ($value === null || $value === 'null') {
                         $updates[] = "`" . $conn->real_escape_string($key) . "` = NULL";
                     } else {
-                        $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-                        $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        if (is_array($value) || is_object($value)) {
+                            $stringValue = json_encode($value);
+                            $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        } else {
+                            $stringValue = (string)$value;
+                            $updates[] = "`" . $conn->real_escape_string($key) . "` = '" . $conn->real_escape_string($stringValue) . "'";
+                        }
                     }
                 }
                 $sql = "UPDATE `$table` SET " . implode(", ", $updates) . " WHERE user_id = '" . $conn->real_escape_string($data['user_id']) . "'";
