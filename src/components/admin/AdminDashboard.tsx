@@ -724,13 +724,19 @@ export const AdminDashboard: React.FC = () => {
           setCategories(categoriesData.data)
         }
 
-        // Load issues (reported_issues) from database
+        // Load issues (reported_issues) from database with pagination
         try {
-          const result = await apiService.getIssues()
+          const result = await apiService.getIssuesWithPagination({
+            page: issuePage,
+            pageSize: issuePageSize,
+          })
           if (result?.data) {
             setIssues(result.data)
-            const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
-            setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+            if (result.count !== undefined) {
+              setIssueTotalCount(result.count)
+              const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
+              setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+            }
           }
         } catch (err) {
           console.warn('Failed to load issues', err)
