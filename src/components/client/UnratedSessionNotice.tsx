@@ -44,12 +44,27 @@ export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
   }, [user?.id, bookings])
 
   const deriveUnratedSessions = (bookingsData: any[]) => {
+    console.log('Processing bookings:', bookingsData)
     const unrated = (bookingsData as any[])
       .filter(
-        booking =>
-          booking.status === 'completed' &&
-          (booking.rating_submitted === 0 || !booking.rating_submitted) &&
-          (booking.client_rating === null || !booking.client_rating)
+        booking => {
+          const isCompleted = booking.status === 'completed'
+          const notRated = booking.rating_submitted === 0 || !booking.rating_submitted
+          const noClientRating = booking.client_rating === null || !booking.client_rating
+
+          console.log('Booking:', {
+            id: booking.id,
+            status: booking.status,
+            isCompleted,
+            rating_submitted: booking.rating_submitted,
+            notRated,
+            client_rating: booking.client_rating,
+            noClientRating,
+            passes: isCompleted && notRated && noClientRating
+          })
+
+          return isCompleted && notRated && noClientRating
+        }
       )
       .map(booking => ({
         ...booking,
@@ -59,7 +74,7 @@ export const UnratedSessionNotice: React.FC<UnratedSessionNoticeProps> = ({
         session_date: booking.session_date,
         total_amount: booking.total_amount || 0,
       }))
-    console.log('Unrated sessions:', unrated, 'Total bookings:', bookingsData)
+    console.log('Filtered unrated sessions:', unrated)
     setUnratedSessions(unrated)
   }
 
