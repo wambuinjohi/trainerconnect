@@ -2043,6 +2043,17 @@ switch ($action) {
 
         if ($stmt->execute()) {
             $stmt->close();
+
+            // Update booking's rating_submitted flag if booking_id is provided
+            if ($bookingId) {
+                $updateBookingStmt = $conn->prepare("
+                    UPDATE bookings SET rating_submitted = 1 WHERE id = ?
+                ");
+                $updateBookingStmt->bind_param("s", $bookingId);
+                $updateBookingStmt->execute();
+                $updateBookingStmt->close();
+            }
+
             logEvent('review_added', ['review_id' => $reviewId, 'trainer_id' => $trainerId]);
             respond("success", "Review added successfully.", ["id" => $reviewId]);
         } else {
