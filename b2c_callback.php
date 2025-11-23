@@ -81,21 +81,37 @@ try {
     // Log the incoming request
     logB2CEvent('received', ['request' => $requestData]);
     
-    // Extract callback data
+    // Extract callback data - handle both B2C and STK formats
     $result = $requestData['Result'] ?? null;
-    
+    $body = $requestData['Body'] ?? null;
+    $stkCallback = $body['stkCallback'] ?? null;
+
+    // If this is an STK callback that was sent to B2C endpoint, redirect to proper handling
+    if ($stkCallback && !$result) {
+        logB2CEvent('received_stk_callback', [
+            'checkout_request_id' => $stkCallback['CheckoutRequestID'] ?? null,
+            'merchant_request_id' => $stkCallback['MerchantRequestID'] ?? null,
+            'result_code' => $stkCallback['ResultCode'] ?? null,
+            'message' => 'STK callback received on B2C endpoint - redirecting to proper handler'
+        ]);
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'C2B callback should use c2b_callback.php endpoint']);
+        exit;
+    }
+
     if (!$result) {
         logB2CEvent('missing_result', ['request' => $requestData]);
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Missing Result object']);
         exit;
     }
-    
+
     $resultCode = intval($result['ResultCode'] ?? 1);
     $resultDesc = $result['ResultDesc'] ?? 'Unknown error';
     $transactionID = $result['TransactionID'] ?? null;
     $originatorConversationID = $result['OriginatorConversationID'] ?? null;
     $conversationID = $result['ConversationID'] ?? null;
+    $merchantRequestId = $result['MerchantRequestID'] ?? null;
     
     // Parse reference data to extract transaction details
     $transactionAmount = null;
