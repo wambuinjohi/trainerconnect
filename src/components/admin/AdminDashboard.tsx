@@ -466,13 +466,13 @@ export const AdminDashboard: React.FC = () => {
     const clientUser = users.find((u: any) => u.user_id === issue.user_id)
     const trainerUser = users.find((u: any) => u.user_id === issue.trainer_id)
     return {
-      id: parseInt(issue.id) || Math.random(),
+      id: issue.id,
       case: `#${issue.id?.substring(0, 8) || Math.random().toString(36).slice(2, 8).toUpperCase()}`,
       client: clientUser?.full_name || issue.user_id || 'Unknown Client',
       trainer: trainerUser?.full_name || issue.trainer_id || 'N/A',
       issue: issue.description || 'No description',
       amount: 0,
-      status: (issue.status || 'pending') as DisputeStatus,
+      status: (issue.status || 'open') as DisputeStatus,
       submittedAt: issue.created_at ? new Date(issue.created_at).toLocaleDateString() : 'Unknown',
       refunded: false,
       notes: issue.resolution || undefined,
