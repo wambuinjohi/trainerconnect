@@ -2722,8 +2722,9 @@ switch ($action) {
         $totalAmount = $feeBreakdown['clientTotal'];
         $trainerNetAmount = $feeBreakdown['trainerNetAmount'];
 
-        // Client surcharge shown to client (sum of charges to client)
-        $clientSurcharge = $platformChargeClient + $compensationFee + $maintenanceFee;
+        // Client surcharge shown to client (charges that client directly pays)
+        // Does NOT include maintenance fee (which is internal platform revenue)
+        $clientSurcharge = $platformChargeClient + $compensationFee;
 
         // For backward compatibility with VAT field (if needed)
         $vatAmount = 0;
