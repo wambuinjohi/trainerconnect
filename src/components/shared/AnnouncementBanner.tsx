@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, X, ChevronRight } from 'lucide-react'
-import { apiRequest, withAuth } from '@/lib/api'
-import { toast } from '@/hooks/use-toast'
+import { apiRequest } from '@/lib/api'
 
 interface Announcement {
   id: string
