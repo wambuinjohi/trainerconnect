@@ -41,7 +41,9 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
 
   let json: ApiResponse<T> | null = null
   try {
-    const text = await res.text()
+    // Clone the response to safely read the body without consuming the original
+    const clonedRes = res.clone()
+    const text = await clonedRes.text()
     if (!text) {
       throw new Error('Empty response body')
     }
