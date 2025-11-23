@@ -806,6 +806,30 @@ export const AdminDashboard: React.FC = () => {
 
   const viewIssue = (it: any) => setActiveIssue(it)
 
+  const loadIssuesPage = async (page: number) => {
+    setLoadingIssues(true)
+    try {
+      const result = await apiService.getIssuesWithPagination({
+        page,
+        pageSize: issuePageSize,
+        searchQuery: query,
+        status: statusFilter === 'all' ? undefined : statusFilter,
+      })
+      if (result?.data) {
+        setIssues(result.data)
+        if (result.count !== undefined) {
+          setIssueTotalCount(result.count)
+        }
+      }
+      setIssuePage(page)
+    } catch (err: any) {
+      console.error('Load issues page error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to load issues', variant: 'destructive' })
+    } finally {
+      setLoadingIssues(false)
+    }
+  }
+
   const markIssueResolved = async (it: any) => {
     if (!it?.id) {
       toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
@@ -819,6 +843,30 @@ export const AdminDashboard: React.FC = () => {
     } catch (err: any) {
       console.error('Mark issue resolved error:', err)
       toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+    }
+  }
+
+  const softDeleteIssue = async (issueId: string) => {
+    if (!window.confirm('Are you sure you want to delete this issue? This action can be undone.')) return
+    try {
+      await apiService.softDeleteIssue(issueId)
+      setIssues(issues.filter(iss => iss.id !== issueId))
+      setActiveIssue(null)
+      toast({ title: 'Success', description: 'Issue deleted' })
+    } catch (err: any) {
+      console.error('Soft delete issue error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to delete issue', variant: 'destructive' })
+    }
+  }
+
+  const restoreIssue = async (issueId: string) => {
+    try {
+      await apiService.restoreIssue(issueId)
+      await loadIssuesPage(issuePage)
+      toast({ title: 'Success', description: 'Issue restored' })
+    } catch (err: any) {
+      console.error('Restore issue error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to restore issue', variant: 'destructive' })
     }
   }
 
