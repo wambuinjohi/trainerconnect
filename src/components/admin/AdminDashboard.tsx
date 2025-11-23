@@ -685,11 +685,9 @@ export const AdminDashboard: React.FC = () => {
         }
 
         // Load issues (reported_issues) from database
-        let issuesData: any = { data: [] }
         try {
           const result = await apiService.getIssues()
           if (result?.data) {
-            issuesData = result
             setIssues(result.data)
             const openIssuesCount = result.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
             setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
@@ -701,7 +699,6 @@ export const AdminDashboard: React.FC = () => {
         // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
-        setDisputes(issuesData?.data || [])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
