@@ -11,6 +11,7 @@ import { AdminPayoutManager } from './AdminPayoutManager'
 import { EmojiPickerComponent } from './EmojiPickerComponent'
 import { CategoryForm } from './CategoryForm'
 import { CategoryList } from './CategoryList'
+import { ContactsList } from './ContactsList'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
