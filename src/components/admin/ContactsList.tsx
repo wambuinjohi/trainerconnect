@@ -40,8 +40,8 @@ export const ContactsList: React.FC<ContactsListProps> = ({ onRefresh }) => {
         order: 'created_at DESC'
       })
 
-      if (response.status === 'success' && response.data) {
-        setContacts(response.data.data || [])
+      if (response && response.data) {
+        setContacts(response.data || [])
       }
     } catch (error) {
       console.error('Error fetching contacts:', error)
