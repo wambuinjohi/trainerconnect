@@ -295,9 +295,24 @@ export const TrainerDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-4">
         <div></div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowNotifications(true)}
+            className="relative text-muted-foreground hover:text-foreground"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadNotificationsTrainer > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-destructive text-destructive-foreground rounded-full text-xs">
+                {unreadNotificationsTrainer > 9 ? '9+' : unreadNotificationsTrainer}
+              </Badge>
+            )}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
       <AnnouncementBanner userId={user?.id} userType="trainer" />
       {profileData.profile_image && (
