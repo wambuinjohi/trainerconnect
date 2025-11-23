@@ -9,6 +9,8 @@ import ThemeToggleAdmin from './ThemeToggleAdmin'
 import { RefundModal } from './RefundModal'
 import { AdminPayoutManager } from './AdminPayoutManager'
 import { EmojiPickerComponent } from './EmojiPickerComponent'
+import { CategoryForm } from './CategoryForm'
+import { CategoryList } from './CategoryList'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -1135,63 +1137,27 @@ export const AdminDashboard: React.FC = () => {
         <Badge variant="secondary">{categories.length}</Badge>
       </div>
 
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-foreground">Add / Update Category</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div>
-            <Label>Name</Label>
-            <Input value={catForm.name} onChange={(e)=>setCatForm({...catForm, name:e.target.value})} className="bg-input border-border" />
-          </div>
-          <div>
-            <Label>Icon (emoji)</Label>
-            <EmojiPickerComponent
-              value={catForm.icon}
-              onChange={(emoji) => setCatForm({...catForm, icon: emoji})}
-              placeholder="Select emoji"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label>Description</Label>
-            <Input value={catForm.description} onChange={(e)=>setCatForm({...catForm, description:e.target.value})} className="bg-input border-border" />
-          </div>
-          <div className="md:col-span-4">
-            <Button onClick={addCategory} disabled={catLoading}>
-              <Plus className="h-4 w-4 mr-2"/> Save Category
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <CategoryForm
+        name={catForm.name}
+        icon={catForm.icon}
+        description={catForm.description}
+        onNameChange={(value) => setCatForm({ ...catForm, name: value })}
+        onIconChange={(emoji) => setCatForm({ ...catForm, icon: emoji })}
+        onDescriptionChange={(value) => setCatForm({ ...catForm, description: value })}
+        onSubmit={addCategory}
+        loading={catLoading}
+      />
 
-      <div className="space-y-3">
-        {categories.map((c)=> (
-          <Card key={c.id} className="bg-card border-border">
-            <CardContent className="p-4 flex items-center justify-between gap-3">
-              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full bg-gradient-primary flex items-center justify-center text-lg cursor-pointer hover:opacity-80 transition-opacity"
-                    title="Click to change emoji"
-                  >
-                    {c.icon || '🏷️'}
-                  </div>
-                  <Input value={c.name || ''} onChange={(e)=>setCategories(cs=>cs.map(x=>x.id===c.id?{...x,name:e.target.value}:x))} className="bg-input border-border" />
-                </div>
-                <Input value={c.description || ''} onChange={(e)=>setCategories(cs=>cs.map(x=>x.id===c.id?{...x,description:e.target.value}:x))} className="bg-input border-border" />
-                <div className="flex gap-2 justify-end">
-                  <Button size="sm" variant="outline" onClick={()=>updateCategory(c.id,{ name:c.name, description:c.description, icon:c.icon })}>
-                    <Save className="h-4 w-4 mr-1"/> Save
-                  </Button>
-                  <Button size="sm" variant="outline" className="border-destructive text-destructive" onClick={()=>deleteCategory(c.id)}>
-                    <Trash2 className="h-4 w-4 mr-1"/> Delete
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <CategoryList
+        categories={categories}
+        onUpdate={updateCategory}
+        onDelete={deleteCategory}
+        onCategoryChange={(id, field, value) =>
+          setCategories((cs) =>
+            cs.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+          )
+        }
+      />
     </div>
   )
 
