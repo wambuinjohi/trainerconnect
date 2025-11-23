@@ -258,14 +258,10 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       }
 
       // Certifications normalization
-      const certifications = Array.isArray(profile.certifications)
-        ? profile.certifications
-        : String(profile.certifications || '').split(',').map(s => s.trim()).filter(Boolean)
+      const certifications = cleanAndParseArray(profile.certifications)
 
       // Disciplines normalization
-      const disciplines = Array.isArray(profile.disciplines)
-        ? profile.disciplines
-        : String(profile.disciplines || '').split(',').map(s => s.trim()).filter(Boolean)
+      const disciplines = cleanAndParseArray(profile.disciplines)
 
       // Hourly rate validation
       const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
