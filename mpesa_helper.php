@@ -45,6 +45,8 @@ function getMpesaCredentials() {
         'result_url' => getenv('MPESA_RESULT_URL'),
         'initiator_name' => getenv('MPESA_INITIATOR_NAME') ?? '',
         'security_credential' => getenv('MPESA_SECURITY_CREDENTIAL') ?? '',
+        'c2b_callback_url' => getenv('MPESA_C2B_CALLBACK_URL') ?? '',
+        'b2c_callback_url' => getenv('MPESA_B2C_CALLBACK_URL') ?? '',
         'source' => 'environment'
     ];
     
