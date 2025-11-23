@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `contacts` (
   INDEX idx_user_type (user_type),
   INDEX idx_created_at (created_at),
   UNIQUE KEY unique_phone (phone)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 ";
 
 if ($conn->query($sql)) {
