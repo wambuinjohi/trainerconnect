@@ -77,6 +77,10 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
       toast({ title: 'Missing info', description: 'Please select date and time', variant: 'destructive' })
       return
     }
+    if (availabilityError) {
+      toast({ title: 'Invalid time', description: availabilityError, variant: 'destructive' })
+      return
+    }
     setLoading(true)
     const baseAmount = computeBaseAmount()
     let baseServiceAmount = baseAmount
