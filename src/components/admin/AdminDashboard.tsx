@@ -888,8 +888,8 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const renderIssues = () => {
-    const totalIssues = issues.length
     const openIssues = issues.filter((it: any) => String(it.status || 'pending').toLowerCase() !== 'resolved').length
+    const totalPages = Math.ceil(issueTotalCount / issuePageSize)
 
     return (
       <div className="space-y-6">
@@ -899,12 +899,12 @@ export const AdminDashboard: React.FC = () => {
             <p className="text-sm text-muted-foreground">Review, investigate, and resolve client or trainer complaints.</p>
           </div>
           <div className="flex gap-2">
-            <Badge variant="secondary">{totalIssues} total</Badge>
+            <Badge variant="secondary">{issueTotalCount} total</Badge>
             <Badge variant={openIssues ? 'destructive' : 'secondary'}>{openIssues} open</Badge>
           </div>
         </div>
 
-        {totalIssues === 0 ? (
+        {issueTotalCount === 0 ? (
           <Card className="border-border bg-card">
             <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
               <div className="h-14 w-14 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-2xl">✓</div>
@@ -916,37 +916,76 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         ) : (
           <div className="space-y-4">
-            {issues.map((it: any) => {
-              const status = String(it.status || 'pending').toLowerCase()
-              const resolved = status === 'resolved'
-              return (
-                <Card key={it.id} className="bg-card border-border">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-semibold text-foreground">{it.complaint_type || 'Issue'}</h3>
-                          <Badge variant={resolved ? 'secondary' : status === 'investigating' ? 'outline' : 'destructive'} className="capitalize">{status}</Badge>
+            {loadingIssues ? (
+              <Card className="border-border bg-card">
+                <CardContent className="flex items-center justify-center gap-3 py-8">
+                  <div className="text-muted-foreground">Loading issues...</div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                {issues.map((it: any) => {
+                  const status = String(it.status || 'pending').toLowerCase()
+                  const resolved = status === 'resolved'
+                  return (
+                    <Card key={it.id} className="bg-card border-border">
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-base font-semibold text-foreground">{it.complaint_type || 'Issue'}</h3>
+                              <Badge variant={resolved ? 'secondary' : status === 'investigating' ? 'outline' : 'destructive'} className="capitalize">{status}</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{it.description || 'No description provided.'}</p>
+                            <p className="text-xs text-muted-foreground">Reported by {it.user_name || it.user_email || it.user_id || 'Unknown user'} on {it.created_at ? new Date(it.created_at).toLocaleString() : 'unknown date'}</p>
+                            {(it.booking_reference || it.booking_id) && (
+                              <p className="text-xs text-muted-foreground">Booking reference: {it.booking_reference || it.booking_id}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 md:items-end">
+                            <Button size="sm" variant="outline" onClick={() => viewIssue(it)}>
+                              View details
+                            </Button>
+                            <Button size="sm" disabled={resolved} onClick={() => markIssueResolved(it)}>
+                              {resolved ? 'Resolved' : 'Mark resolved'}
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-destructive text-destructive hover:bg-destructive/10" onClick={() => softDeleteIssue(it.id)}>
+                              <Trash2 className="h-3 w-3 mr-1" /> Delete
+                            </Button>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{it.description || 'No description provided.'}</p>
-                        <p className="text-xs text-muted-foreground">Reported by {it.user_name || it.user_email || it.user_id || 'Unknown user'} on {it.created_at ? new Date(it.created_at).toLocaleString() : 'unknown date'}</p>
-                        {(it.booking_reference || it.booking_id) && (
-                          <p className="text-xs text-muted-foreground">Booking reference: {it.booking_reference || it.booking_id}</p>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2 md:items-end">
-                        <Button size="sm" variant="outline" onClick={() => viewIssue(it)}>
-                          View details
-                        </Button>
-                        <Button size="sm" disabled={resolved} onClick={() => markIssueResolved(it)}>
-                          {resolved ? 'Resolved' : 'Mark resolved'}
-                        </Button>
-                      </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between p-4 border border-border rounded-lg bg-card">
+                    <div className="text-sm text-muted-foreground">
+                      Page {issuePage} of {totalPages} ({issueTotalCount} total)
                     </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={issuePage === 1 || loadingIssues}
+                        onClick={() => loadIssuesPage(issuePage - 1)}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={issuePage === totalPages || loadingIssues}
+                        onClick={() => loadIssuesPage(issuePage + 1)}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>
