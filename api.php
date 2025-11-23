@@ -2474,14 +2474,22 @@ switch ($action) {
             $trainerId = $conn->real_escape_string($input['trainer_id']);
             $clientId = $conn->real_escape_string($input['client_id']);
 
-            // The sender must be either trainer or client - get from auth token if available
-            // If not provided explicitly, use the authenticated user ID
-            if (isset($input['sender_id'])) {
-                $senderId = $conn->real_escape_string($input['sender_id']);
-                $recipientId = ($senderId === $trainerId) ? $clientId : $trainerId;
+            // Determine sender based on read_by_trainer/read_by_client flags
+            // If trainer sent it: read_by_trainer=true, read_by_client=false
+            // If client sent it: read_by_trainer=false, read_by_client=true
+            $readByTrainerVal = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+            $readByClientVal = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
+
+            if ($readByTrainerVal && !$readByClientVal) {
+                // Trainer sent this message
+                $senderId = $trainerId;
+                $recipientId = $clientId;
+            } else if ($readByClientVal && !$readByTrainerVal) {
+                // Client sent this message
+                $senderId = $clientId;
+                $recipientId = $trainerId;
             } else {
-                // Both trainer and client send trainer_id and client_id
-                // So we use trainer_id and client_id directly
+                // Fallback: use trainer as sender
                 $senderId = $trainerId;
                 $recipientId = $clientId;
             }
