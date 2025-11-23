@@ -2477,14 +2477,14 @@ switch ($action) {
             // Determine sender based on read_by_trainer/read_by_client flags
             // If trainer sent it: read_by_trainer=true, read_by_client=false
             // If client sent it: read_by_trainer=false, read_by_client=true
-            $readByTrainerVal = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
-            $readByClientVal = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
+            $rbt = isset($input['read_by_trainer']) ? intval($input['read_by_trainer']) : 0;
+            $rbc = isset($input['read_by_client']) ? intval($input['read_by_client']) : 0;
 
-            if ($readByTrainerVal && !$readByClientVal) {
+            if ($rbt && !$rbc) {
                 // Trainer sent this message
                 $senderId = $trainerId;
                 $recipientId = $clientId;
-            } else if ($readByClientVal && !$readByTrainerVal) {
+            } else if ($rbc && !$rbt) {
                 // Client sent this message
                 $senderId = $clientId;
                 $recipientId = $trainerId;
