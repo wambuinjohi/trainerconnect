@@ -462,9 +462,9 @@ export const AdminDashboard: React.FC = () => {
     ...rows.map(r => [r.case,r.client,r.trainer,`"${r.issue}"`,r.amount,r.status,r.submittedAt,!!r.refunded].join(','))
   ].join('\n')
 
-  const issueToDispute = (issue: any): Dispute => {
-    const clientUser = users.find((u: any) => u.user_id === issue.user_id)
-    const trainerUser = users.find((u: any) => u.user_id === issue.trainer_id)
+  const issueToDispute = (issue: any, usersList: any[]): Dispute => {
+    const clientUser = usersList.find((u: any) => u.user_id === issue.user_id)
+    const trainerUser = usersList.find((u: any) => u.user_id === issue.trainer_id)
     const statusMap: Record<string, DisputeStatus> = {
       'open': 'pending',
       'pending': 'pending',
@@ -487,7 +487,7 @@ export const AdminDashboard: React.FC = () => {
   }
 
   const transformedDisputes = useMemo(() => {
-    return issues.map(issue => issueToDispute(issue))
+    return issues.map(issue => issueToDispute(issue, users))
   }, [issues, users])
 
   const filtered = useMemo(() => {
