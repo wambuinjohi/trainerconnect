@@ -85,20 +85,25 @@ export const RefundModal: React.FC<RefundModalProps> = ({
       const b2cPaymentId = 'b2c_refund_' + Date.now()
       const referenceId = 'refund_' + Date.now()
 
-      const createB2CResult = await apiRequest('insert', {
-        table: 'b2c_payments',
-        data: {
-          id: b2cPaymentId,
-          user_id: dispute.client,
-          user_type: 'client',
-          phone_number: normalizedPhone,
-          amount: dispute.amount,
-          reference_id: referenceId,
-          status: 'pending',
-          initiated_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      })
+      try {
+        await apiRequest('insert', {
+          table: 'b2c_payments',
+          data: {
+            id: b2cPaymentId,
+            user_id: dispute.client,
+            user_type: 'client',
+            phone_number: normalizedPhone,
+            amount: dispute.amount,
+            reference_id: referenceId,
+            status: 'pending',
+            initiated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        })
+      } catch (err: any) {
+        console.error('Failed to create B2C payment record:', err)
+        throw new Error('Failed to create payment record: ' + (err?.message || 'Unknown error'))
+      }
 
       // Step 3: Initiate B2C payment (refund)
       const initiateResult = await apiRequest('b2c_payment_initiate', {
