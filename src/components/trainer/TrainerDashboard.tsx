@@ -497,6 +497,13 @@ export const TrainerDashboard: React.FC = () => {
       {showPayouts && <Payouts onClose={() => setShowPayouts(false)} />}
       {showPromote && <PromoteProfile onClose={() => setShowPromote(false)} />}
       {showReport && <TrainerReportIssue onClose={() => setShowReport(false)} />}
+      {showDisputes && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-background rounded-lg p-6">
+            <TrainerDisputes onClose={() => setShowDisputes(false)} />
+          </div>
+        </div>
+      )}
       {chatBooking && <TrainerChat booking={chatBooking} onClose={closeChat} />}
     </div>
   )
