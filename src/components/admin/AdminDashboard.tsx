@@ -667,11 +667,22 @@ export const AdminDashboard: React.FC = () => {
           setCategories(categoriesData.data)
         }
 
+        // Load issues (reported_issues) from database
+        try {
+          const issuesData = await apiService.getIssues()
+          if (issuesData?.data) {
+            setIssues(issuesData.data)
+            const openIssuesCount = issuesData.data.filter((it: any) => String(it.status || 'open').toLowerCase() !== 'resolved').length
+            setStats(prev => ({ ...prev, activeDisputes: openIssuesCount }))
+          }
+        } catch (err) {
+          console.warn('Failed to load issues', err)
+        }
+
         // Set other data to empty for now (can be extended with actual API calls)
         setPromotions([])
         setPayoutRequests([])
-        setDisputes([])
-        setIssues([])
+        setDisputes(issuesData?.data || [])
         setActivityFeed([])
       } catch (err) {
         console.warn('Failed to load admin data', err)
@@ -734,7 +745,19 @@ export const AdminDashboard: React.FC = () => {
   const viewIssue = (it: any) => setActiveIssue(it)
 
   const markIssueResolved = async (it: any) => {
-    toast({ title: 'Feature unavailable', description: 'Supabase dependency removed', variant: 'destructive' })
+    if (!it?.id) {
+      toast({ title: 'Error', description: 'Invalid issue', variant: 'destructive' })
+      return
+    }
+    try {
+      await apiService.updateIssueStatus(it.id, 'resolved')
+      setIssues(issues.map(iss => iss.id === it.id ? { ...iss, status: 'resolved' } : iss))
+      setActiveIssue(null)
+      toast({ title: 'Success', description: 'Issue marked as resolved' })
+    } catch (err: any) {
+      console.error('Mark issue resolved error:', err)
+      toast({ title: 'Error', description: err?.message || 'Failed to resolve issue', variant: 'destructive' })
+    }
   }
 
   const deleteCategory = async (id: any) => {
