@@ -29,6 +29,27 @@ export const RefundModal: React.FC<RefundModalProps> = ({
   const [phone, setPhone] = useState(clientPhone)
   const [loading, setLoading] = useState(false)
 
+  const normalizePhoneNumber = (phoneInput: string): string => {
+    let normalized = phoneInput.trim().replace(/\s+/g, '')
+
+    // Remove leading +
+    if (normalized.startsWith('+')) {
+      normalized = normalized.slice(1)
+    }
+
+    // Convert 07 to 254 (Kenya format)
+    if (normalized.startsWith('07')) {
+      normalized = '254' + normalized.slice(1)
+    }
+
+    // Add country code if not present
+    if (!normalized.startsWith('254') && normalized.startsWith('7')) {
+      normalized = '254' + normalized
+    }
+
+    return normalized
+  }
+
   const handleConfirmRefund = () => {
     if (!phone || phone.trim().length < 9) {
       toast({
