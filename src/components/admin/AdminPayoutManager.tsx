@@ -67,30 +67,40 @@ export const AdminPayoutManager: React.FC = () => {
     }
   }
 
-  const approveRequest = async (request: any) => {
+  const approveRequest = (request: any) => {
     if (!request.id) {
       toast({ title: 'Error', description: 'Invalid request ID', variant: 'destructive' })
       return
     }
 
-    setProcessingId(request.id)
-    try {
-      const data = await apiRequest('payout_request_approve', {
-        payout_request_id: request.id,
-        commission_percentage: commissionPercent
-      }, { headers: withAuth() })
+    const trainerName = request.full_name || 'Unknown'
+    const amount = request.amount ? `Ksh ${Number(request.amount).toFixed(2)}` : 'Unknown amount'
 
-      if (data?.status === 'success') {
-        toast({ title: 'Payout approved', description: `B2C payment created: ${data.data?.reference_id}` })
-        loadRequests()
-      } else {
-        toast({ title: 'Error', description: data?.message || 'Failed to approve payout', variant: 'destructive' })
-      }
-    } catch (err: any) {
-      toast({ title: 'Error', description: err?.message || 'Failed to approve payout', variant: 'destructive' })
-    } finally {
-      setProcessingId(null)
-    }
+    setConfirmModal({
+      open: true,
+      title: 'Approve Payout Request',
+      description: `Approve payout of ${amount} to ${trainerName} (after ${commissionPercent}% commission)? This will create a B2C payment.`,
+      action: async () => {
+        setProcessingId(request.id)
+        try {
+          const data = await apiRequest('payout_request_approve', {
+            payout_request_id: request.id,
+            commission_percentage: commissionPercent
+          }, { headers: withAuth() })
+
+          if (data?.status === 'success') {
+            toast({ title: 'Payout approved', description: `B2C payment created: ${data.data?.reference_id}` })
+            loadRequests()
+          } else {
+            toast({ title: 'Error', description: data?.message || 'Failed to approve payout', variant: 'destructive' })
+          }
+        } catch (err: any) {
+          toast({ title: 'Error', description: err?.message || 'Failed to approve payout', variant: 'destructive' })
+        } finally {
+          setProcessingId(null)
+        }
+      },
+    })
   }
 
   const initiateB2CPayment = async (payment: any) => {
