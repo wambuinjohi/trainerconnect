@@ -29,7 +29,7 @@ export interface FeeSettings {
 
 /**
  * Calculate fee breakdown for a booking
- * 
+ *
  * Calculation order:
  * 1. Base amount: hourly_rate × sessions
  * 2. Calculate charges on base amount:
@@ -38,9 +38,11 @@ export interface FeeSettings {
  *    - compensationFee = base × compensationFeePercent %
  * 3. Sum all charges: sum = platformChargeClient + platformChargeTrainer + compensationFee
  * 4. Apply maintenance fee: maintenanceFee = sum × maintenanceFeePercent %
- * 5. Client total = base + platformChargeClient + compensationFee + maintenanceFee
- * 6. Trainer net = base + transportFee - platformChargeTrainer - (platformChargeTrainer's share of maintenance)
- * 
+ *    (Maintenance fee is system developer revenue, NOT charged to client)
+ * 5. Client total = base + platformChargeClient + compensationFee + transportFee
+ *    (Does NOT include maintenance fee - it's internal)
+ * 6. Trainer net = base + transportFee - platformChargeTrainer - (trainer's proportional share of maintenance fee)
+ *
  * @param baseAmount - Base service amount (hourly_rate × sessions)
  * @param settings - Fee percentage settings
  * @param transportFee - Optional transport fee (not subject to charges, but included in trainer net)
