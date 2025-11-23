@@ -31,6 +31,7 @@ import { ReviewModal } from './ReviewModal'
 import { NextSessionModal } from './NextSessionModal'
 import { LocationSelector } from './LocationSelector'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
+import { UnratedSessionNotice } from './UnratedSessionNotice'
 
 // Helper functions for formatting trainer data
 function parseDisciplines(disciplines: any): string {
