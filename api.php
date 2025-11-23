@@ -389,20 +389,39 @@ switch ($action) {
             }
         }
 
-        $columns = implode("`, `", array_keys($data));
-        $escapedValues = array_map(function($value) use ($conn) {
-            if ($value === null || $value === 'null') {
-                return 'NULL';
-            }
-            $stringValue = is_array($value) || is_object($value) ? json_encode($value) : (string)$value;
-            return "'" . $conn->real_escape_string($stringValue) . "'";
-        }, array_values($data));
-        $values = implode(", ", $escapedValues);
-        $sql = "INSERT INTO `$table` (`$columns`) VALUES ($values)";
+        $columns = array_keys($data);
+        $placeholders = array_fill(0, count($columns), '?');
+        $sql = "INSERT INTO `$table` (`" . implode("`, `", $columns) . "`) VALUES (" . implode(", ", $placeholders) . ")";
 
-        if ($conn->query($sql)) {
-            respond("success", "Record inserted successfully.", ["id" => $conn->insert_id]);
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) {
+            respond("error", "Failed to prepare insert: " . $conn->error, null, 500);
+        }
+
+        $types = "";
+        $values = [];
+        foreach (array_values($data) as $value) {
+            if ($value === null || $value === 'null') {
+                $values[] = null;
+                $types .= "s";
+            } else {
+                if (is_array($value) || is_object($value)) {
+                    $values[] = json_encode($value);
+                } else {
+                    $values[] = (string)$value;
+                }
+                $types .= "s";
+            }
+        }
+
+        $stmt->bind_param($types, ...$values);
+
+        if ($stmt->execute()) {
+            $insertId = $stmt->insert_id;
+            $stmt->close();
+            respond("success", "Record inserted successfully.", ["id" => $insertId]);
         } else {
+            $stmt->close();
             respond("error", "Insert failed: " . $conn->error, null, 500);
         }
         break;
