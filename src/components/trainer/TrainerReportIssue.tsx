@@ -56,28 +56,30 @@ export const TrainerReportIssue: React.FC<{ onDone?: (ref?: string) => void }> =
   const uploadFiles = async (issueId: string): Promise<string[]> => {
     if (selectedFiles.length === 0) return []
 
-    const uploadedIds: string[] = []
-    for (const file of selectedFiles) {
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('issue_id', issueId)
+    const uploadedUrls: string[] = []
+    try {
+      const formData = new FormData()
+      selectedFiles.forEach(file => {
+        formData.append('files[]', file)
+      })
 
-        const response = await fetch('/api/upload_attachment.php', {
-          method: 'POST',
-          headers: withAuth(),
-          body: formData,
-        })
+      const response = await fetch('/api_upload.php', {
+        method: 'POST',
+        body: formData,
+      })
 
-        if (response.ok) {
-          const data = await response.json()
-          if (data.id) uploadedIds.push(data.id)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.data?.uploaded && Array.isArray(data.data.uploaded)) {
+          uploadedUrls.push(...data.data.uploaded.map((f: any) => f.url))
         }
-      } catch (err) {
-        console.error('File upload error:', err)
+      } else {
+        console.error('Upload response:', await response.text())
       }
+    } catch (err) {
+      console.error('File upload error:', err)
     }
-    return uploadedIds
+    return uploadedUrls
   }
 
   const submit = async () => {
