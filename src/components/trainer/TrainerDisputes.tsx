@@ -200,13 +200,13 @@ export const TrainerDisputes: React.FC<TrainerDisputesProps> = ({ onClose }) => 
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-foreground">{dispute.issue}</h3>
-                      <Badge className={getStatusColor(dispute.status)}>
+                    <div className="flex items-start gap-2 mb-2 flex-wrap">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base">{dispute.issue}</h3>
+                      <Badge className={`${getStatusColor(dispute.status)} text-xs`}>
                         {dispute.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">{dispute.description}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground mb-2 break-words">{dispute.description}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
                       <div>
                         <span className="text-muted-foreground">Client ID: </span>
