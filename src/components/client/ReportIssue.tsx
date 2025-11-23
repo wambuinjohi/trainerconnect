@@ -20,7 +20,7 @@ export const ReportIssue: React.FC<{ trainerId?: any, onDone?: (ref?: string) =>
     }
     setLoading(true)
     try {
-      const payload: any = { user_id: user.id, trainer_id: trainerId || null, description, status: 'open' }
+      const payload: any = { user_id: user.id, trainer_id: trainerId, description, status: 'open' }
       const data = await apiRequest('issue_insert', payload, { headers: withAuth() })
       const ref = data?.id || data?.reference || ('ISSUE-' + Math.random().toString(36).slice(2, 9).toUpperCase())
       toast({ title: 'Reported', description: `Issue reported: ${ref}` })
