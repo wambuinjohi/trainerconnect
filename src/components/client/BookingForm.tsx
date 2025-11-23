@@ -250,6 +250,7 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         <div>
           <Label>Session Time</Label>
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          {availabilityError && <div className="text-xs text-red-600 dark:text-red-400 mt-1">{availabilityError}</div>}
         </div>
         <div>
           <Label>Number of Sessions</Label>
