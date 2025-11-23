@@ -92,7 +92,9 @@ const buildAnalyticsPoints = (rows: any[]): AnalyticsPoint[] => {
     if (!date) return
     const key = date.toISOString().slice(0, 10)
     const summary = buckets.get(key) || { revenue: 0, bookings: 0 }
-    summary.revenue += Number(row?.total_amount) || 0
+    // Support multiple field names for amount
+    const amount = Number(row?.total_amount || row?.amount || row?.price || 0)
+    summary.revenue += amount
     summary.bookings += 1
     buckets.set(key, summary)
   })
