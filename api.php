@@ -4018,54 +4018,21 @@ switch ($action) {
 
     // GET ANNOUNCEMENTS FOR USER
     case 'announcements_get':
-        if (!isset($input['user_id']) || !isset($input['user_type'])) {
-            respond("error", "Missing required fields: user_id, user_type.", null, 400);
+        if (!isset($input['user_type'])) {
+            respond("error", "Missing required field: user_type.", null, 400);
         }
 
-        $userId = $conn->real_escape_string($input['user_id']);
         $userType = $conn->real_escape_string($input['user_type']);
-
-        $createTableSql = "
-            CREATE TABLE IF NOT EXISTS `announcements` (
-                `id` VARCHAR(36) PRIMARY KEY,
-                `title` VARCHAR(255) NOT NULL,
-                `message` LONGTEXT NOT NULL,
-                `target_user_type` VARCHAR(50) NOT NULL COMMENT 'all, clients, trainers, admins',
-                `admin_id` VARCHAR(36),
-                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX `idx_target` (`target_user_type`),
-                INDEX `idx_created_at` (`created_at` DESC)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-        $conn->query($createTableSql);
-
-        $createReadTableSql = "
-            CREATE TABLE IF NOT EXISTS `announcement_reads` (
-                `id` VARCHAR(36) PRIMARY KEY,
-                `announcement_id` VARCHAR(36) NOT NULL,
-                `user_id` VARCHAR(36) NOT NULL,
-                `read_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE KEY `unique_read` (`announcement_id`, `user_id`),
-                FOREIGN KEY (`announcement_id`) REFERENCES `announcements`(`id`) ON DELETE CASCADE,
-                INDEX `idx_user_id` (`user_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        ";
-        $conn->query($createReadTableSql);
-
         $limit = isset($input['limit']) ? intval($input['limit']) : 50;
         $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+        $now = date('Y-m-d H:i:s');
 
         $sql = "
-            SELECT a.*,
-                   CASE
-                       WHEN ar.id IS NOT NULL THEN true
-                       ELSE false
-                   END as is_read
-            FROM announcements a
-            LEFT JOIN announcement_reads ar ON a.id = ar.announcement_id AND ar.user_id = ?
-            WHERE a.target_user_type = 'all'
-               OR a.target_user_type = ?
+            SELECT a.* FROM announcements a
+            WHERE a.is_active = 1
+            AND (a.target_audience = 'all' OR a.target_audience = ?)
+            AND (a.starts_at IS NULL OR a.starts_at <= ?)
+            AND (a.ends_at IS NULL OR a.ends_at >= ?)
             ORDER BY a.created_at DESC
             LIMIT ? OFFSET ?
         ";
@@ -4075,7 +4042,7 @@ switch ($action) {
             respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
         }
 
-        $stmt->bind_param("ssii", $userId, $userType, $limit, $offset);
+        $stmt->bind_param("sssii", $userType, $now, $now, $limit, $offset);
         if (!$stmt->execute()) {
             $stmt->close();
             respond("error", "Failed to fetch announcements: " . $conn->error, null, 500);
