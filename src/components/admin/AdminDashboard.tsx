@@ -9,6 +9,8 @@ import ThemeToggleAdmin from './ThemeToggleAdmin'
 import { RefundModal } from './RefundModal'
 import { AdminPayoutManager } from './AdminPayoutManager'
 import { EmojiPickerComponent } from './EmojiPickerComponent'
+import { CategoryForm } from './CategoryForm'
+import { CategoryList } from './CategoryList'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
