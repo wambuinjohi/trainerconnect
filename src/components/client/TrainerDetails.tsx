@@ -184,7 +184,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
 
               {showBooking && (
                 <div className="mt-2 max-h-[60vh] overflow-auto">
-                  <BookingForm trainer={trainer} onDone={() => { setShowBooking(false); toast({ title: 'Booked', description: 'Booking request sent.' }); onClose(); }} />
+                  <BookingForm trainer={trainer} trainerProfile={profile} onDone={() => { setShowBooking(false); toast({ title: 'Booked', description: 'Booking request sent.' }); onClose(); }} />
                 </div>
               )}
 

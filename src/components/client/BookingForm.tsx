@@ -9,7 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { calculateFeeBreakdown } from '@/lib/fee-calculations'
 import * as apiService from '@/lib/api-service'
 
-export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ trainer, onDone }) => {
+export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?: () => void }> = ({ trainer, trainerProfile, onDone }) => {
   const { user } = useAuth()
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
@@ -20,9 +20,47 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
   const [appliedDiscount, setAppliedDiscount] = useState(0)
   const [payMethod, setPayMethod] = useState<'mpesa' | 'mock'>('mpesa')
   const [mpesaPhone, setMpesaPhone] = useState('')
+  const [availabilityError, setAvailabilityError] = useState<string>('')
 
   const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
   const settings = loadSettings()
+
+  // Validate availability when date or time changes
+  useEffect(() => {
+    setAvailabilityError('')
+    if (!date || !time) return
+
+    const availability = trainerProfile?.availability
+    if (!availability) return
+
+    const selectedDate = new Date(date)
+    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'lowercase' })
+    const slots = availability[dayName]
+
+    if (!slots || !Array.isArray(slots) || slots.length === 0) {
+      setAvailabilityError(`Trainer is not available on ${dayName}s`)
+      return
+    }
+
+    const selectedHour = parseInt(time.split(':')[0])
+    const selectedMinute = parseInt(time.split(':')[1])
+    const selectedTimeInMinutes = selectedHour * 60 + selectedMinute
+
+    const isAvailable = slots.some((slot: string) => {
+      const [start, end] = slot.split('-')
+      const [startHour, startMin] = start.split(':').map(Number)
+      const [endHour, endMin] = end.split(':').map(Number)
+      const startInMinutes = startHour * 60 + startMin
+      const endInMinutes = endHour * 60 + endMin
+
+      return selectedTimeInMinutes >= startInMinutes && selectedTimeInMinutes < endInMinutes
+    })
+
+    if (!isAvailable) {
+      const availableTimes = slots.join(', ')
+      setAvailabilityError(`Time not available. Available slots: ${availableTimes}`)
+    }
+  }, [date, time, trainerProfile?.availability])
 
   // Get fee breakdown using new calculation utility
   const baseAmount = computeBaseAmount() - appliedDiscount
@@ -37,6 +75,10 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
     if (!user) return
     if (!date || !time) {
       toast({ title: 'Missing info', description: 'Please select date and time', variant: 'destructive' })
+      return
+    }
+    if (availabilityError) {
+      toast({ title: 'Invalid time', description: availabilityError, variant: 'destructive' })
       return
     }
     setLoading(true)
@@ -208,6 +250,7 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
         <div>
           <Label>Session Time</Label>
           <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+          {availabilityError && <div className="text-xs text-red-600 dark:text-red-400 mt-1">{availabilityError}</div>}
         </div>
         <div>
           <Label>Number of Sessions</Label>
@@ -255,7 +298,7 @@ export const BookingForm: React.FC<{ trainer: any, onDone?: () => void }> = ({ t
 
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onDone?.()}>Cancel</Button>
-          <Button onClick={submit} disabled={loading} className="bg-gradient-primary text-white">{loading ? 'Processing...' : 'Confirm & Pay'}</Button>
+          <Button onClick={submit} disabled={loading || !!availabilityError} className="bg-gradient-primary text-white" title={availabilityError ? 'Please select a valid date and time' : ''}>{loading ? 'Processing...' : 'Confirm & Pay'}</Button>
         </div>
       </div>
     </div>

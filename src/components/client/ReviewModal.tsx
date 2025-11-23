@@ -47,7 +47,9 @@ export const ReviewModal: React.FC<{ booking: any, onClose?: () => void, onSubmi
         comment: comment || null,
         created_at: new Date().toISOString(),
       }
-      await apiRequest('review_insert', payload, { headers: withAuth() })
+      console.log('Submitting review with payload:', payload)
+      const response = await apiRequest('review_insert', payload, { headers: withAuth() })
+      console.log('Review submission response:', response)
 
       try {
         // update aggregate rating for trainer if possible
