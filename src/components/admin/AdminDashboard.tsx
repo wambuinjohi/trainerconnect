@@ -1138,7 +1138,7 @@ export const AdminDashboard: React.FC = () => {
                 <Button variant="outline" onClick={async ()=>{
                   if(activeDispute){
                     try {
-                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, { where: `id = '${activeDispute.id}'` })
+                      await apiService.updateData('reported_issues', { resolution: activeDispute.notes }, `id = '${activeDispute.id}'`)
                       setIssues(iss => iss.map(i => i.id === activeDispute.id ? { ...i, resolution: activeDispute.notes } : i))
                       setActiveDispute(null)
                       toast({ title: 'Success', description: 'Notes saved' })
