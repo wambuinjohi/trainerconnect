@@ -41,16 +41,16 @@ export const AnnouncementBanner: React.FC<AnnouncementBannerProps> = ({
     if (!userId || !userType) return
     setLoading(true)
     try {
-      const response = await apiRequest('announcements_get', {
+      const response = await apiRequest<{ announcements: Announcement[]; count: number }>('announcements_get', {
         user_id: userId,
         user_type: userType,
         limit: 10,
         offset: 0
-      }, { headers: withAuth() })
+      })
 
-      if (response.data?.announcements) {
-        setAnnouncements(response.data.announcements as Announcement[])
-        onAnnouncementsLoaded?.(response.data.announcements.filter((a: any) => !a.is_read).length)
+      if ('announcements' in response) {
+        setAnnouncements(response.announcements)
+        onAnnouncementsLoaded?.(response.announcements.filter((a: any) => !a.is_read).length)
       }
     } catch (err) {
       console.warn('Failed to load announcements', err)
@@ -65,7 +65,7 @@ export const AnnouncementBanner: React.FC<AnnouncementBannerProps> = ({
       await apiRequest('announcement_mark_read', {
         announcement_id: announcementId,
         user_id: userId
-      }, { headers: withAuth() })
+      })
 
       setAnnouncements(prev =>
         prev.map(a => a.id === announcementId ? { ...a, is_read: true } : a)
