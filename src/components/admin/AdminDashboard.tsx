@@ -11,6 +11,7 @@ import { AdminPayoutManager } from './AdminPayoutManager'
 import { EmojiPickerComponent } from './EmojiPickerComponent'
 import { CategoryForm } from './CategoryForm'
 import { CategoryList } from './CategoryList'
+import { ContactsList } from './ContactsList'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -2060,6 +2061,15 @@ export const AdminDashboard: React.FC = () => {
                 <TabsContent value="users">{renderUsers()}</TabsContent>
                 <TabsContent value="disputes">{renderDisputes()}</TabsContent>
                 <TabsContent value="issues">{renderIssues()}</TabsContent>
+                <TabsContent value="contacts">
+                  <div className="space-y-6">
+                    <div>
+                      <h1 className="text-3xl font-bold text-foreground">Contacts Management</h1>
+                      <p className="text-sm text-muted-foreground mt-2">Manage contacts - capture name, phone, and type (Client or Trainer)</p>
+                    </div>
+                    <ContactsList onRefresh={() => setActiveTab('contacts')} />
+                  </div>
+                </TabsContent>
                 <TabsContent value="analytics">{renderAnalytics()}</TabsContent>
                 <TabsContent value="promotions">{renderPromotions()}</TabsContent>
                 <TabsContent value="payouts"><AdminPayoutManager /></TabsContent>

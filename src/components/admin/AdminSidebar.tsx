@@ -19,6 +19,7 @@ const ITEMS: MenuItem[] = [
   { key: 'approvals', label: 'Approvals', icon: <UserCheck className="h-4 w-4" /> },
   { key: 'disputes', label: 'Disputes', icon: <AlertCircle className="h-4 w-4" /> },
   { key: 'issues', label: 'Issues', icon: <MessageSquare className="h-4 w-4" /> },
+  { key: 'contacts', label: 'Contacts', icon: <MessageSquare className="h-4 w-4" /> },
   { key: 'analytics', label: 'Analytics', icon: <TrendingUp className="h-4 w-4" /> },
   { key: 'promotions', label: 'Promotions', icon: <MessageSquare className="h-4 w-4" /> },
   { key: 'payouts', label: 'Payouts', icon: <DollarSign className="h-4 w-4" /> },

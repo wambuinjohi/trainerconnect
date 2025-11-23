@@ -42,14 +42,19 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
   let json: ApiResponse<T> | null = null
   try {
     const text = await res.text()
-    json = text ? JSON.parse(text) : null
+    if (!text) {
+      throw new Error('Empty response body')
+    }
+    json = JSON.parse(text)
   } catch (e) {
-    console.error('Failed to parse API response:', e, res.status, res.statusText)
-    throw new Error(`Invalid API response from ${apiUrl}: ${res.statusText}`)
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error'
+    console.error('Failed to parse API response:', errorMsg, 'Status:', res.status, 'StatusText:', res.statusText)
+    throw new Error(`Invalid API response from ${apiUrl}: ${errorMsg}`)
   }
 
   if (!json) throw new Error('Empty API response')
-  if (json.status === 'error' || !res.ok) throw new Error(json.message || `API error: ${res.status}`)
+  if (json.status === 'error') throw new Error(json.message || `API error: ${res.status}`)
+  if (!res.ok && json.status !== 'success') throw new Error(json.message || `API error: ${res.status}`)
   return (json.data as T) ?? (json as unknown as T)
 }
 
