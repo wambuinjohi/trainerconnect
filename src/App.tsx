@@ -9,7 +9,6 @@ import { ApiConfigProvider } from "@/contexts/ApiConfigContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AutoSetupWrapper } from "@/components/AutoSetupWrapper";
 import { ConnectionStatusDialog } from "@/components/ConnectionStatusDialog";
-import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { ClientDashboard } from "@/components/client/ClientDashboard";
 import { TrainerDashboard } from "@/components/trainer/TrainerDashboard";
