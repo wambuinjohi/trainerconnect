@@ -1,8 +1,17 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAutoSetup } from '@/hooks/useAutoSetup';
 import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+
+// Helper function to detect if running on Capacitor (mobile app)
+function isCapacitorApp(): boolean {
+  try {
+    return (window as any).Capacitor !== undefined;
+  } catch {
+    return false;
+  }
+}
 
 interface AutoSetupWrapperProps {
   children: React.ReactNode;
@@ -10,6 +19,24 @@ interface AutoSetupWrapperProps {
 
 export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
   const { isSetupComplete, isSettingUp, setupError } = useAutoSetup();
+  const [forceShowApp, setForceShowApp] = useState(false);
+
+  // Force showing the app after 15 seconds to prevent blank screen on mobile
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isSetupComplete) {
+        console.warn('Setup took too long, forcing app to load');
+        setForceShowApp(true);
+      }
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [isSetupComplete]);
+
+  // On mobile (Capacitor), skip all setup UI and render the app immediately
+  if (isCapacitorApp()) {
+    return <>{children}</>;
+  }
 
   // Show loading screen while setting up
   if (isSettingUp) {
@@ -40,8 +67,8 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
     );
   }
 
-  // Show error screen if setup failed
-  if (setupError && isSetupComplete === false) {
+  // Show error screen if setup failed and we're not forcing the app to load
+  if (setupError && isSetupComplete === false && !forceShowApp) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-destructive shadow-lg">
@@ -59,7 +86,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
               <p className="text-sm text-destructive font-medium mb-2">Error Details:</p>
               <p className="text-sm text-destructive">{setupError}</p>
             </div>
-            
+
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <p className="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
                 Common causes:
@@ -90,7 +117,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
               <p className="text-sm text-muted-foreground">
                 You can manually set up the database by visiting:
               </p>
-              <Button 
+              <Button
                 onClick={() => window.location.href = '/admin-setup'}
                 className="w-full"
                 variant="outline"
@@ -98,7 +125,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
                 Go to Manual Setup
               </Button>
             </div>
-            <Button 
+            <Button
               onClick={() => {
                 localStorage.removeItem('db_setup_complete');
                 window.location.reload();
@@ -107,6 +134,13 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
             >
               Try Again
             </Button>
+            <Button
+              onClick={() => setForceShowApp(true)}
+              className="w-full"
+              variant="secondary"
+            >
+              Continue Anyway
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -114,7 +148,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
   }
 
   // Show success message briefly, then render app
-  if (isSetupComplete && !localStorage.getItem('setup_success_shown')) {
+  if (isSetupComplete && !localStorage.getItem('setup_success_shown') && !forceShowApp) {
     localStorage.setItem('setup_success_shown', 'true');
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
@@ -140,7 +174,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
                 <li>• Password: Test1234</li>
               </ul>
             </div>
-            <Button 
+            <Button
               onClick={() => {
                 localStorage.setItem('setup_success_shown', 'true');
                 window.location.reload();
@@ -155,6 +189,31 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
     );
   }
 
-  // Setup complete, render the app
-  return <>{children}</>;
+  // Setup complete or forced to show app, render the app
+  if (isSetupComplete || forceShowApp) {
+    return <>{children}</>;
+  }
+
+  // Default: show loading screen while waiting for setup to complete
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-border shadow-lg">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <CardTitle>Loading App</CardTitle>
+          </div>
+          <CardDescription>
+            Initializing application...
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+            Please wait
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
