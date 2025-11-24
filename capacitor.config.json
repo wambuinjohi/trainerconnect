@@ -2,7 +2,9 @@
   "appId": "co.skatryk.trainer",
   "appName": "Skatryk Trainer",
   "webDir": "dist",
-  "bundledWebRuntime": true,
+  "server": {
+    "androidScheme": "https"
+  },
   "plugins": {
     "Geolocation": {
       "permissions": [
