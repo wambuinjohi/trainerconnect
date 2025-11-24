@@ -73,7 +73,6 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Sonner />
-          <PWAInstallPrompt />
           <ApiConfigProvider>
             <AuthProvider>
               <AutoSetupWrapper>
