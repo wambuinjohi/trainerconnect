@@ -1,10 +1,10 @@
 {
-  "applicationId": "com.trainercoachconnect.app",
-  "name": "TrainerCoachConnect",
-  "shortName": "Trainer",
-  "launcherName": "Trainer",
-  "host": "trainercoachconnect.com",
-  "manifestUrl": "https://trainercoachconnect.com/manifest.webmanifest",
+  "applicationId": "co.skatryk.trainer",
+  "name": "Skatryk Trainer",
+  "shortName": "Skatryk",
+  "launcherName": "Skatryk",
+  "host": "trainer.skatryk.co.ke",
+  "manifestUrl": "https://trainer.skatryk.co.ke/manifest.webmanifest",
   "display": "standalone",
   "orientation": "portrait"
 }
