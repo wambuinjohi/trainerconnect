@@ -9,16 +9,25 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 
-// Register a basic service worker for PWA/offline support
+// Register a service worker for PWA/offline support (web only)
+// Only register on web with HTTPS or localhost
+// Skip registration on native platforms (Capacitor Android/iOS)
+// where file:// protocol doesn't support service workers
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then(() => {
-        // Service worker registered successfully
-      })
-      .catch((err) => {
-        console.error("ServiceWorker registration failed: ", err);
-      });
+    const shouldRegisterSW =
+      (window.location.protocol === "https:" || window.location.hostname === "localhost") &&
+      !window.location.protocol.startsWith("file");
+
+    if (shouldRegisterSW) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then(() => {
+          // Service worker registered successfully
+        })
+        .catch((err) => {
+          console.error("ServiceWorker registration failed: ", err);
+        });
+    }
   });
 }
