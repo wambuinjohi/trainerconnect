@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '@/lib/api';
 
+// Helper function to detect if running on Capacitor (mobile app)
+function isCapacitorApp(): boolean {
+  try {
+    return (window as any).Capacitor !== undefined;
+  } catch {
+    return false;
+  }
+}
+
 export function useAutoSetup() {
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
   const [isSettingUp, setIsSettingUp] = useState(false);
@@ -8,6 +17,14 @@ export function useAutoSetup() {
 
   useEffect(() => {
     const checkAndSetup = async () => {
+      // On mobile (Capacitor), skip auto-setup and allow app to load
+      // The app will work with whatever authentication state the user has
+      if (isCapacitorApp()) {
+        console.log('Running on Capacitor (mobile app), skipping auto-setup');
+        setIsSetupComplete(true);
+        return;
+      }
+
       // Check if setup was already done in this browser session
       const setupFlag = localStorage.getItem('db_setup_complete');
       if (setupFlag === 'true') {
