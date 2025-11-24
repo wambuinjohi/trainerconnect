@@ -1,7 +1,11 @@
 const DEFAULT_API_URL = import.meta.env.VITE_API_URL || 'https://trainer.skatryk.co.ke/api.php'
+const FALLBACK_API_URL = '/api.php'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
+// Fallback to /api.php is automatically used if primary endpoint fails
+
+let lastSuccessfulApiUrl: string | null = null
 
 export function getApiUrl(): string {
   if (typeof window !== 'undefined') {
@@ -13,7 +17,12 @@ export function getApiUrl(): string {
 export function setApiUrl(url: string): void {
   if (typeof window !== 'undefined') {
     localStorage.setItem('api_url', url)
+    lastSuccessfulApiUrl = null // Reset on manual change
   }
+}
+
+export function getLastSuccessfulApiUrl(): string | null {
+  return lastSuccessfulApiUrl
 }
 
 export const API_URL = DEFAULT_API_URL
@@ -31,7 +40,44 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     ...withAuth(),
     ...(init.headers as Record<string, string> || {})
   }
-  const apiUrl = getApiUrl()
+
+  // Try primary API URL first
+  let apiUrl = getApiUrl()
+
+  // If we have a previously successful URL in this session, prefer it
+  if (lastSuccessfulApiUrl) {
+    apiUrl = lastSuccessfulApiUrl
+  }
+
+  try {
+    const response = await apiRequest_Internal<T>(apiUrl, action, payload, headers, init)
+    lastSuccessfulApiUrl = apiUrl
+    return response
+  } catch (primaryError) {
+    // If primary URL fails and we haven't already tried the fallback
+    if (apiUrl !== FALLBACK_API_URL) {
+      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${FALLBACK_API_URL})`)
+      try {
+        const response = await apiRequest_Internal<T>(FALLBACK_API_URL, action, payload, headers, init)
+        lastSuccessfulApiUrl = FALLBACK_API_URL
+        console.log(`Fallback API endpoint successful (${FALLBACK_API_URL})`)
+        return response
+      } catch (fallbackError) {
+        // Both failed, throw the original error
+        throw primaryError
+      }
+    }
+    throw primaryError
+  }
+}
+
+async function apiRequest_Internal<T = any>(
+  apiUrl: string,
+  action: string,
+  payload: Record<string, any>,
+  headers: Record<string, string>,
+  init: RequestInit
+): Promise<T> {
   const res = await fetch(apiUrl, {
     method: 'POST',
     headers,
