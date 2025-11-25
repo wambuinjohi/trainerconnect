@@ -39,18 +39,21 @@ if (!rootElement) {
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     const shouldRegisterSW =
-      (window.location.protocol === "https:" || window.location.hostname === "localhost") &&
+      (window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
       !window.location.protocol.startsWith("file");
 
     if (shouldRegisterSW) {
       navigator.serviceWorker
         .register("/sw.js")
-        .then(() => {
-          // Service worker registered successfully
+        .then((registration) => {
+          console.log("[SW] Service worker registered successfully", registration);
         })
         .catch((err) => {
-          console.error("ServiceWorker registration failed: ", err);
+          console.error("[SW] ServiceWorker registration failed: ", err);
+          // Don't fail the app if SW fails to register
         });
+    } else {
+      console.log("[SW] Skipping service worker registration (protocol or hostname not supported)");
     }
   });
 }
