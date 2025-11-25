@@ -34,27 +34,15 @@ export default function AdminSetup() {
   const runSeeding = async () => {
     setLoading(true);
     try {
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'seed_all_users' }),
+      const result = await apiRequest('seed_all_users');
+      setSeedingDone(true);
+      addMessage('success', result.message || 'Seeding completed');
+      const seedCount = result.data?.seeded || 0;
+      const skipCount = result.data?.skipped || 0;
+      toast({
+        title: 'Seeding Complete',
+        description: `Created: ${seedCount}, Skipped: ${skipCount}`
       });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        setSeedingDone(true);
-        addMessage('success', result.message);
-        const seedCount = result.data?.seeded || 0;
-        const skipCount = result.data?.skipped || 0;
-        toast({
-          title: 'Seeding Complete',
-          description: `Created: ${seedCount}, Skipped: ${skipCount}`
-        });
-      } else {
-        addMessage('error', result.message);
-        toast({ title: 'Seeding Failed', description: result.message, variant: 'destructive' });
-      }
     } catch (error: any) {
       const msg = error.message || 'Seeding failed';
       addMessage('error', msg);
