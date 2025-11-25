@@ -120,12 +120,18 @@ export function useAutoSetup() {
         console.log('Migration result:', migrateResult);
 
         // Step 2: Run seeding (most important step)
+        console.log('[useAutoSetup] Running seeding...');
+        const seedController = new AbortController();
+        const seedTimeoutId = setTimeout(() => seedController.abort(), 10000);
+
         const seedResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'seed_all_users' }),
-          signal: AbortSignal.timeout(10000), // 10 second timeout
+          signal: seedController.signal,
         });
+
+        clearTimeout(seedTimeoutId);
 
         const clonedSeedResponse = seedResponse.clone();
         const seedText = await clonedSeedResponse.text();
