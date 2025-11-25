@@ -154,9 +154,10 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // Show success message briefly, then render app
   if (isSetupComplete && !localStorage.getItem('setup_success_shown') && !forceShowApp) {
+    console.log('Showing setup success screen');
     localStorage.setItem('setup_success_shown', 'true');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-border shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
