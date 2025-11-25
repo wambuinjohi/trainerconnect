@@ -32,21 +32,9 @@ const PasswordReset: React.FC = () => {
         throw new Error('Please enter your email address')
       }
 
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'request_password_reset',
-          email: email.trim().toLowerCase(),
-        }),
+      const result = await apiRequest('request_password_reset', {
+        email: email.trim().toLowerCase(),
       })
-
-      const result = await response.json()
-
-      if (result.status === 'error') {
-        throw new Error(result.message || 'Failed to process password reset request')
-      }
 
       toast({
         title: 'Check your email',
