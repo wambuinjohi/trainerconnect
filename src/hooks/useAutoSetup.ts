@@ -87,16 +87,23 @@ export function useAutoSetup() {
       }
 
       // Database needs setup - run migration and seeding
+      console.log('[useAutoSetup] Starting database setup...');
       setIsSettingUp(true);
 
       try {
         // Step 1: Run migration (may succeed even if tables exist)
+        console.log('[useAutoSetup] Running migration...');
+        const migrationController = new AbortController();
+        const migrationTimeoutId = setTimeout(() => migrationController.abort(), 10000);
+
         const migrateResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'migrate' }),
-          signal: AbortSignal.timeout(10000), // 10 second timeout
+          signal: migrationController.signal,
         });
+
+        clearTimeout(migrationTimeoutId);
 
         const clonedMigrateResponse = migrateResponse.clone();
         const migrateText = await clonedMigrateResponse.text();
