@@ -36,10 +36,11 @@ const AppContent = () => {
   const { user, userType, loading } = useAuth();
 
   useEffect(() => {
-    // You can add any custom logic for auto-login or token check here
-  }, []);
+    console.log("[AppContent] Auth state updated:", { user, userType, loading });
+  }, [user, userType, loading]);
 
   if (loading) {
+    console.log("[AppContent] Rendering loading state");
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -51,10 +52,12 @@ const AppContent = () => {
   }
 
   if (!user) {
+    console.log("[AppContent] No user authenticated, rendering Home");
     // Show public Home page when not authenticated
     return <Home />;
   }
 
+  console.log("[AppContent] User authenticated as:", userType);
   // Route based on user type
   switch (userType) {
     case "client":
