@@ -73,8 +73,9 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // Show error screen if setup failed and we're not forcing the app to load
   if (setupError && isSetupComplete === false && !forceShowApp) {
+    console.error('Showing setup error screen:', setupError);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-destructive shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
