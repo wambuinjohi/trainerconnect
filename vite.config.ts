@@ -234,11 +234,9 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
-    exclude: [],
   },
   build: {
     rollupOptions: {
@@ -246,7 +244,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: (id) => {
           // Keep React and React-DOM in main bundle
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return undefined; // Keep in main bundle
+            return undefined;
           }
           // Group Radix UI components
           if (id.includes('@radix-ui')) {
