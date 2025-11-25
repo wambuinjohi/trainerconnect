@@ -11,6 +11,7 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
 )
 
 const Header: React.FC = () => {
+  console.log('[Header] Rendering header')
   const [open, setOpen] = React.useState(false)
 
   return (
