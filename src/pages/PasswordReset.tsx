@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import Header from '@/components/Header'
+import { apiRequest } from '@/lib/api'
 
 type ResetStep = 'email' | 'reset' | 'success'
 
