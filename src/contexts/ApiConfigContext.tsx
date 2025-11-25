@@ -12,7 +12,7 @@ interface ApiConfigContextType {
 
 const ApiConfigContext = createContext<ApiConfigContextType | undefined>(undefined);
 
-const DEFAULT_API_URL = 'https://trainer.skatryk.co.ke/api.php';
+const DEFAULT_API_URL = '/api.php';
 
 export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
   const [apiUrl, setApiUrlState] = useState<string>(DEFAULT_API_URL);
