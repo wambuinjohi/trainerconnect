@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
 
 export default function ResetPasswords() {
