@@ -17,10 +17,12 @@ export function useAutoSetup() {
 
   useEffect(() => {
     const checkAndSetup = async () => {
+      console.log('[useAutoSetup] Starting setup check...');
+
       // On mobile (Capacitor), skip auto-setup and allow app to load
       // The app will work with whatever authentication state the user has
       if (isCapacitorApp()) {
-        console.log('Running on Capacitor (mobile app), skipping auto-setup');
+        console.log('[useAutoSetup] Running on Capacitor (mobile app), skipping auto-setup');
         setIsSetupComplete(true);
         return;
       }
@@ -28,9 +30,12 @@ export function useAutoSetup() {
       // Check if setup was already done in this browser session
       const setupFlag = localStorage.getItem('db_setup_complete');
       if (setupFlag === 'true') {
+        console.log('[useAutoSetup] Setup already marked complete in localStorage');
         setIsSetupComplete(true);
         return;
       }
+
+      console.log('[useAutoSetup] Checking if database is set up...');
 
       // Check if database is already set up by trying to fetch users
       try {
