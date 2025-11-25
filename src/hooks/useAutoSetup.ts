@@ -174,9 +174,11 @@ export function useAutoSetup() {
         setIsSetupComplete(false);
       } finally {
         setIsSettingUp(false);
+        console.log('[useAutoSetup] Setup process complete');
       }
     };
 
+    console.log('[useAutoSetup] useEffect hook running');
     checkAndSetup();
   }, []);
 
