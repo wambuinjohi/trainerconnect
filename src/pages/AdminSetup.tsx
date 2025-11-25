@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 
 export default function AdminSetup() {
   const [loading, setLoading] = useState(false);
