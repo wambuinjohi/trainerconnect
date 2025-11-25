@@ -72,12 +72,18 @@ export function useAutoSetup() {
         }
       } catch (error: any) {
         // If it's a network error, skip auto-setup and allow app to load
+        console.log('[useAutoSetup] Error checking database:', error?.message || error);
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-          console.warn('API not reachable, skipping auto-setup. App will load in limited mode.');
+          console.warn('[useAutoSetup] API not reachable, skipping auto-setup. App will load in limited mode.');
           setIsSetupComplete(true); // Allow app to load
           return;
         }
-        console.log('Database not set up yet, will run auto-setup', error);
+        if (error.name === 'AbortError') {
+          console.warn('[useAutoSetup] API connection timeout (5s), allowing app to load');
+          setIsSetupComplete(true); // Allow app to load
+          return;
+        }
+        console.log('[useAutoSetup] Database not set up yet, will run auto-setup');
       }
 
       // Database needs setup - run migration and seeding
