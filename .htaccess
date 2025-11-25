@@ -1,12 +1,29 @@
+# Enable PHP execution
+<IfModule mod_php.c>
+  <FilesMatch "\\.php$">
+    SetHandler application/x-httpd-php
+  </FilesMatch>
+</IfModule>
+
+# Alternative PHP handler (if mod_php is not available)
+<IfModule mod_fcgid.c>
+  <FilesMatch "\\.php$">
+    SetHandler fcgid-script
+  </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  
+
   # Exclude real files and directories from rewriting
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-l
-  
+
+  # Exclude api.php and any PHP files from rewriting
+  RewriteCond %{REQUEST_FILENAME} !\.php$
+
   # Rewrite all other requests to index.html
   RewriteRule ^ index.html [QSA,L]
   
