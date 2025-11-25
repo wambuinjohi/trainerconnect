@@ -109,6 +109,118 @@ function adminApiPlugin() {
 }
 
 // Example simplified payments plugin (M-Pesa only, no Supabase)
+// Development API mock plugin
+function devApiPlugin() {
+  return {
+    name: "dev-api",
+    configureServer(server: any) {
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.method !== "POST") return next();
+        const url = req.url || "";
+        if (!url.startsWith("/api.php")) return next();
+
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const raw = Buffer.concat(chunks).toString() || "{}";
+          const body = JSON.parse(raw);
+          const action = body.action || "";
+
+          res.setHeader("Content-Type", "application/json");
+
+          // Mock responses for development
+          switch (action) {
+            case "get_users":
+              res.end(JSON.stringify({
+                status: "success",
+                data: []
+              }));
+              return;
+
+            case "migrate":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Migration completed"
+              }));
+              return;
+
+            case "seed_all_users":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Users seeded successfully",
+                data: []
+              }));
+              return;
+
+            case "login":
+              const email = body.email || "";
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Login successful",
+                data: {
+                  user: {
+                    id: "dev-user-" + email.substring(0, 3),
+                    email: email
+                  },
+                  profile: {
+                    user_type: "client"
+                  },
+                  session: {
+                    access_token: "dev-token-" + Math.random().toString(36).substring(7)
+                  }
+                }
+              }));
+              return;
+
+            case "signup":
+              const signupEmail = body.email || "";
+              const userType = body.user_type || "client";
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Signup successful",
+                data: {
+                  user: {
+                    id: "dev-user-" + signupEmail.substring(0, 3),
+                    email: signupEmail
+                  },
+                  profile: {
+                    user_type: userType
+                  },
+                  session: {
+                    access_token: "dev-token-" + Math.random().toString(36).substring(7)
+                  }
+                }
+              }));
+              return;
+
+            case "get_categories":
+              res.end(JSON.stringify({
+                status: "success",
+                data: [
+                  { id: 1, name: "Strength Training", description: "Build muscle and increase strength" },
+                  { id: 2, name: "Cardio", description: "Improve cardiovascular fitness" },
+                  { id: 3, name: "Flexibility", description: "Enhance flexibility and mobility" }
+                ]
+              }));
+              return;
+
+            default:
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Action processed",
+                data: []
+              }));
+              return;
+          }
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+    },
+  };
+}
+
 function paymentsApiPlugin() {
   return {
     name: "payments-api",
@@ -226,6 +338,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mode === 'development' && devApiPlugin(),
     mode === 'development' && adminApiPlugin(),
     mode === 'development' && paymentsApiPlugin(),
     mode === 'development' && componentTagger(),
@@ -234,11 +347,9 @@ export default defineConfig(({ mode }) => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ['react', 'react-dom'],
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'react/jsx-runtime'],
-    exclude: [],
   },
   build: {
     rollupOptions: {
@@ -246,7 +357,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: (id) => {
           // Keep React and React-DOM in main bundle
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return undefined; // Keep in main bundle
+            return undefined;
           }
           // Group Radix UI components
           if (id.includes('@radix-ui')) {
