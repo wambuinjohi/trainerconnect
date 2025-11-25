@@ -18,22 +18,10 @@ export default function AdminSetup() {
   const runMigration = async () => {
     setLoading(true);
     try {
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'migrate' }),
-      });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        setMigrationDone(true);
-        addMessage('success', result.message);
-        toast({ title: 'Migration Complete', description: result.message });
-      } else {
-        addMessage('error', result.message);
-        toast({ title: 'Migration Failed', description: result.message, variant: 'destructive' });
-      }
+      const result = await apiRequest('migrate');
+      setMigrationDone(true);
+      addMessage('success', result.message || 'Migration completed');
+      toast({ title: 'Migration Complete', description: result.message });
     } catch (error: any) {
       const msg = error.message || 'Migration failed';
       addMessage('error', msg);
