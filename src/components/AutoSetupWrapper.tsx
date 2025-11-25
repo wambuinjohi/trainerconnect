@@ -43,8 +43,9 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // Show loading screen while setting up
   if (isSettingUp) {
+    console.log('Showing setup loading screen');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-border shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
