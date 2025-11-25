@@ -112,6 +112,8 @@ const Home: React.FC = () => {
     }
   ]
 
+  console.log('[Home] Rendering Home page')
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
