@@ -21,11 +21,13 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
   const { isSetupComplete, isSettingUp, setupError } = useAutoSetup();
   const [forceShowApp, setForceShowApp] = useState(false);
 
+  console.log('AutoSetupWrapper state:', { isSetupComplete, isSettingUp, setupError, forceShowApp });
+
   // Force showing the app after 15 seconds to prevent blank screen on mobile
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!isSetupComplete) {
-        console.warn('Setup took too long, forcing app to load');
+        console.warn('Setup took too long (15s), forcing app to load');
         setForceShowApp(true);
       }
     }, 15000);
@@ -35,6 +37,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // On mobile (Capacitor), skip all setup UI and render the app immediately
   if (isCapacitorApp()) {
+    console.log('Running on Capacitor, skipping setup UI');
     return <>{children}</>;
   }
 
