@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { apiRequest } from '@/lib/api';
 
 export default function AdminSetup() {
   const [loading, setLoading] = useState(false);
@@ -18,22 +18,10 @@ export default function AdminSetup() {
   const runMigration = async () => {
     setLoading(true);
     try {
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'migrate' }),
-      });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        setMigrationDone(true);
-        addMessage('success', result.message);
-        toast({ title: 'Migration Complete', description: result.message });
-      } else {
-        addMessage('error', result.message);
-        toast({ title: 'Migration Failed', description: result.message, variant: 'destructive' });
-      }
+      const result = await apiRequest('migrate');
+      setMigrationDone(true);
+      addMessage('success', result.message || 'Migration completed');
+      toast({ title: 'Migration Complete', description: result.message });
     } catch (error: any) {
       const msg = error.message || 'Migration failed';
       addMessage('error', msg);
@@ -46,27 +34,15 @@ export default function AdminSetup() {
   const runSeeding = async () => {
     setLoading(true);
     try {
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'seed_all_users' }),
+      const result = await apiRequest('seed_all_users');
+      setSeedingDone(true);
+      addMessage('success', result.message || 'Seeding completed');
+      const seedCount = result.data?.seeded || 0;
+      const skipCount = result.data?.skipped || 0;
+      toast({
+        title: 'Seeding Complete',
+        description: `Created: ${seedCount}, Skipped: ${skipCount}`
       });
-
-      const result = await response.json();
-      if (result.status === 'success') {
-        setSeedingDone(true);
-        addMessage('success', result.message);
-        const seedCount = result.data?.seeded || 0;
-        const skipCount = result.data?.skipped || 0;
-        toast({
-          title: 'Seeding Complete',
-          description: `Created: ${seedCount}, Skipped: ${skipCount}`
-        });
-      } else {
-        addMessage('error', result.message);
-        toast({ title: 'Seeding Failed', description: result.message, variant: 'destructive' });
-      }
     } catch (error: any) {
       const msg = error.message || 'Seeding failed';
       addMessage('error', msg);

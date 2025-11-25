@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import Header from '@/components/Header'
+import { apiRequest } from '@/lib/api'
 
 type ResetStep = 'email' | 'reset' | 'success'
 
@@ -31,21 +32,9 @@ const PasswordReset: React.FC = () => {
         throw new Error('Please enter your email address')
       }
 
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'request_password_reset',
-          email: email.trim().toLowerCase(),
-        }),
+      const result = await apiRequest('request_password_reset', {
+        email: email.trim().toLowerCase(),
       })
-
-      const result = await response.json()
-
-      if (result.status === 'error') {
-        throw new Error(result.message || 'Failed to process password reset request')
-      }
 
       toast({
         title: 'Check your email',
@@ -91,23 +80,11 @@ const PasswordReset: React.FC = () => {
         throw new Error('Invalid reset link. Please request a new password reset.')
       }
 
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'reset_password_with_token',
-          email: resetEmail,
-          token: token,
-          new_password: password,
-        }),
+      const result = await apiRequest('reset_password_with_token', {
+        email: resetEmail,
+        token: token,
+        new_password: password,
       })
-
-      const result = await response.json()
-
-      if (result.status === 'error') {
-        throw new Error(result.message || 'Failed to reset password')
-      }
 
       setStep('success')
       setTimeout(() => {

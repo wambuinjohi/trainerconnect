@@ -3,6 +3,7 @@ import { useTheme } from 'next-themes'
 import { APP_LOGO_URL, APP_LOGO_ALT, APP_LOGO_DARK_URL } from '@/lib/branding'
 
 const AuthLogoComponent: React.FC<{ className?: string; containerClassName?: string; compact?: boolean }> = ({ className = '', containerClassName = '', compact = false }) => {
+  console.log('[AuthLogo] Rendering logo')
   const { resolvedTheme } = useTheme()
   const logoSrc = resolvedTheme === 'dark' ? APP_LOGO_DARK_URL : APP_LOGO_URL
 

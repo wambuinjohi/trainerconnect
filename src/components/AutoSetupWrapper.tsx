@@ -21,11 +21,13 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
   const { isSetupComplete, isSettingUp, setupError } = useAutoSetup();
   const [forceShowApp, setForceShowApp] = useState(false);
 
+  console.log('AutoSetupWrapper state:', { isSetupComplete, isSettingUp, setupError, forceShowApp });
+
   // Force showing the app after 15 seconds to prevent blank screen on mobile
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!isSetupComplete) {
-        console.warn('Setup took too long, forcing app to load');
+        console.warn('Setup took too long (15s), forcing app to load');
         setForceShowApp(true);
       }
     }, 15000);
@@ -35,13 +37,15 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // On mobile (Capacitor), skip all setup UI and render the app immediately
   if (isCapacitorApp()) {
+    console.log('Running on Capacitor, skipping setup UI');
     return <>{children}</>;
   }
 
   // Show loading screen while setting up
   if (isSettingUp) {
+    console.log('Showing setup loading screen');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-border shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -69,8 +73,9 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // Show error screen if setup failed and we're not forcing the app to load
   if (setupError && isSetupComplete === false && !forceShowApp) {
+    console.error('Showing setup error screen:', setupError);
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-destructive shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -149,9 +154,10 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
 
   // Show success message briefly, then render app
   if (isSetupComplete && !localStorage.getItem('setup_success_shown') && !forceShowApp) {
+    console.log('Showing setup success screen');
     localStorage.setItem('setup_success_shown', 'true');
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+      <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
         <Card className="w-full max-w-md border-border shadow-lg">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -195,8 +201,9 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
   }
 
   // Default: show loading screen while waiting for setup to complete
+  console.log('Showing default loading screen (setup state still loading)');
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+    <div style={{ minHeight: '100vh', backgroundColor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
       <Card className="w-full max-w-md border-border shadow-lg">
         <CardHeader>
           <div className="flex items-center gap-3">

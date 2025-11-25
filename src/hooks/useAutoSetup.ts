@@ -17,10 +17,12 @@ export function useAutoSetup() {
 
   useEffect(() => {
     const checkAndSetup = async () => {
+      console.log('[useAutoSetup] Starting setup check...');
+
       // On mobile (Capacitor), skip auto-setup and allow app to load
       // The app will work with whatever authentication state the user has
       if (isCapacitorApp()) {
-        console.log('Running on Capacitor (mobile app), skipping auto-setup');
+        console.log('[useAutoSetup] Running on Capacitor (mobile app), skipping auto-setup');
         setIsSetupComplete(true);
         return;
       }
@@ -28,18 +30,26 @@ export function useAutoSetup() {
       // Check if setup was already done in this browser session
       const setupFlag = localStorage.getItem('db_setup_complete');
       if (setupFlag === 'true') {
+        console.log('[useAutoSetup] Setup already marked complete in localStorage');
         setIsSetupComplete(true);
         return;
       }
 
+      console.log('[useAutoSetup] Checking if database is set up...');
+
       // Check if database is already set up by trying to fetch users
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const checkResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get_users' }),
-          signal: AbortSignal.timeout(5000), // 5 second timeout
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         // Check if response is OK and has content
         if (!checkResponse.ok) {
@@ -62,25 +72,38 @@ export function useAutoSetup() {
         }
       } catch (error: any) {
         // If it's a network error, skip auto-setup and allow app to load
+        console.log('[useAutoSetup] Error checking database:', error?.message || error);
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-          console.warn('API not reachable, skipping auto-setup. App will load in limited mode.');
+          console.warn('[useAutoSetup] API not reachable, skipping auto-setup. App will load in limited mode.');
           setIsSetupComplete(true); // Allow app to load
           return;
         }
-        console.log('Database not set up yet, will run auto-setup', error);
+        if (error.name === 'AbortError') {
+          console.warn('[useAutoSetup] API connection timeout (5s), allowing app to load');
+          setIsSetupComplete(true); // Allow app to load
+          return;
+        }
+        console.log('[useAutoSetup] Database not set up yet, will run auto-setup');
       }
 
       // Database needs setup - run migration and seeding
+      console.log('[useAutoSetup] Starting database setup...');
       setIsSettingUp(true);
 
       try {
         // Step 1: Run migration (may succeed even if tables exist)
+        console.log('[useAutoSetup] Running migration...');
+        const migrationController = new AbortController();
+        const migrationTimeoutId = setTimeout(() => migrationController.abort(), 10000);
+
         const migrateResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'migrate' }),
-          signal: AbortSignal.timeout(10000), // 10 second timeout
+          signal: migrationController.signal,
         });
+
+        clearTimeout(migrationTimeoutId);
 
         const clonedMigrateResponse = migrateResponse.clone();
         const migrateText = await clonedMigrateResponse.text();
@@ -97,12 +120,18 @@ export function useAutoSetup() {
         console.log('Migration result:', migrateResult);
 
         // Step 2: Run seeding (most important step)
+        console.log('[useAutoSetup] Running seeding...');
+        const seedController = new AbortController();
+        const seedTimeoutId = setTimeout(() => seedController.abort(), 10000);
+
         const seedResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'seed_all_users' }),
-          signal: AbortSignal.timeout(10000), // 10 second timeout
+          signal: seedController.signal,
         });
+
+        clearTimeout(seedTimeoutId);
 
         const clonedSeedResponse = seedResponse.clone();
         const seedText = await clonedSeedResponse.text();
@@ -122,25 +151,34 @@ export function useAutoSetup() {
         // Mark setup as complete
         localStorage.setItem('db_setup_complete', 'true');
         setIsSetupComplete(true);
-        console.log('✓ Database setup completed automatically');
+        console.log('[useAutoSetup] ✓ Database setup completed automatically');
       } catch (error: any) {
         // If it's a network error, allow app to load anyway
+        console.error('[useAutoSetup] Setup error:', error?.message || error);
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-          console.warn('API not reachable, allowing app to load without setup.');
+          console.warn('[useAutoSetup] API not reachable, allowing app to load without setup.');
+          setIsSetupComplete(true); // Allow app to load
+          setIsSettingUp(false);
+          return;
+        }
+        if (error.name === 'AbortError') {
+          console.warn('[useAutoSetup] Setup request timeout, allowing app to load anyway');
           setIsSetupComplete(true); // Allow app to load
           setIsSettingUp(false);
           return;
         }
 
-        console.error('Auto-setup failed:', error);
+        console.error('[useAutoSetup] Setup failed, showing error to user:', error?.message || error);
         const errorMsg = error.message || 'Setup failed';
         setSetupError(errorMsg);
         setIsSetupComplete(false);
       } finally {
         setIsSettingUp(false);
+        console.log('[useAutoSetup] Setup process complete');
       }
     };
 
+    console.log('[useAutoSetup] useEffect hook running');
     checkAndSetup();
   }, []);
 
