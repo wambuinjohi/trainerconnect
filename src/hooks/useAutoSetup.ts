@@ -151,17 +151,24 @@ export function useAutoSetup() {
         // Mark setup as complete
         localStorage.setItem('db_setup_complete', 'true');
         setIsSetupComplete(true);
-        console.log('✓ Database setup completed automatically');
+        console.log('[useAutoSetup] ✓ Database setup completed automatically');
       } catch (error: any) {
         // If it's a network error, allow app to load anyway
+        console.error('[useAutoSetup] Setup error:', error?.message || error);
         if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-          console.warn('API not reachable, allowing app to load without setup.');
+          console.warn('[useAutoSetup] API not reachable, allowing app to load without setup.');
+          setIsSetupComplete(true); // Allow app to load
+          setIsSettingUp(false);
+          return;
+        }
+        if (error.name === 'AbortError') {
+          console.warn('[useAutoSetup] Setup request timeout, allowing app to load anyway');
           setIsSetupComplete(true); // Allow app to load
           setIsSettingUp(false);
           return;
         }
 
-        console.error('Auto-setup failed:', error);
+        console.error('[useAutoSetup] Setup failed, showing error to user:', error?.message || error);
         const errorMsg = error.message || 'Setup failed';
         setSetupError(errorMsg);
         setIsSetupComplete(false);
