@@ -29,16 +29,21 @@ interface Category {
 const Home: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     const loadCategories = async () => {
       try {
+        console.log('[Home] Loading categories...')
         const data = await apiService.getCategories()
+        console.log('[Home] Categories loaded:', data)
         if (data?.data) {
           setCategories(data.data)
         }
       } catch (err) {
-        console.warn('Failed to load categories', err)
+        console.error('[Home] Failed to load categories:', err)
+        setLoadError(err instanceof Error ? err.message : 'Failed to load categories')
+        // Don't fail the app if categories fail to load - it's not critical
       } finally {
         setCategoriesLoading(false)
       }
