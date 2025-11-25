@@ -34,12 +34,17 @@ export function useAutoSetup() {
 
       // Check if database is already set up by trying to fetch users
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const checkResponse = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get_users' }),
-          signal: AbortSignal.timeout(5000), // 5 second timeout
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         // Check if response is OK and has content
         if (!checkResponse.ok) {
