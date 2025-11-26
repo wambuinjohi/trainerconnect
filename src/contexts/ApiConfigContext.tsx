@@ -37,12 +37,10 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
   const testConnection = async (): Promise<boolean> => {
     const controller = new AbortController();
     let timeoutId: NodeJS.Timeout | null = null;
-    let isAborted = false;
 
     try {
       timeoutId = setTimeout(() => {
-        isAborted = true;
-        controller.abort();
+        controller.abort(new Error('Connection timeout (5s)'));
       }, 5000);
 
       const response = await fetch(apiUrl, {
@@ -75,7 +73,7 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
       let errorMessage = 'Failed to connect to API';
 
       if (error instanceof DOMException && error.name === 'AbortError') {
-        errorMessage = isAborted ? 'Connection timeout (5s)' : 'Connection cancelled';
+        errorMessage = error.message || 'Connection cancelled';
       } else if (error instanceof TypeError) {
         errorMessage = 'Network error or CORS issue - check if the API endpoint is accessible';
       } else if (error instanceof Error) {
