@@ -97,8 +97,9 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       });
 
       // Upload files
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://trainer.skatryk.co.ke'
-      const response = await fetch(`${apiBaseUrl}/api.php`, {
+      const apiBaseUrl = getApiBaseUrl();
+      const apiUrl = apiBaseUrl.endsWith('/api.php') ? apiBaseUrl : (apiBaseUrl.endsWith('/') ? apiBaseUrl + 'api.php' : apiBaseUrl + '/api.php');
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });
