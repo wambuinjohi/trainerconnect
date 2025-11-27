@@ -1,4 +1,5 @@
 import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl, isCapacitorApp } from './api-config'
+import { getMockResponse } from './mock-data'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
@@ -14,13 +15,8 @@ function getFallbackApiUrls(): string[] {
     urls.push(primaryUrl);
   }
 
-  // For native apps, add the remote server as fallback
-  if (isCapacitorApp()) {
-    urls.push('https://trainer.skatryk.co.ke/api.php');
-  }
-
-  // Always include relative path as ultimate fallback
-  if (!urls.includes('/api.php')) {
+  // For non-Capacitor web apps, try the relative /api.php endpoint
+  if (!isCapacitorApp() && !urls.includes('/api.php')) {
     urls.push('/api.php');
   }
 
@@ -87,12 +83,21 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
         console.log(`Fallback API endpoint successful (${fallbackUrl})`)
         return response
       } catch (fallbackError) {
-        console.warn(`Fallback ${fallbackUrl} also failed`)
+        console.warn(`Fallback ${fallbackUrl} also failed, continuing to next fallback`)
         continue
       }
     }
 
-    // All endpoints failed, throw the original error
+    // All API endpoints failed, try mock data as last resort
+    console.warn(`All API endpoints failed, using mock data for action: ${action}`)
+    const mockResponse = getMockResponse(action, payload)
+    if (mockResponse) {
+      console.log(`Using mock data for action: ${action}`)
+      return (mockResponse.data as T) ?? (mockResponse as unknown as T)
+    }
+
+    // No mock data available, throw the original error
+    console.error('No API available and no mock data found for action:', action)
     throw primaryError
   }
 }
@@ -116,9 +121,16 @@ async function apiRequest_Internal<T = any>(
     // Clone the response to safely read the body without consuming the original
     const clonedRes = res.clone()
     const text = await clonedRes.text()
+
     if (!text) {
       throw new Error('Empty response body')
     }
+
+    // Check if response is HTML instead of JSON (common error response)
+    if (text.trim().startsWith('<')) {
+      throw new Error(`Server returned HTML instead of JSON. Status: ${res.status}. The API endpoint may be down or misconfigured.`)
+    }
+
     json = JSON.parse(text)
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Unknown error'

@@ -29,7 +29,8 @@ export function isAndroidApp(): boolean {
  * 1. Stored preference in localStorage
  * 2. Environment variable (for deployment configuration)
  * 3. For native apps: https://trainer.skatryk.co.ke
- * 4. For web apps: relative /api.php (allows local Apache servers)
+ * 4. For web apps: relative /api.php (local endpoint)
+ * 5. Fallback: mock data (when no API is available)
  */
 export function getApiBaseUrl(): string {
   // Check if user has manually set an API URL
@@ -44,12 +45,12 @@ export function getApiBaseUrl(): string {
     return envUrl;
   }
 
-  // For native Capacitor apps, always use the remote server
+  // For native Capacitor apps, use the remote server
   if (isCapacitorApp()) {
-    return 'https://trainer.skatryk.co.ke';
+    return 'https://trainer.skatryk.co.ke/api.php';
   }
 
-  // For web apps, default to relative path (works with local Apache)
+  // For web apps, default to relative path (works with local/deployed servers)
   return '/api.php';
 }
 
