@@ -11,12 +11,42 @@ if (ob_get_level()) {
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-// Set headers BEFORE any output
+// CORS Configuration for Apache Production
+// Determine allowed origins for CORS
+$allowedOrigins = [
+    'https://trainer.skatryk.co.ke',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8080',
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : (in_array('https://trainer.skatryk.co.ke', $allowedOrigins) ? 'https://trainer.skatryk.co.ke' : '');
+
+// Set headers BEFORE any output - crucial for Apache
 if (!headers_sent()) {
     header("Content-Type: application/json; charset=utf-8");
-    header("Access-Control-Allow-Origin: *");
-    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor");
+
+    // CORS Headers
+    if (!empty($corsOrigin)) {
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
+        header("Access-Control-Allow-Credentials: true");
+    } else if (in_array('*', ['https://trainer.skatryk.co.ke'])) {
+        // Fallback for development
+        header("Access-Control-Allow-Origin: *");
+    }
+
+    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
+    header("Access-Control-Max-Age: 86400");
+
+    // Cache control headers (prevent browser caching of API responses)
+    header("Cache-Control: no-cache, no-store, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    header("Expires: 0");
 }
 
 // Set error handler to prevent HTML error output
