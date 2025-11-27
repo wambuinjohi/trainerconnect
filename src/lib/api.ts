@@ -15,13 +15,8 @@ function getFallbackApiUrls(): string[] {
     urls.push(primaryUrl);
   }
 
-  // For native apps, add the remote server as fallback
-  if (isCapacitorApp()) {
-    urls.push('https://trainer.skatryk.co.ke/api.php');
-  }
-
-  // Always include relative path as fallback
-  if (!urls.includes('/api.php')) {
+  // For non-Capacitor web apps, try the relative /api.php endpoint
+  if (!isCapacitorApp() && !urls.includes('/api.php')) {
     urls.push('/api.php');
   }
 
