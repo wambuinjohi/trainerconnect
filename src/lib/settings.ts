@@ -1,4 +1,5 @@
 import { apiRequest, withAuth, getApiUrl } from '@/lib/api'
+import { getApiBaseUrl } from '@/lib/api-config'
 
 export type MpesaSettings = {
   environment: 'sandbox' | 'production'
