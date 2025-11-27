@@ -145,10 +145,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // Utility function for safe JSON response
 function respond($status, $message, $data = null, $code = 200) {
+    global $corsOrigin;
+
     if (!headers_sent()) {
         http_response_code($code);
         header("Content-Type: application/json; charset=utf-8");
+
+        // Add CORS headers to all responses
+        if (!empty($corsOrigin)) {
+            header("Access-Control-Allow-Origin: " . $corsOrigin);
+            header("Access-Control-Allow-Credentials: true");
+        } else {
+            header("Access-Control-Allow-Origin: *");
+        }
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
+
     $response = ["status" => $status, "message" => $message, "data" => $data];
     $json = json_encode($response);
     if ($json === false) {
