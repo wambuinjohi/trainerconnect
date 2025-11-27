@@ -50,11 +50,21 @@ if (!headers_sent()) {
 }
 
 // Set error handler to prevent HTML error output
-set_error_handler(function($errno, $errstr, $errfile, $errline) {
+set_error_handler(function($errno, $errstr, $errfile, $errline) use ($corsOrigin) {
     error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
     if (!headers_sent()) {
         http_response_code(500);
         header("Content-Type: application/json; charset=utf-8");
+
+        // Add CORS headers to error responses
+        if (!empty($corsOrigin)) {
+            header("Access-Control-Allow-Origin: " . $corsOrigin);
+            header("Access-Control-Allow-Credentials: true");
+        } else {
+            header("Access-Control-Allow-Origin: *");
+        }
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
     echo json_encode([
         "status" => "error",
@@ -64,12 +74,22 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 }, E_ALL);
 
 // Register shutdown function to catch fatal errors
-register_shutdown_function(function() {
+register_shutdown_function(function() use ($corsOrigin) {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         if (!headers_sent()) {
             http_response_code(500);
             header("Content-Type: application/json; charset=utf-8");
+
+            // Add CORS headers to fatal error responses
+            if (!empty($corsOrigin)) {
+                header("Access-Control-Allow-Origin: " . $corsOrigin);
+                header("Access-Control-Allow-Credentials: true");
+            } else {
+                header("Access-Control-Allow-Origin: *");
+            }
+            header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+            header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
         }
         echo json_encode([
             "status" => "error",
