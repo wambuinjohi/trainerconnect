@@ -1,14 +1,33 @@
-import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl } from './api-config'
+import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl, isCapacitorApp } from './api-config'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
 // Fallback to /api.php is automatically used if primary endpoint fails
 // Supports both local Apache servers and remote Capacitor deployments
 
-const FALLBACK_API_URLS = [
-  'https://trainer.skatryk.co.ke/api.php',
-  '/api.php',
-]
+function getFallbackApiUrls(): string[] {
+  const urls: string[] = [];
+
+  // Add the primary configured URL as first fallback
+  const primaryUrl = getApiBaseUrl();
+  if (primaryUrl && !urls.includes(primaryUrl)) {
+    urls.push(primaryUrl);
+  }
+
+  // For native apps, add the remote server as fallback
+  if (isCapacitorApp()) {
+    urls.push('https://trainer.skatryk.co.ke/api.php');
+  }
+
+  // Always include relative path as ultimate fallback
+  if (!urls.includes('/api.php')) {
+    urls.push('/api.php');
+  }
+
+  return urls;
+}
+
+const FALLBACK_API_URLS = getFallbackApiUrls()
 
 let lastSuccessfulApiUrl: string | null = null
 
