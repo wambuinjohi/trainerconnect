@@ -1,4 +1,5 @@
 import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl, isCapacitorApp } from './api-config'
+import { getMockResponse } from './mock-data'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
@@ -19,7 +20,7 @@ function getFallbackApiUrls(): string[] {
     urls.push('https://trainer.skatryk.co.ke/api.php');
   }
 
-  // Always include relative path as ultimate fallback
+  // Always include relative path as fallback
   if (!urls.includes('/api.php')) {
     urls.push('/api.php');
   }
