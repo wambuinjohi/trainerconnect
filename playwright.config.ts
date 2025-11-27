@@ -10,7 +10,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     viewport: { width: 1280, height: 720 },
     actionTimeout: 0,
-    baseURL: process.env.PW_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PW_BASE_URL || 'http://localhost:8080',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
