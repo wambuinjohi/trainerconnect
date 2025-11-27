@@ -107,8 +107,19 @@ function logEvent($eventType, $details = []) {
 }
 
 // Handle preflight (OPTIONS) requests
+// IMPORTANT: OPTIONS requests must return 200 with proper CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+
+    // Re-add CORS headers for preflight responses
+    if (!headers_sent()) {
+        header("Access-Control-Allow-Origin: " . ($corsOrigin ?? "*"));
+        header("Access-Control-Allow-Credentials: true");
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
+        header("Access-Control-Max-Age: 86400");
+    }
+
     exit;
 }
 
