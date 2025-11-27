@@ -8,11 +8,13 @@ if (ob_get_level()) {
 }
 
 // Database configuration with fallback values
+// Note: For shared servers using localhost, port specification is not needed
+// MySQL defaults to port 3306 when port is 0 or not specified
 $server = 'localhost';
 $username = 'skatrykc_trainer';
 $password = 'Sirgeorge.12';
 $database = 'skatrykc_trainer';
-$port = 3306;
+$port = 0;  // Use default port (3306) - recommended for shared servers
 
 // Try to load from .env file if it exists
 if (file_exists(__DIR__ . '/.env')) {
