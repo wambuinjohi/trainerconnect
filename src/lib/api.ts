@@ -1,17 +1,20 @@
-const DEFAULT_API_URL = import.meta.env.VITE_API_URL || '/api.php'
-const FALLBACK_API_URL = 'https://trainer.skatryk.co.ke/api.php'
+import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl } from './api-config'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
 // Fallback to /api.php is automatically used if primary endpoint fails
+// Supports both local Apache servers and remote Capacitor deployments
+
+const FALLBACK_API_URLS = [
+  'https://trainer.skatryk.co.ke/api.php',
+  '/api.php',
+]
 
 let lastSuccessfulApiUrl: string | null = null
 
 export function getApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('api_url') || DEFAULT_API_URL
-  }
-  return DEFAULT_API_URL
+  const url = getApiUrlFromConfig()
+  return url
 }
 
 export function setApiUrl(url: string): void {
@@ -25,7 +28,7 @@ export function getLastSuccessfulApiUrl(): string | null {
   return lastSuccessfulApiUrl
 }
 
-export const API_URL = DEFAULT_API_URL
+export const API_URL = getApiUrl()
 
 export type ApiResponse<T = any> = {
   status: 'success' | 'error'
@@ -54,19 +57,23 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     lastSuccessfulApiUrl = apiUrl
     return response
   } catch (primaryError) {
-    // If primary URL fails and we haven't already tried the fallback
-    if (apiUrl !== FALLBACK_API_URL) {
-      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${FALLBACK_API_URL})`)
+    // Try fallback URLs if primary fails
+    for (const fallbackUrl of FALLBACK_API_URLS) {
+      if (apiUrl === fallbackUrl) continue // Skip if we already tried this
+
+      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${fallbackUrl})`)
       try {
-        const response = await apiRequest_Internal<T>(FALLBACK_API_URL, action, payload, headers, init)
-        lastSuccessfulApiUrl = FALLBACK_API_URL
-        console.log(`Fallback API endpoint successful (${FALLBACK_API_URL})`)
+        const response = await apiRequest_Internal<T>(fallbackUrl, action, payload, headers, init)
+        lastSuccessfulApiUrl = fallbackUrl
+        console.log(`Fallback API endpoint successful (${fallbackUrl})`)
         return response
       } catch (fallbackError) {
-        // Both failed, throw the original error
-        throw primaryError
+        console.warn(`Fallback ${fallbackUrl} also failed`)
+        continue
       }
     }
+
+    // All endpoints failed, throw the original error
     throw primaryError
   }
 }

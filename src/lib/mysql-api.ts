@@ -3,8 +3,13 @@
  * Provides a Supabase-like interface for the local MySQL API
  */
 
-const API_URL = 'https://trainer.skatryk.co.ke/api.php';
+import { getApiUrl } from './api-config';
+
 const API_TIMEOUT = 30000; // 30 seconds
+
+function getApiUrlForRequest(): string {
+  return getApiUrl();
+}
 
 // Session storage
 let currentSession: any = null;
@@ -14,7 +19,8 @@ let currentSession: any = null;
  */
 async function apiRequest(action: string, payload: any = {}) {
   const body = { action, ...payload };
-  
+  const API_URL = getApiUrlForRequest();
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',

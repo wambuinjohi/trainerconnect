@@ -23,9 +23,10 @@ async function performLogin(
   password: string,
   onSuccess: (user: User, userType: string, token: string) => void
 ): Promise<void> {
+  const { getApiUrl } = await import('@/lib/api-config');
   const maxRetries = 3;
   const retryDelay = 1000;
-  const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
+  const apiUrl = getApiUrl();
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
