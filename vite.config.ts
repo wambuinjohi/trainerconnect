@@ -126,54 +126,66 @@ function devApiPlugin() {
     configureServer(server: any) {
       return () => {
         server.middlewares.use(async (req: any, res: any, next: any) => {
-          if (req.method !== "POST") return next();
+          if (req.method !== "POST" && req.method !== "GET") return next();
           const url = req.url?.split('?')[0] || "";
           if (url !== "/api.php") return next();
 
           try {
             let body = {};
 
-            // Handle request body parsing
-            if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
+            // Handle request body parsing for POST
+            if (req.method === "POST" && req.headers['content-length'] && req.headers['content-length'] !== '0') {
               const chunks: Buffer[] = [];
               for await (const chunk of req) {
                 chunks.push(chunk as Buffer);
               }
               const raw = Buffer.concat(chunks).toString('utf8');
               if (raw) {
-                body = JSON.parse(raw);
+                try {
+                  body = JSON.parse(raw);
+                } catch {
+                  res.statusCode = 400;
+                  res.setHeader("Content-Type", "application/json");
+                  res.end(JSON.stringify({ status: "error", message: "Invalid JSON in request body." }));
+                  return;
+                }
               }
+            } else if (req.method === "GET") {
+              body = req.url?.includes('?') ? Object.fromEntries(new URLSearchParams(req.url?.split('?')[1])) : {};
             }
 
-            const action = body.action || "";
-            res.setHeader("Content-Type", "application/json");
+            const action = (body.action || "").toLowerCase().trim();
+
+            // Always set JSON content type first
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+            // Log the API call for debugging
+            console.log(`[Dev API] ${req.method} ${action}`, { body });
+
+            // Handle missing action
+            if (!action) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ status: "error", message: "Missing action parameter.", data: null }));
+              return;
+            }
 
             // Mock responses for development
             switch (action) {
-              case "get_users":
+              case "health_check":
                 res.end(JSON.stringify({
                   status: "success",
-                  data: []
-                }));
-                return;
-
-              case "migrate":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Migration completed"
-                }));
-                return;
-
-              case "seed_all_users":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Users seeded successfully",
-                  data: []
+                  message: "Server is running",
+                  data: { timestamp: new Date().toISOString() }
                 }));
                 return;
 
               case "login":
                 const email = body.email || "";
+                if (!email || !body.password) {
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ status: "error", message: "Missing email or password." }));
+                  return;
+                }
                 res.end(JSON.stringify({
                   status: "success",
                   message: "Login successful",
@@ -195,6 +207,11 @@ function devApiPlugin() {
               case "signup":
                 const signupEmail = body.email || "";
                 const userType = body.user_type || "client";
+                if (!signupEmail || !body.password) {
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ status: "error", message: "Missing required fields." }));
+                  return;
+                }
                 res.end(JSON.stringify({
                   status: "success",
                   message: "Signup successful",
@@ -213,9 +230,18 @@ function devApiPlugin() {
                 }));
                 return;
 
+              case "get_users":
+                res.end(JSON.stringify({
+                  status: "success",
+                  message: "Users retrieved",
+                  data: []
+                }));
+                return;
+
               case "get_categories":
                 res.end(JSON.stringify({
                   status: "success",
+                  message: "Categories retrieved",
                   data: [
                     { id: 1, name: "Strength Training", icon: "💪", description: "Build muscle and increase strength" },
                     { id: 2, name: "Cardio", icon: "🏃", description: "Improve cardiovascular fitness" },
@@ -225,17 +251,38 @@ function devApiPlugin() {
                 }));
                 return;
 
-              case "health_check":
+              case "migrate":
                 res.end(JSON.stringify({
                   status: "success",
-                  message: "Server is running"
+                  message: "Migration completed"
                 }));
                 return;
 
-              default:
+              case "seed_all_users":
                 res.end(JSON.stringify({
                   status: "success",
-                  message: "Action processed",
+                  message: "Users seeded successfully",
+                  data: []
+                }));
+                return;
+
+              case "select":
+              case "insert":
+              case "update":
+              case "delete":
+                res.end(JSON.stringify({
+                  status: "success",
+                  message: "Database operation completed",
+                  data: []
+                }));
+                return;
+
+              // Default: return success for any unknown action
+              default:
+                console.warn(`[Dev API] Unknown action: ${action}`);
+                res.end(JSON.stringify({
+                  status: "success",
+                  message: `Action '${action}' processed (mocked in development)`,
                   data: []
                 }));
                 return;
@@ -243,8 +290,8 @@ function devApiPlugin() {
           } catch (e: any) {
             console.error("Dev API error:", e);
             res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ ok: false, error: e.message }));
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ status: "error", message: "Internal server error: " + e.message }));
           }
         });
       };
