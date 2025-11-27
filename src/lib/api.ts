@@ -1,17 +1,20 @@
-const DEFAULT_API_URL = import.meta.env.VITE_API_URL || '/api.php'
-const FALLBACK_API_URL = 'https://trainer.skatryk.co.ke/api.php'
+import { getApiUrl as getApiUrlFromConfig, getApiBaseUrl } from './api-config'
 
 // Note: Using the unified /api.php at root level
 // This consolidates both the root api.php and public/api.php into a single endpoint
 // Fallback to /api.php is automatically used if primary endpoint fails
+// Supports both local Apache servers and remote Capacitor deployments
+
+const FALLBACK_API_URLS = [
+  'https://trainer.skatryk.co.ke/api.php',
+  '/api.php',
+]
 
 let lastSuccessfulApiUrl: string | null = null
 
 export function getApiUrl(): string {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('api_url') || DEFAULT_API_URL
-  }
-  return DEFAULT_API_URL
+  const url = getApiUrlFromConfig()
+  return url
 }
 
 export function setApiUrl(url: string): void {
@@ -25,7 +28,7 @@ export function getLastSuccessfulApiUrl(): string | null {
   return lastSuccessfulApiUrl
 }
 
-export const API_URL = DEFAULT_API_URL
+export const API_URL = getApiUrl()
 
 export type ApiResponse<T = any> = {
   status: 'success' | 'error'
