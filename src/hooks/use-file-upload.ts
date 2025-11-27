@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { getApiBaseUrl } from '@/lib/api-config';
 
 interface UploadedFile {
   originalName: string;
