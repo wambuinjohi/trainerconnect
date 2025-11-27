@@ -15,95 +15,105 @@ function adminApiPlugin() {
   return {
     name: "admin-api",
     configureServer(server: any) {
-      server.middlewares.use(async (req: any, res: any, next: any) => {
-        if (req.method !== "POST") return next();
-        const url = req.url || "";
-        if (!url.startsWith("/__admin/")) return next();
+      return () => {
+        server.middlewares.use(async (req: any, res: any, next: any) => {
+          if (req.method !== "POST") return next();
+          const url = req.url?.split('?')[0] || "";
+          if (!url.startsWith("/__admin/")) return next();
 
-        try {
-          const adminTokenHeader = req.headers["x-admin-token"] as string | undefined;
-          const expectedToken = process.env.ADMIN_TOKEN;
-          const isListReq = url.startsWith("/__admin/list-users");
+          try {
+            const adminTokenHeader = req.headers["x-admin-token"] as string | undefined;
+            const expectedToken = process.env.ADMIN_TOKEN;
+            const isListReq = url.startsWith("/__admin/list-users");
 
-          if (!(isListReq && process.env.NODE_ENV !== "production")) {
-            if (!expectedToken || adminTokenHeader !== expectedToken) {
-              res.statusCode = 401;
-              res.end("Unauthorized");
+            if (!(isListReq && process.env.NODE_ENV !== "production")) {
+              if (!expectedToken || adminTokenHeader !== expectedToken) {
+                res.statusCode = 401;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+                return;
+              }
+            }
+
+            // Example local DB connection or any custom backend API call
+            const db = {
+              query: async (q: string, params?: any[]) => {
+                console.log("Mock DB query:", q, params);
+                return [];
+              },
+            };
+
+            let body = {};
+            if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
+              const chunks: Buffer[] = [];
+              for await (const chunk of req) {
+                chunks.push(chunk as Buffer);
+              }
+              const raw = Buffer.concat(chunks).toString('utf8');
+              if (raw) {
+                body = JSON.parse(raw);
+              }
+            }
+
+            // Example: handle M-Pesa credential storage (replace with your local DB)
+            if (url.startsWith("/__admin/set-mpesa-credentials")) {
+              try {
+                const creds = body.credentials || null;
+                if (!creds) throw new Error("Missing credentials in body");
+                await db.query("UPSERT INTO platform_secrets (key, value) VALUES (?, ?)", [
+                  "mpesa",
+                  JSON.stringify(creds),
+                ]);
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: true }));
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: false, error: e.message }));
+              }
               return;
             }
-          }
 
-          // Example local DB connection or any custom backend API call
-          // Replace with your own DB handler logic
-          const db = {
-            query: async (q: string, params?: any[]) => {
-              console.log("Mock DB query:", q, params);
-              return [];
-            },
-          };
-
-          const chunks: Buffer[] = [];
-          for await (const chunk of req) chunks.push(chunk as Buffer);
-          const raw = Buffer.concat(chunks).toString() || "{}";
-          const body = JSON.parse(raw);
-
-          // Example: handle M-Pesa credential storage (replace with your local DB)
-          if (url.startsWith("/__admin/set-mpesa-credentials")) {
-            try {
-              const creds = body.credentials || null;
-              if (!creds) throw new Error("Missing credentials in body");
-              await db.query("UPSERT INTO platform_secrets (key, value) VALUES (?, ?)", [
-                "mpesa",
-                JSON.stringify(creds),
-              ]);
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: true }));
-            } catch (e: any) {
-              res.statusCode = 500;
-              res.end(JSON.stringify({ ok: false, error: e.message }));
+            if (url.startsWith("/__admin/get-mpesa-credentials")) {
+              try {
+                const rows = await db.query("SELECT value FROM platform_secrets WHERE key = ?", ["mpesa"]);
+                const value = rows.length ? JSON.parse((rows as any)[0].value) : null;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: true, credentials: value }));
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: false, error: e.message }));
+              }
+              return;
             }
-            return;
-          }
 
-          if (url.startsWith("/__admin/get-mpesa-credentials")) {
-            try {
-              const rows = await db.query("SELECT value FROM platform_secrets WHERE key = ?", ["mpesa"]);
-              const value = rows.length ? JSON.parse((rows as any)[0].value) : null;
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: true, credentials: value }));
-            } catch (e: any) {
-              res.statusCode = 500;
-              res.end(JSON.stringify({ ok: false, error: e.message }));
+            // Settings endpoints
+            if (url.startsWith("/__admin/get-settings")) {
+              try {
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({
+                  ok: true,
+                  message: "Settings managed via localStorage on client. Use admin dashboard to configure M-Pesa."
+                }));
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: false, error: e.message }));
+              }
+              return;
             }
-            return;
+
+            res.statusCode = 404;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: false, error: "Unknown endpoint" }));
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: false, error: err.message }));
           }
-
-          // Settings endpoints
-          if (url.startsWith("/__admin/get-settings")) {
-            try {
-              // In production, this would come from a database
-              // For now, we return a note that settings are managed via localStorage
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({
-                ok: true,
-                message: "Settings managed via localStorage on client. Use admin dashboard to configure M-Pesa."
-              }));
-            } catch (e: any) {
-              res.statusCode = 500;
-              res.end(JSON.stringify({ ok: false, error: e.message }));
-            }
-            return;
-          }
-
-          // Add other admin routes here as needed (no Supabase dependency)
-
-          res.statusCode = 404;
-          res.end(JSON.stringify({ ok: false, error: "Unknown endpoint" }));
-        } catch (err: any) {
-          res.statusCode = 500;
-          res.end(JSON.stringify({ ok: false, error: err.message }));
-        }
-      });
+        });
+      };
     },
   };
 }
