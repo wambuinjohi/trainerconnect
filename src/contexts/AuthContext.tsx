@@ -187,9 +187,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signUp = async (email: string, password: string, userTypeParam: string, profile?: Record<string, any>) => {
+    const { getApiUrl } = await import('@/lib/api-config');
     const maxRetries = 3;
     const retryDelay = 1000;
-    const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
+    const apiUrl = getApiUrl();
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
