@@ -57,19 +57,23 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     lastSuccessfulApiUrl = apiUrl
     return response
   } catch (primaryError) {
-    // If primary URL fails and we haven't already tried the fallback
-    if (apiUrl !== FALLBACK_API_URL) {
-      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${FALLBACK_API_URL})`)
+    // Try fallback URLs if primary fails
+    for (const fallbackUrl of FALLBACK_API_URLS) {
+      if (apiUrl === fallbackUrl) continue // Skip if we already tried this
+
+      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${fallbackUrl})`)
       try {
-        const response = await apiRequest_Internal<T>(FALLBACK_API_URL, action, payload, headers, init)
-        lastSuccessfulApiUrl = FALLBACK_API_URL
-        console.log(`Fallback API endpoint successful (${FALLBACK_API_URL})`)
+        const response = await apiRequest_Internal<T>(fallbackUrl, action, payload, headers, init)
+        lastSuccessfulApiUrl = fallbackUrl
+        console.log(`Fallback API endpoint successful (${fallbackUrl})`)
         return response
       } catch (fallbackError) {
-        // Both failed, throw the original error
-        throw primaryError
+        console.warn(`Fallback ${fallbackUrl} also failed`)
+        continue
       }
     }
+
+    // All endpoints failed, throw the original error
     throw primaryError
   }
 }
