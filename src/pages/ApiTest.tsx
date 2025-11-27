@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { API_URL } from '@/lib/api';
 
 export default function ApiTest() {
@@ -12,6 +12,11 @@ export default function ApiTest() {
     postTest?: { success: boolean; response: string; contentType: string };
     loginTest?: { success: boolean; response: string; contentType: string };
   }>({});
+
+  const clearStoredApiUrl = () => {
+    localStorage.removeItem('api_url');
+    window.location.reload();
+  };
 
   const runTests = async () => {
     setTesting(true);
@@ -197,65 +202,40 @@ export default function ApiTest() {
               </p>
             </div>
 
-            <Button 
-              onClick={runTests} 
-              disabled={testing}
-              className="w-full"
-              size="lg"
-            >
-              {testing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Running Tests...
-                </>
-              ) : (
-                'Run API Tests'
-              )}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={runTests} 
+                disabled={testing}
+                className="flex-1"
+              >
+                {testing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Running Tests...
+                  </>
+                ) : (
+                  'Run API Tests'
+                )}
+              </Button>
+              <Button 
+                onClick={clearStoredApiUrl}
+                variant="outline"
+                className="flex-1"
+                title="Clear stored API URL from localStorage and reload"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Reset API URL
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {Object.keys(results).length > 0 && (
-          <div>
-            <TestResult title="Test 1: GET Request" result={results.getTest} />
-            <TestResult title="Test 2: POST Request (get_users)" result={results.postTest} />
-            <TestResult title="Test 3: POST Request (login)" result={results.loginTest} />
-
-            <Card className="bg-muted">
-              <CardHeader>
-                <CardTitle className="text-base">Diagnosis Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  {results.getTest?.success && results.postTest?.success && results.loginTest?.success ? (
-                    <div className="flex items-start gap-2 text-green-600 dark:text-green-400">
-                      <CheckCircle2 className="w-4 h-4 mt-0.5" />
-                      <span>All tests passed! API is working correctly.</span>
-                    </div>
-                  ) : (
-                    <>
-                      {!results.postTest?.success && (
-                        <div className="flex items-start gap-2 text-destructive">
-                          <XCircle className="w-4 h-4 mt-0.5" />
-                          <div>
-                            <strong>POST requests failing:</strong> Server might not have the updated api.php file deployed
-                          </div>
-                        </div>
-                      )}
-                      {!results.loginTest?.success && (
-                        <div className="flex items-start gap-2 text-destructive">
-                          <XCircle className="w-4 h-4 mt-0.5" />
-                          <div>
-                            <strong>Login requests failing:</strong> Check connection.php credentials and ensure database is accessible
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <>
+            <TestResult title="GET Request" result={results.getTest} />
+            <TestResult title="POST - Get Users" result={results.postTest} />
+            <TestResult title="POST - Login" result={results.loginTest} />
+          </>
         )}
       </div>
     </div>
