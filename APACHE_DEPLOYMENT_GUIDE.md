@@ -49,6 +49,36 @@ Pragma: no-cache
 Expires: 0
 ```
 
+## Shared Server Setup Notes
+
+### No Node.js Runtime Required
+- This project runs **frontend only** on Node.js (during build)
+- **All backend operations** are handled by PHP
+- The server does **NOT** need Node.js runtime installed
+- Build the frontend locally or in a build environment, then upload `dist` folder
+
+### Frontend Build Process
+```bash
+# Local or build server only
+npm install
+npm run build
+
+# Upload dist/ folder to shared server
+# Upload api.php, connection.php, .htaccess, etc.
+```
+
+### Database Connection
+The `connection.php` file uses these defaults:
+```php
+$server = 'localhost';  // No port number needed
+$username = 'skatrykc_trainer';
+$password = 'Sirgeorge.12';
+$database = 'skatrykc_trainer';
+$port = 3306;  // Default MySQL port
+```
+
+Can be overridden via environment variables or `.env` file.
+
 ## Apache Requirements
 
 Ensure the following Apache modules are enabled:
