@@ -58,6 +58,32 @@ export type PlatformSettings = {
 
 const KEY = 'platform_settings_v1'
 
+function getDefaultMpesaCallbackUrls() {
+  const baseUrl = getApiBaseUrl();
+
+  // Build callback URLs based on the API base URL
+  let callbackBase = baseUrl;
+  if (baseUrl.endsWith('/api.php')) {
+    callbackBase = baseUrl.replace('/api.php', '');
+  } else if (!baseUrl.endsWith('/')) {
+    callbackBase = baseUrl + '/';
+  }
+
+  const resultUrl = callbackBase.endsWith('/')
+    ? callbackBase + 'b2c_callback.php'
+    : callbackBase + '/b2c_callback.php';
+  const c2bUrl = callbackBase.endsWith('/')
+    ? callbackBase + 'c2b_callback.php'
+    : callbackBase + '/c2b_callback.php';
+
+  return {
+    resultUrl,
+    queueTimeoutUrl: resultUrl,
+    c2bCallbackUrl: c2bUrl,
+    b2cCallbackUrl: resultUrl,
+  };
+}
+
 export const defaultMpesaSettings: MpesaSettings = {
   environment: 'sandbox',
   consumerKey: '',
@@ -66,12 +92,9 @@ export const defaultMpesaSettings: MpesaSettings = {
   initiatorName: '',
   securityCredential: '',
   shortcode: '',
-  resultUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
-  queueTimeoutUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
+  ...getDefaultMpesaCallbackUrls(),
   commandId: 'BusinessPayment',
   transactionType: 'BusinessPayment',
-  c2bCallbackUrl: 'https://trainer.skatryk.co.ke/c2b_callback.php',
-  b2cCallbackUrl: 'https://trainer.skatryk.co.ke/b2c_callback.php',
 }
 
 export const defaultSettings: PlatformSettings = {
