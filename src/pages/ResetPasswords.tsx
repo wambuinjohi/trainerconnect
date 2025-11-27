@@ -54,7 +54,8 @@ export default function ResetPasswords() {
     setLoading(true);
     setMessages([]);
     try {
-      const apiUrl = 'https://trainer.skatryk.co.ke/api.php';
+      const { getApiUrl } = await import('@/lib/api-config');
+      const apiUrl = getApiUrl();
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

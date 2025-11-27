@@ -12,16 +12,16 @@ $results = [
     "error" => null
 ];
 
-// Test database connection
+// Test database connection using localhost without explicit port (uses default 3306)
 try {
-    $conn = new mysqli('localhost', 'skatrykc_trainer', 'Sirgeorge.12', 'skatrykc_trainer', 3306);
-    
+    $conn = new mysqli('localhost', 'skatrykc_trainer', 'Sirgeorge.12', 'skatrykc_trainer');
+
     if ($conn->connect_error) {
         $results["connection_test"] = "Failed: " . $conn->connect_error;
         $results["error"] = $conn->connect_error;
     } else {
         $results["connection_test"] = "Success";
-        
+
         // Try a simple query
         $result = $conn->query("SELECT 1 as test");
         if ($result) {
@@ -30,7 +30,7 @@ try {
         } else {
             $results["query_test"] = "Failed: " . $conn->error;
         }
-        
+
         $conn->close();
     }
 } catch (Exception $e) {

@@ -11,20 +11,60 @@ if (ob_get_level()) {
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-// Set headers BEFORE any output
+// CORS Configuration for Apache Production
+// Determine allowed origins for CORS
+$allowedOrigins = [
+    'https://trainer.skatryk.co.ke',
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:8080',
+];
+
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : (in_array('https://trainer.skatryk.co.ke', $allowedOrigins) ? 'https://trainer.skatryk.co.ke' : '');
+
+// Set headers BEFORE any output - crucial for Apache
 if (!headers_sent()) {
     header("Content-Type: application/json; charset=utf-8");
-    header("Access-Control-Allow-Origin: *");
-    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS, PATCH");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor");
+
+    // CORS Headers
+    if (!empty($corsOrigin)) {
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
+        header("Access-Control-Allow-Credentials: true");
+    } else if (in_array('*', ['https://trainer.skatryk.co.ke'])) {
+        // Fallback for development
+        header("Access-Control-Allow-Origin: *");
+    }
+
+    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
+    header("Access-Control-Max-Age: 86400");
+
+    // Cache control headers (prevent browser caching of API responses)
+    header("Cache-Control: no-cache, no-store, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    header("Expires: 0");
 }
 
 // Set error handler to prevent HTML error output
-set_error_handler(function($errno, $errstr, $errfile, $errline) {
+set_error_handler(function($errno, $errstr, $errfile, $errline) use ($corsOrigin) {
     error_log("PHP Error [$errno]: $errstr in $errfile on line $errline");
     if (!headers_sent()) {
         http_response_code(500);
         header("Content-Type: application/json; charset=utf-8");
+
+        // Add CORS headers to error responses
+        if (!empty($corsOrigin)) {
+            header("Access-Control-Allow-Origin: " . $corsOrigin);
+            header("Access-Control-Allow-Credentials: true");
+        } else {
+            header("Access-Control-Allow-Origin: *");
+        }
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
     echo json_encode([
         "status" => "error",
@@ -34,12 +74,22 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) {
 }, E_ALL);
 
 // Register shutdown function to catch fatal errors
-register_shutdown_function(function() {
+register_shutdown_function(function() use ($corsOrigin) {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
         if (!headers_sent()) {
             http_response_code(500);
             header("Content-Type: application/json; charset=utf-8");
+
+            // Add CORS headers to fatal error responses
+            if (!empty($corsOrigin)) {
+                header("Access-Control-Allow-Origin: " . $corsOrigin);
+                header("Access-Control-Allow-Credentials: true");
+            } else {
+                header("Access-Control-Allow-Origin: *");
+            }
+            header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+            header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
         }
         echo json_encode([
             "status" => "error",
@@ -77,17 +127,41 @@ function logEvent($eventType, $details = []) {
 }
 
 // Handle preflight (OPTIONS) requests
+// IMPORTANT: OPTIONS requests must return 200 with proper CORS headers
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
+
+    // Re-add CORS headers for preflight responses
+    if (!headers_sent()) {
+        header("Access-Control-Allow-Origin: " . ($corsOrigin ?? "*"));
+        header("Access-Control-Allow-Credentials: true");
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
+        header("Access-Control-Max-Age: 86400");
+    }
+
     exit;
 }
 
 // Utility function for safe JSON response
 function respond($status, $message, $data = null, $code = 200) {
+    global $corsOrigin;
+
     if (!headers_sent()) {
         http_response_code($code);
         header("Content-Type: application/json; charset=utf-8");
+
+        // Add CORS headers to all responses
+        if (!empty($corsOrigin)) {
+            header("Access-Control-Allow-Origin: " . $corsOrigin);
+            header("Access-Control-Allow-Credentials: true");
+        } else {
+            header("Access-Control-Allow-Origin: *");
+        }
+        header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
+        header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
+
     $response = ["status" => $status, "message" => $message, "data" => $data];
     $json = json_encode($response);
     if ($json === false) {
