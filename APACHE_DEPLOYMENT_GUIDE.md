@@ -1,6 +1,17 @@
 # Apache Deployment Guide for Skatryk Trainer API
 
-This guide explains how to deploy the API to Apache with proper CORS configuration for production.
+This guide explains how to deploy the API to Apache with proper CORS configuration for production on a shared PHP server environment.
+
+**Environment:** Shared PHP Server (MySQL via localhost, no Node.js runtime)
+
+## Database Configuration
+
+The API uses **MySQL via localhost** without requiring explicit port specification:
+- Default connection: `localhost` (no port needed)
+- MySQL port: `3306` (default)
+- Connection file: `connection.php`
+
+The frontend is a React/Vite application that communicates with the PHP API via HTTP/HTTPS.
 
 ## Fixed CORS Issues
 
