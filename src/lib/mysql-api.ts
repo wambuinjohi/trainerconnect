@@ -19,7 +19,8 @@ let currentSession: any = null;
  */
 async function apiRequest(action: string, payload: any = {}) {
   const body = { action, ...payload };
-  
+  const API_URL = getApiUrlForRequest();
+
   try {
     const response = await fetch(API_URL, {
       method: 'POST',
