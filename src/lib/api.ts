@@ -126,9 +126,16 @@ async function apiRequest_Internal<T = any>(
     // Clone the response to safely read the body without consuming the original
     const clonedRes = res.clone()
     const text = await clonedRes.text()
+
     if (!text) {
       throw new Error('Empty response body')
     }
+
+    // Check if response is HTML instead of JSON (common error response)
+    if (text.trim().startsWith('<')) {
+      throw new Error(`Server returned HTML instead of JSON. Status: ${res.status}. The API endpoint may be down or misconfigured.`)
+    }
+
     json = JSON.parse(text)
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Unknown error'
