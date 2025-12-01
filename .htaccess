@@ -1,72 +1,122 @@
-# Apache configuration for API
-# CORS headers and API handling
+# ====================================================================
+# Trainer Coach Connect - Apache Configuration
+# ====================================================================
 
-# Enable mod_rewrite
+# Enable mod_rewrite for URL rewriting
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    
+    # Set the RewriteBase to the root if this is in a subdirectory
+    # RewriteBase /
+    
+    # Allow direct access to files and directories that exist
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    
+    # Route all requests to index.html for the React SPA
+    # EXCEPT for api.php, uploads, public folder and other static files
+    RewriteCond %{REQUEST_URI} !^/api\.php$ [NC]
+    RewriteCond %{REQUEST_URI} !^/uploads/ [NC]
+    RewriteCond %{REQUEST_URI} !^/public/ [NC]
+    RewriteCond %{REQUEST_URI} !^/scripts/ [NC]
+    RewriteCond %{REQUEST_URI} !^/docs/ [NC]
+    RewriteCond %{REQUEST_URI} !^/android/ [NC]
+    RewriteCond %{REQUEST_URI} !^/twa/ [NC]
+    RewriteCond %{REQUEST_URI} !^/capacitor/ [NC]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.html [QSA,L]
 </IfModule>
 
-# Disable directory listing for security
+# ====================================================================
+# CORS and HTTP Headers Configuration
+# ====================================================================
+
+<IfModule mod_headers.c>
+    # Allow CORS from trusted origins for API endpoints
+    <FilesMatch "api\.php$">
+        Header always set Access-Control-Allow-Origin "*"
+        Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+        Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With"
+        Header always set Access-Control-Max-Age "86400"
+        Header always set Access-Control-Allow-Credentials "true"
+    </FilesMatch>
+    
+    # Ensure JSON responses for API
+    <FilesMatch "api\.php$">
+        Header always set Content-Type "application/json; charset=utf-8"
+    </FilesMatch>
+    
+    # Cache control for API responses
+    <FilesMatch "api\.php$">
+        Header always set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header always set Pragma "no-cache"
+        Header always set Expires "0"
+    </FilesMatch>
+</IfModule>
+
+# ====================================================================
+# Disable Directory Listing
+# ====================================================================
+
 <IfModule mod_autoindex.c>
     Options -Indexes
 </IfModule>
 
-# Enable gzip compression for API responses
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE application/json
-    AddOutputFilterByType DEFLATE text/plain
+# ====================================================================
+# PHP Configuration
+# ====================================================================
+
+# Ensure PHP files are executed as PHP (not served as plain text)
+<FilesMatch "\.php$">
+    Require all granted
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+# Handle OPTIONS requests for CORS preflight
+<IfModule mod_rewrite.c>
+    RewriteCond %{REQUEST_METHOD} ^OPTIONS$
+    RewriteRule ^ - [L]
 </IfModule>
 
-# Set proper MIME types
-AddType application/json .json
-AddEncoding gzip .json
+# ====================================================================
+# Security Headers
+# ====================================================================
 
-# Security headers
 <IfModule mod_headers.c>
-    # Remove server signature for security
-    Header always unset "X-Powered-By"
-    Header always unset "Server"
-    
-    # Prevent MIME type sniffing
-    Header always set "X-Content-Type-Options" "nosniff"
-    
     # Prevent clickjacking
-    Header always set "X-Frame-Options" "DENY"
+    Header always set X-Frame-Options "SAMEORIGIN"
     
-    # XSS Protection
-    Header always set "X-XSS-Protection" "1; mode=block"
+    # Prevent MIME sniffing
+    Header always set X-Content-Type-Options "nosniff"
     
-    # Referrer Policy
-    Header always set "Referrer-Policy" "strict-origin-when-cross-origin"
+    # Enable XSS protection in older browsers
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Referrer policy
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Ensure api.php is accessible
-<FilesMatch "^api\.php$">
-    <IfModule mod_fcgid.c>
-        SetHandler fcgid-script
-    </IfModule>
-    <IfModule mod_php7.c>
-        AddHandler application/x-httpd-php7 .php
-    </IfModule>
-    <IfModule mod_php.c>
-        AddHandler application/x-httpd-php .php
-    </IfModule>
-</FilesMatch>
+# ====================================================================
+# Gzip Compression
+# ====================================================================
 
-# Protect sensitive files
-<FilesMatch "\.(env|sql|log|conf|config|yml|yaml)$">
-    Order allow,deny
-    Deny from all
-</FilesMatch>
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
 
-# Allow access to uploads directory
-<Directory "uploads">
-    <IfModule mod_rewrite.c>
-        RewriteEngine Off
-    </IfModule>
-    Order allow,deny
-    Allow from all
-</Directory>
+# ====================================================================
+# File Upload Size Limits
+# ====================================================================
 
-# Default character encoding
-AddDefaultCharset UTF-8
+php_value upload_max_filesize 50M
+php_value post_max_size 50M
+
+# ====================================================================
+# Error Handling
+# ====================================================================
+
+# Custom error pages
+ErrorDocument 404 index.html
+ErrorDocument 500 index.html
