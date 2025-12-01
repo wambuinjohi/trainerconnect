@@ -105,6 +105,7 @@ const App = () => (
                     <Route path="/admin/reset-passwords" element={<ResetPasswords />} />
                     <Route path="/setup" element={<AdminSetup />} />
                     <Route path="/api-test" element={<ApiTest />} />
+                    <Route path="/api-diagnostics" element={<ApiDiagnostics />} />
                     <Route path="/explore" element={<Explore />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
