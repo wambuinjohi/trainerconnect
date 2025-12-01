@@ -29,6 +29,7 @@ import UploadDemo from "./pages/UploadDemo";
 import PasswordReset from "./pages/PasswordReset";
 import ResetPasswords from "./pages/ResetPasswords";
 import MpesaMigration from "./pages/MpesaMigration";
+import ApiDiagnostics from "./pages/ApiDiagnostics";
 
 const queryClient = new QueryClient();
 
