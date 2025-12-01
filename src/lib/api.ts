@@ -126,9 +126,22 @@ async function apiRequest_Internal<T = any>(
       throw new Error('Empty response body')
     }
 
+    // Check content type header first for better diagnostics
+    const contentType = res.headers.get('content-type') || ''
+    const isHtmlContentType = contentType.includes('text/html') || contentType.includes('application/x-www-form-urlencoded')
+
     // Check if response is HTML instead of JSON (common error response)
-    if (text.trim().startsWith('<')) {
-      throw new Error(`Server returned HTML instead of JSON. Status: ${res.status}. The API endpoint may be down or misconfigured.`)
+    if (text.trim().startsWith('<') || isHtmlContentType) {
+      // Extract first 200 characters of response for diagnostic purposes
+      const htmlSnippet = text.substring(0, 200).trim()
+      const isDevEnv = import.meta.env.DEV
+      const snippet = isDevEnv ? ` Response start: ${htmlSnippet}` : ''
+
+      throw new Error(
+        `Server returned HTML instead of JSON (Content-Type: ${contentType || 'not set'}). ` +
+        `Status: ${res.status}. The API endpoint may be down, misconfigured, or PHP may not be enabled. ` +
+        `API URL: ${apiUrl}.${snippet}`
+      )
     }
 
     json = JSON.parse(text)
