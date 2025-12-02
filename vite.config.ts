@@ -438,12 +438,10 @@ export default defineConfig(({ mode, command }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // CRITICAL FIX: Completely disable Vite's problematic pre-bundling
+  // CRITICAL FIX: Use safe default dependency optimization
   // Pre-bundled deps were causing React to be null in Radix UI hook context
-  // Vite will now use native ES modules for all dependencies
-  optimizeDeps: {
-    disabled: true,
-  },
+  // By not specifying custom optimizeDeps, Vite uses defaults that work correctly
+  // This ensures all modules share the same React instance
   build: {
     rollupOptions: {
       output: {
