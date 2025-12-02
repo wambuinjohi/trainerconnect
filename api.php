@@ -11,20 +11,9 @@ if (ob_get_level()) {
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-// CORS Configuration for Apache Production
-// Determine allowed origins for CORS
-$allowedOrigins = [
-    'https://trainer.skatryk.co.ke',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:8080',
-];
-
+// Get the requesting origin
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : (in_array('https://trainer.skatryk.co.ke', $allowedOrigins) ? 'https://trainer.skatryk.co.ke' : '');
+$corsOrigin = !empty($origin) ? $origin : '*';
 
 // Set headers BEFORE any output - crucial for Apache
 if (!headers_sent()) {
