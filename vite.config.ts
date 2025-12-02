@@ -439,7 +439,9 @@ export default defineConfig(({ mode, command }) => ({
     },
   },
   optimizeDeps: {
-    // Explicitly include all Radix UI components to ensure React is available
+    // For production, use strict optimization to prevent stale cache issues
+    force: command === 'build' ? true : false,
+    // Explicitly include all critical dependencies to ensure they're bundled together with React
     include: [
       'react',
       'react-dom',
@@ -449,6 +451,7 @@ export default defineConfig(({ mode, command }) => ({
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-accordion',
       '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-aspect-ratio',
       '@radix-ui/react-avatar',
       '@radix-ui/react-checkbox',
       '@radix-ui/react-collapsible',
@@ -464,9 +467,17 @@ export default defineConfig(({ mode, command }) => ({
       '@radix-ui/react-select',
       '@radix-ui/react-separator',
       '@radix-ui/react-slider',
+      '@radix-ui/react-slot',
       '@radix-ui/react-tabs',
+      '@radix-ui/react-toast',
       '@radix-ui/react-toggle',
       '@radix-ui/react-toggle-group',
+      '@radix-ui/react-tooltip',
+      'react-router-dom',
+      'react-hook-form',
+      '@hookform/resolvers',
+      '@tanstack/react-query',
+      'next-themes',
     ],
   },
   build: {
