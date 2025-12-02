@@ -637,6 +637,11 @@ switch ($action) {
         if ($table === 'user_profiles') {
             $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
             foreach ($rows as &$row) {
+                // Normalize profile image URL
+                if (!empty($row['profile_image'])) {
+                    $row['profile_image'] = normalizeImageUrl($row['profile_image']);
+                }
+
                 foreach ($jsonFields as $field) {
                     if (isset($row[$field]) && is_string($row[$field]) && !empty($row[$field])) {
                         $parsed = json_decode($row[$field], true);
