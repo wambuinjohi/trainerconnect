@@ -439,27 +439,52 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime', '@radix-ui/react-tooltip'],
+    // Explicitly include all Radix UI components to ensure React is available
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-collapsible',
+      '@radix-ui/react-context-menu',
+      '@radix-ui/react-hover-card',
+      '@radix-ui/react-label',
+      '@radix-ui/react-menubar',
+      '@radix-ui/react-navigation-menu',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-progress',
+      '@radix-ui/react-radio-group',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-select',
+      '@radix-ui/react-separator',
+      '@radix-ui/react-slider',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-toggle',
+      '@radix-ui/react-toggle-group',
+    ],
   },
   build: {
     rollupOptions: {
       output: {
+        // Don't separate critical dependencies
         manualChunks: (id) => {
-          // Keep React and React-DOM in main bundle for stability
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
-            return undefined;
-          }
-          // Keep Radix UI in main bundle to avoid hook context issues
-          if (id.includes('@radix-ui')) {
-            return undefined;
-          }
-          // Keep react-router in main for routing stability
-          if (id.includes('react-router')) {
-            return undefined;
-          }
-          // Group other large vendors to reduce main chunk size
+          // Keep everything except truly optional vendor libs in main
           if (id.includes('node_modules')) {
-            return 'vendor';
+            // Only separate optional libraries
+            if (id.includes('recharts') || id.includes('chart')) {
+              return 'charts';
+            }
+            if (id.includes('luxon') || id.includes('date-fns')) {
+              return 'dates';
+            }
+            // Keep everything else in main
+            return undefined;
           }
         },
       },
@@ -467,6 +492,6 @@ export default defineConfig(({ mode }) => ({
     // Improve build stability
     minify: 'terser',
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
   },
 }));
