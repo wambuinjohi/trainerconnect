@@ -421,7 +421,7 @@ function paymentsApiPlugin() {
 }
 
 // Export final Vite config
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode, command }) => ({
   server: {
     host: "::",
     port: 8080,
