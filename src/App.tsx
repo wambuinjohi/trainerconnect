@@ -78,11 +78,11 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Sonner />
-          <ApiConfigProvider>
-            <AuthProvider>
-              <AutoSetupWrapper>
-                <ConnectionStatusDialog />
-                <BrowserRouter>
+          <BrowserRouter>
+            <ApiConfigProvider>
+              <AuthProvider>
+                <AutoSetupWrapper>
+                  <ConnectionStatusDialog />
                   <Routes>
                     <Route path="/" element={<AppContent />} />
                     <Route
@@ -117,10 +117,10 @@ const App = () => (
                     <Route path="/api-diagnostics" element={<ApiDiagnostics />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </BrowserRouter>
-              </AutoSetupWrapper>
-            </AuthProvider>
-          </ApiConfigProvider>
+                </AutoSetupWrapper>
+              </AuthProvider>
+            </ApiConfigProvider>
+          </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>
