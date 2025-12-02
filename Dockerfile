@@ -16,9 +16,8 @@ COPY . .
 # Build the app
 ENV NODE_ENV=production
 
-# Make build script executable and run clean build
-RUN chmod +x scripts/clean-build.sh && \
-    scripts/clean-build.sh
+# Clear vite cache and build with fresh dependencies
+RUN rm -rf node_modules/.vite node_modules/.cache && npm run build
 
 # Production stage
 FROM node:20-alpine
