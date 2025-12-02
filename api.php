@@ -19,15 +19,9 @@ $corsOrigin = !empty($origin) ? $origin : '*';
 if (!headers_sent()) {
     header("Content-Type: application/json; charset=utf-8");
 
-    // CORS Headers
-    if (!empty($corsOrigin)) {
-        header("Access-Control-Allow-Origin: " . $corsOrigin);
-        header("Access-Control-Allow-Credentials: true");
-    } else if (in_array('*', ['https://trainer.skatryk.co.ke'])) {
-        // Fallback for development
-        header("Access-Control-Allow-Origin: *");
-    }
-
+    // CORS Headers - Allow any origin
+    header("Access-Control-Allow-Origin: " . $corsOrigin);
+    header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
     header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     header("Access-Control-Max-Age: 86400");
