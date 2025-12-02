@@ -4,7 +4,6 @@
   "webDir": "dist",
   "server": {
     "androidScheme": "https",
-    "url": "https://trainer.skatryk.co.ke",
     "cleartext": false,
     "allowNavigation": [
       "trainer.skatryk.co.ke",
