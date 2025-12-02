@@ -2278,6 +2278,11 @@ switch ($action) {
 
         $profile = $result->fetch_assoc();
 
+        // Normalize profile image URL
+        if (!empty($profile['profile_image'])) {
+            $profile['profile_image'] = normalizeImageUrl($profile['profile_image']);
+        }
+
         // Parse JSON fields for proper response format
         $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
         foreach ($jsonFields as $field) {
