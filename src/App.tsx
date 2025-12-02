@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, Suspense, lazy } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
@@ -9,6 +8,11 @@ import { ApiConfigProvider } from "@/contexts/ApiConfigContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AutoSetupWrapper } from "@/components/AutoSetupWrapper";
 import { ConnectionStatusDialog } from "@/components/ConnectionStatusDialog";
+
+// Lazy load TooltipProvider to ensure React is initialized first
+const TooltipProvider = lazy(() =>
+  import("@/components/ui/tooltip").then(m => ({ default: m.TooltipProvider }))
+);
 import { AuthForm } from "@/components/auth/AuthForm";
 import { ClientDashboard } from "@/components/client/ClientDashboard";
 import { TrainerDashboard } from "@/components/trainer/TrainerDashboard";
