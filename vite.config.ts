@@ -440,16 +440,13 @@ export default defineConfig(({ mode, command }) => ({
   },
   // CRITICAL FIX: Disable Vite's problematic dependency pre-bundling
   // The pre-bundled deps were causing React to be null when Radix UI hooks initialized
-  // By disabling optimizeDeps, Vite will bundle everything normally in production
-  optimizeDeps: command === 'build'
-    ? {
-        // In production builds, skip pre-bundling - let Rollup handle everything
-        exclude: ['everything'], // Effectively disables pre-bundling
-      }
-    : {
-        // In dev, minimal optimization - just ensure React is available early
-        include: ['react', 'react-dom', 'react/jsx-runtime'],
-      },
+  // By disabling this for production, Rollup will handle all bundling ensuring proper module context
+  ...(command === 'build' && {
+    optimizeDeps: {
+      noDiscovery: true, // Disable automatic dependency discovery
+      include: [], // Don't pre-bundle anything in production
+    },
+  }),
   build: {
     rollupOptions: {
       output: {
