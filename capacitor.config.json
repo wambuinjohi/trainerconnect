@@ -1,0 +1,23 @@
+{
+  "appId": "co.skatryk.trainer",
+  "appName": "Skatryk Trainer",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://trainer.skatryk.co.ke",
+    "cleartext": false,
+    "allowNavigation": [
+      "trainer.skatryk.co.ke",
+      "*.trainer.skatryk.co.ke",
+      "*"
+    ]
+  },
+  "plugins": {
+    "Geolocation": {
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    }
+  }
+}

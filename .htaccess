@@ -1,0 +1,72 @@
+# Apache configuration for API
+# CORS headers and API handling
+
+# Enable mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+</IfModule>
+
+# Disable directory listing for security
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+
+# Enable gzip compression for API responses
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/json
+    AddOutputFilterByType DEFLATE text/plain
+</IfModule>
+
+# Set proper MIME types
+AddType application/json .json
+AddEncoding gzip .json
+
+# Security headers
+<IfModule mod_headers.c>
+    # Remove server signature for security
+    Header always unset "X-Powered-By"
+    Header always unset "Server"
+    
+    # Prevent MIME type sniffing
+    Header always set "X-Content-Type-Options" "nosniff"
+    
+    # Prevent clickjacking
+    Header always set "X-Frame-Options" "DENY"
+    
+    # XSS Protection
+    Header always set "X-XSS-Protection" "1; mode=block"
+    
+    # Referrer Policy
+    Header always set "Referrer-Policy" "strict-origin-when-cross-origin"
+</IfModule>
+
+# Ensure api.php is accessible
+<FilesMatch "^api\.php$">
+    <IfModule mod_fcgid.c>
+        SetHandler fcgid-script
+    </IfModule>
+    <IfModule mod_php7.c>
+        AddHandler application/x-httpd-php7 .php
+    </IfModule>
+    <IfModule mod_php.c>
+        AddHandler application/x-httpd-php .php
+    </IfModule>
+</FilesMatch>
+
+# Protect sensitive files
+<FilesMatch "\.(env|sql|log|conf|config|yml|yaml)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow access to uploads directory
+<Directory "uploads">
+    <IfModule mod_rewrite.c>
+        RewriteEngine Off
+    </IfModule>
+    Order allow,deny
+    Allow from all
+</Directory>
+
+# Default character encoding
+AddDefaultCharset UTF-8

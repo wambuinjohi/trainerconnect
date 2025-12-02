@@ -1,0 +1,704 @@
+import React, { useEffect, useState, useRef } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from '@/hooks/use-toast'
+import { MediaUploadSection } from './MediaUploadSection'
+import { useFileUpload } from '@/hooks/use-file-upload'
+import { Upload, X } from 'lucide-react'
+import * as apiService from '@/lib/api-service'
+import { apiRequest, withAuth } from '@/lib/api'
+
+interface TrainerProfile {
+  user_id?: string
+  user_type?: string
+  name?: string
+  disciplines?: string[] | string
+  certifications?: string[] | string
+  hourly_rate?: number
+  hourly_rate_by_radius?: Array<{ radius_km: number; rate: number }>
+  service_radius?: number
+  availability?: any
+  payout_details?: any
+  profile_image?: string
+  bio?: string
+}
+
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
+
+// Helper function to clean and parse disciplines/certifications
+const cleanAndParseArray = (value: any): string[] => {
+  if (!value) return []
+
+  // If already an array, filter out empty/whitespace-only values
+  if (Array.isArray(value)) {
+    return value
+      .map(item => String(item).trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  // If string, try to parse as JSON first
+  if (typeof value === 'string') {
+    let stringValue = value.trim()
+
+    // Try JSON parsing
+    if (stringValue.startsWith('[') || stringValue.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(stringValue)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map(item => String(item).trim().replace(/['"\\]/g, ''))
+            .filter(Boolean)
+        }
+      } catch {
+        // If JSON parsing fails, treat as raw string
+      }
+    }
+
+    // Clean the string and split by comma
+    return stringValue
+      .split(',')
+      .map(item => item.trim().replace(/['"\\]/g, ''))
+      .filter(Boolean)
+  }
+
+  return []
+}
+
+export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+  const { user } = useAuth()
+  const userId = user?.id
+  const [loading, setLoading] = useState(false)
+  const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
+  const [name, setName] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
+  const [categoryPricing, setCategoryPricing] = useState<Record<number, number>>({})
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const { upload } = useFileUpload({
+    maxFileSize: 5 * 1024 * 1024,
+    allowedExtensions: ['jpg', 'jpeg', 'png', 'gif'],
+    onSuccess: (files) => {
+      if (files.length > 0) {
+        const uploadedFile = files[0]
+        handleChange('profile_image', uploadedFile.url)
+        toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
+        setUploadingImage(false)
+      }
+    },
+    onError: (error) => {
+      toast({ title: 'Upload failed', description: error, variant: 'destructive' })
+      setUploadingImage(false)
+    }
+  })
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        console.log('Loading all categories...')
+        const categoriesData = await apiService.getCategories()
+        console.log('All categories response:', categoriesData)
+
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          console.log('Categories loaded:', categoriesData.data)
+          setCategories(categoriesData.data)
+        } else {
+          console.warn('Invalid categories response format:', categoriesData)
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories', error)
+        toast({
+          title: 'Failed to load categories',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
+      } finally {
+        setCategoriesLoading(false)
+      }
+    }
+
+    loadCategories()
+  }, [])
+
+  useEffect(() => {
+    if (!userId) return
+    setLoading(true)
+    setSelectedCategoryIds([])
+    setCategoryPricing({})
+    const loadProfile = async () => {
+      try {
+        // Load profile from API
+        let profileData: any = null
+        const response = await apiService.getUserProfile(userId)
+        if (response?.data && response.data.length > 0) {
+          profileData = response.data[0]
+          setProfile(profileData)
+          setName(String(profileData.full_name || profileData.name || ''))
+        } else {
+          // Fallback to localStorage
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            profileData = JSON.parse(savedProfile)
+            setProfile(profileData)
+            setName(String(profileData.name || ''))
+          }
+        }
+
+        // Load trainer categories
+        const categoriesData = await apiService.getTrainerCategories(userId)
+        console.log('Raw trainer categories response:', categoriesData)
+
+        // Handle different API response formats
+        let categoriesList: any[] = []
+        if (categoriesData?.data && Array.isArray(categoriesData.data)) {
+          categoriesList = categoriesData.data
+        } else if (Array.isArray(categoriesData)) {
+          categoriesList = categoriesData
+        }
+
+        console.log('Parsed categories list:', categoriesList)
+
+        if (categoriesList.length > 0) {
+          const ids = categoriesList.map((cat: any) => {
+            const catId = cat.category_id || cat.cat_id || cat.id
+            console.log('Processing category:', cat, 'Extracted ID:', catId)
+            return catId
+          }).filter((id): id is number => typeof id === 'number' && id > 0)
+
+          console.log('Final selected category IDs:', ids)
+          setSelectedCategoryIds(ids)
+
+          // Load category pricing
+          const pricing: Record<number, number> = {}
+          const baseRate = profileData?.hourly_rate || 1000
+          for (const cat of categoriesList) {
+            const catId = cat.category_id || cat.cat_id || cat.id
+            if (typeof catId === 'number' && catId > 0) {
+              pricing[catId] = cat.hourly_rate || baseRate
+            }
+          }
+          console.log('Category pricing:', pricing)
+          setCategoryPricing(pricing)
+        } else {
+          console.log('No trainer categories found, response was:', categoriesData)
+          setSelectedCategoryIds([])
+          setCategoryPricing({})
+        }
+      } catch (error) {
+        console.error('Failed to fetch profile:', error)
+        toast({
+          title: 'Failed to load profile',
+          description: `${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: 'destructive'
+        })
+        // Fallback to localStorage on error
+        try {
+          const savedProfile = localStorage.getItem(`trainer_profile_${userId}`)
+          if (savedProfile) {
+            const data = JSON.parse(savedProfile)
+            setProfile(data)
+            setName(String(data.name || ''))
+          }
+        } catch {}
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProfile()
+  }, [userId])
+
+  const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
+
+  const handleCategoryChange = (categoryId: number, checked: boolean) => {
+    if (checked) {
+      setSelectedCategoryIds(prev => [...new Set([...prev, categoryId])])
+    } else {
+      setSelectedCategoryIds(prev => prev.filter(id => id !== categoryId))
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.currentTarget.files
+    if (files && files.length > 0) {
+      setUploadingImage(true)
+      const fileArray = Array.from(files)
+      await upload(fileArray)
+    }
+    // Reset input
+    if (imageInputRef.current) {
+      imageInputRef.current.value = ''
+    }
+  }
+
+  const clearProfileImage = () => {
+    handleChange('profile_image', '')
+  }
+
+  const save = async () => {
+    if (!userId) {
+      toast({ title: 'Not signed in', description: 'Please sign in to edit your profile', variant: 'destructive' })
+      return
+    }
+    setLoading(true)
+    try {
+      // Validate categories
+      if (selectedCategoryIds.length === 0) {
+        toast({ title: 'Category required', description: 'Please select at least one service category.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
+      // Certifications normalization
+      const certifications = cleanAndParseArray(profile.certifications)
+
+      // Disciplines normalization
+      const disciplines = cleanAndParseArray(profile.disciplines)
+
+      // Hourly rate validation
+      const hourlyRateRaw = profile.hourly_rate == null ? '' : profile.hourly_rate
+      const hourlyRateNum = hourlyRateRaw === '' ? 0 : Number(hourlyRateRaw)
+      if (!Number.isFinite(hourlyRateNum) || hourlyRateNum < 0) {
+        toast({ title: 'Invalid hourly rate', description: 'Enter a non-negative number for hourly rate.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
+      // Service radius validation
+      const serviceRadiusRaw = profile.service_radius == null ? '' : profile.service_radius
+      const serviceRadiusNum = serviceRadiusRaw === '' ? null : Number(serviceRadiusRaw)
+      if (serviceRadiusNum !== null && (!Number.isFinite(serviceRadiusNum) || serviceRadiusNum < 0)) {
+        toast({ title: 'Invalid service radius', description: 'Enter a non-negative number for service radius.', variant: 'destructive' })
+        setLoading(false)
+        return
+      }
+
+      // Hourly rate by radius - sanitize and sort
+      const rawTiers = Array.isArray(profile.hourly_rate_by_radius) ? profile.hourly_rate_by_radius : []
+      const cleanedTiers: Array<{ radius_km: number; rate: number }> = []
+      for (let i = 0; i < rawTiers.length; i += 1) {
+        const item: any = rawTiers[i]
+        if (!item) continue
+        const r = Number(item.radius_km ?? item.radius ?? item.radius_km)
+        const rate = Number(item.rate ?? item.rate_per_hour ?? item.price ?? item.rate)
+        if (!Number.isFinite(r) || r < 0 || !Number.isFinite(rate) || rate < 0) {
+          toast({ title: 'Invalid travel tier', description: 'Each tier must have non-negative numeric radius and rate.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+        cleanedTiers.push({ radius_km: r, rate })
+      }
+      cleanedTiers.sort((a,b)=>a.radius_km - b.radius_km)
+
+      // Payout details - if string, attempt parse
+      let payoutDetails: any = profile.payout_details ?? null
+      if (typeof payoutDetails === 'string' && payoutDetails.trim() !== '') {
+        try {
+          payoutDetails = JSON.parse(payoutDetails)
+        } catch (e) {
+          toast({ title: 'Invalid payout JSON', description: 'Payout details must be valid JSON.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+      }
+
+      // Availability - if string, attempt parse
+      let availabilityVal: any = profile.availability ?? null
+      if (typeof availabilityVal === 'string' && availabilityVal.trim() !== '') {
+        try {
+          availabilityVal = JSON.parse(availabilityVal)
+        } catch (e) {
+          toast({ title: 'Invalid availability JSON', description: 'Availability must be valid JSON.', variant: 'destructive' })
+          setLoading(false)
+          return
+        }
+      }
+
+      const profileData: TrainerProfile = {
+        user_id: userId,
+        user_type: 'trainer',
+        name: name || null,
+        disciplines,
+        certifications,
+        hourly_rate: hourlyRateNum,
+        hourly_rate_by_radius: cleanedTiers.length ? cleanedTiers : null,
+        service_radius: serviceRadiusNum,
+        availability: availabilityVal ?? null,
+        payout_details: payoutDetails ?? null,
+        profile_image: profile.profile_image || null,
+        bio: profile.bio || null,
+      }
+
+      // Save to API
+      try {
+        const updatePayload = {
+          full_name: name,
+          disciplines: JSON.stringify(disciplines),
+          certifications: JSON.stringify(certifications),
+          hourly_rate: hourlyRateNum,
+          service_radius: serviceRadiusNum,
+          availability: JSON.stringify(availabilityVal),
+          timezone: profile.timezone || 'UTC',
+          profile_image: profile.profile_image || null,
+          bio: profile.bio || null,
+          payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
+          hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
+        }
+        console.log('Saving profile with userId:', userId)
+        console.log('Update payload:', updatePayload)
+        const response = await apiService.updateUserProfile(userId, updatePayload)
+        console.log('Profile updated successfully:', response)
+      } catch (apiErr) {
+        console.error('API save failed:', apiErr)
+        toast({
+          title: 'Database update failed',
+          description: apiErr instanceof Error ? apiErr.message : 'Could not save to database',
+          variant: 'destructive'
+        })
+        setLoading(false)
+        return
+      }
+
+      // Save to localStorage as fallback
+      localStorage.setItem(`trainer_profile_${userId}`, JSON.stringify(profileData))
+
+      // Get previous categories to determine what changed
+      const previousCategoriesData = await apiService.getTrainerCategories(userId)
+      const previousCategoryIds = previousCategoriesData?.data?.map((cat: any) => cat.category_id || cat.cat_id) || []
+
+      // Determine which categories to add and remove
+      const categoriesToAdd = selectedCategoryIds.filter(id => !previousCategoryIds.includes(id))
+      const categoriesToRemove = previousCategoryIds.filter(id => !selectedCategoryIds.includes(id))
+
+      // Save category changes
+      for (const categoryId of categoriesToAdd) {
+        try {
+          await apiService.addTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to add category ${categoryId}:`, catErr)
+        }
+      }
+
+      for (const categoryId of categoriesToRemove) {
+        try {
+          await apiService.removeTrainerCategory(userId, categoryId)
+        } catch (catErr) {
+          console.warn(`Failed to remove category ${categoryId}:`, catErr)
+        }
+      }
+
+      // Save category pricing for all selected categories
+      for (const categoryId of selectedCategoryIds) {
+        const price = categoryPricing[categoryId]
+        if (price && price > 0) {
+          try {
+            await apiRequest('trainer_category_pricing_set', {
+              trainer_id: userId,
+              category_id: categoryId,
+              hourly_rate: price
+            }, { headers: withAuth() })
+          } catch (pricingErr) {
+            console.warn(`Failed to save pricing for category ${categoryId}:`, pricingErr)
+          }
+        }
+      }
+
+      toast({ title: 'Saved', description: 'Profile updated successfully.' })
+      onClose?.()
+    } catch (err) {
+      console.error('Save profile error', err)
+      toast({ title: 'Error', description: (err as any)?.message || 'Failed to save profile', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardHeader>
+        <CardTitle>Edit Trainer Profile</CardTitle>
+      </CardHeader>
+      <CardContent className="pb-24">
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <Label htmlFor="name">Full name</Label>
+            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Profile Image</Label>
+            <div className="space-y-3">
+              {/* Image Preview */}
+              {profile.profile_image && (
+                <div className="relative w-32 h-32 mx-auto rounded-lg overflow-hidden border-2 border-border bg-muted">
+                  <img
+                    src={profile.profile_image}
+                    alt="Profile preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearProfileImage}
+                    className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Upload Area */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={uploadingImage || loading}
+                  className="flex-1 p-3 border-2 border-dashed border-border rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">{uploadingImage ? 'Uploading...' : 'Upload Photo'}</span>
+                </button>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage || loading}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Manual URL Input */}
+              <div>
+                <Label htmlFor="profile-image-url" className="text-xs text-muted-foreground">Or paste image URL</Label>
+                <Input
+                  id="profile-image-url"
+                  value={profile.profile_image || ''}
+                  onChange={(e) => handleChange('profile_image', e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={loading}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="bio">Bio</Label>
+            <textarea id="bio" value={profile.bio || ''} onChange={(e) => handleChange('bio', e.target.value)} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
+          </div>
+
+          <div className="space-y-3">
+            <Label>Service Categories (required)</Label>
+            <p className="text-sm text-muted-foreground">Select the categories of services you offer. These are defined by the platform administrator.</p>
+            {categoriesLoading ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : categories.length === 0 ? (
+              <div className="text-sm text-muted-foreground">No categories available. Please ask the administrator to create some.</div>
+            ) : (
+              <div className="space-y-3 border border-border rounded-md p-4">
+                {categories.map((category) => (
+                  <div key={category.id} className="flex items-start gap-3 pb-3 border-b border-border last:border-b-0">
+                    <input
+                      type="checkbox"
+                      id={`category_${category.id}`}
+                      checked={selectedCategoryIds.includes(category.id)}
+                      onChange={(e) => handleCategoryChange(category.id, e.target.checked)}
+                      disabled={loading}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label htmlFor={`category_${category.id}`} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          {category.icon && <span className="text-xl">{category.icon}</span>}
+                          <span className="font-medium text-foreground">{category.name}</span>
+                        </div>
+                        {category.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{category.description}</p>
+                        )}
+                      </label>
+                      {selectedCategoryIds.includes(category.id) && (
+                        <div className="mt-2 ml-6">
+                          <label htmlFor={`price_${category.id}`} className="text-xs font-medium text-foreground">
+                            Hourly Rate (Ksh)
+                          </label>
+                          <input
+                            id={`price_${category.id}`}
+                            type="number"
+                            min="0"
+                            step="100"
+                            value={categoryPricing[category.id] || ''}
+                            onChange={(e) => setCategoryPricing(prev => ({
+                              ...prev,
+                              [category.id]: Number(e.target.value)
+                            }))}
+                            disabled={loading}
+                            placeholder="e.g., 1500"
+                            className="w-full mt-1 px-2 py-1 border border-border rounded text-sm bg-input"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedCategoryIds.length === 0 && (
+              <p className="text-xs text-destructive">Please select at least one category</p>
+            )}
+          </div>
+
+          <div>
+            <Label htmlFor="disciplines">Disciplines (comma separated)</Label>
+            <Input id="disciplines" value={cleanAndParseArray(profile.disciplines).join(', ')} onChange={(e) => handleChange('disciplines', e.target.value)} />
+          </div>
+
+          <div>
+            <Label htmlFor="certifications">Certifications (comma separated)</Label>
+            <Input id="certifications" value={cleanAndParseArray(profile.certifications).join(', ')} onChange={(e) => handleChange('certifications', e.target.value)} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="hourly_rate">Default Hourly Rate</Label>
+              <Input id="hourly_rate" type="number" value={profile.hourly_rate ?? ''} onChange={(e) => handleChange('hourly_rate', Number(e.target.value))} />
+            </div>
+            <div>
+              <Label htmlFor="service_radius">Service Radius (km)</Label>
+              <Input id="service_radius" type="number" value={profile.service_radius ?? ''} onChange={(e) => handleChange('service_radius', Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="timezone">Timezone</Label>
+            <select
+              id="timezone"
+              value={profile.timezone || 'UTC'}
+              onChange={(e) => handleChange('timezone', e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-md bg-input"
+            >
+              <option value="UTC">UTC (Universal Time)</option>
+              <option value="Africa/Johannesburg">Africa/Johannesburg (South Africa)</option>
+              <option value="Africa/Nairobi">Africa/Nairobi (Kenya)</option>
+              <option value="Africa/Lagos">Africa/Lagos (Nigeria)</option>
+              <option value="Africa/Cairo">Africa/Cairo (Egypt)</option>
+              <option value="Africa/Kampala">Africa/Kampala (Uganda)</option>
+              <option value="Africa/Dar_es_Salaam">Africa/Dar es Salaam (Tanzania)</option>
+              <option value="Africa/Accra">Africa/Accra (Ghana)</option>
+              <option value="Europe/London">Europe/London (UK)</option>
+              <option value="Europe/Paris">Europe/Paris (France)</option>
+              <option value="Europe/Berlin">Europe/Berlin (Germany)</option>
+              <option value="Asia/Dubai">Asia/Dubai (UAE)</option>
+              <option value="Asia/Bangkok">Asia/Bangkok (Thailand)</option>
+              <option value="Asia/Singapore">Asia/Singapore (Singapore)</option>
+              <option value="Asia/Tokyo">Asia/Tokyo (Japan)</option>
+              <option value="America/New_York">America/New_York (US Eastern)</option>
+              <option value="America/Los_Angeles">America/Los_Angeles (US Pacific)</option>
+              <option value="Australia/Sydney">Australia/Sydney (Australia)</option>
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">Your booking times and availability will be displayed in this timezone to clients.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Pricing by Service Radius</Label>
+            <div className="text-xs text-muted-foreground">Set tiered rates based on client distance (km). The first tier that is greater than or equal to the client's distance is used.</div>
+            <div className="space-y-2">
+              {(Array.isArray(profile.hourly_rate_by_radius) ? profile.hourly_rate_by_radius : []).map((row: any, idx: number) => (
+                <div key={idx} className="grid grid-cols-5 gap-2 items-end">
+                  <div className="col-span-2">
+                    <Label>Max distance (km)</Label>
+                    <Input type="number" value={row.radius_km ?? ''} onChange={(e)=>{
+                      const v = Number(e.target.value)
+                      const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                      arr[idx] = { ...arr[idx], radius_km: isFinite(v) ? v : undefined }
+                      handleChange('hourly_rate_by_radius', arr)
+                    }} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label>Rate (Ksh/hour)</Label>
+                    <Input type="number" value={row.rate ?? ''} onChange={(e)=>{
+                      const v = Number(e.target.value)
+                      const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                      arr[idx] = { ...arr[idx], rate: isFinite(v) ? v : undefined }
+                      handleChange('hourly_rate_by_radius', arr)
+                    }} />
+                  </div>
+                  <Button variant="outline" onClick={()=>{
+                    const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[])]
+                    arr.splice(idx,1)
+                    handleChange('hourly_rate_by_radius', arr)
+                  }}>Remove</Button>
+                </div>
+              ))}
+            </div>
+            <div>
+              <Button variant="ghost" onClick={()=>{
+                const base = Number(profile.hourly_rate)
+                const defaultRate = Number.isFinite(base) && base > 0 ? base : 30
+                const arr = [...(Array.isArray(profile.hourly_rate_by_radius)?profile.hourly_rate_by_radius:[]), { radius_km: 5, rate: defaultRate }]
+                handleChange('hourly_rate_by_radius', arr)
+              }}>Add tier</Button>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="payout_details">Payout Details (JSON)</Label>
+            <textarea id="payout_details" value={profile.payout_details ? JSON.stringify(profile.payout_details) : ''} onChange={(e) => {
+              try {
+                const parsed = e.target.value ? JSON.parse(e.target.value) : null
+                handleChange('payout_details', parsed)
+              } catch {
+                // keep raw string until valid
+                handleChange('payout_details', e.target.value)
+              }
+            }} className="w-full p-2 border border-border rounded-md bg-input" rows={3} />
+            <p className="text-xs text-muted-foreground">You can provide bank_account/mobile_money and payout preferences. Example: <code>{"{\"payout_type\":\"weekly\",\"bank_account\":\"000111222\"}"}</code></p>
+          </div>
+
+          <div>
+            <Label htmlFor="availability">Availability (JSON)</Label>
+            <textarea id="availability" value={profile.availability ? JSON.stringify(profile.availability) : ''} onChange={(e) => {
+              try {
+                const parsed = e.target.value ? JSON.parse(e.target.value) : null
+                handleChange('availability', parsed)
+              } catch {
+                handleChange('availability', e.target.value)
+              }
+            }} className="w-full p-2 border border-border rounded-md bg-input" rows={4} />
+            <p className="text-xs text-muted-foreground">Provide a simple JSON schedule, e.g. <code>{"{\"monday\":[\"09:00-12:00\",\"14:00-18:00\"]}"}</code></p>
+          </div>
+
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => onClose?.()} disabled={loading}>Cancel</Button>
+            <Button onClick={save} disabled={loading}>{loading ? 'Saving...' : 'Save Profile'}</Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+export const TrainerProfileWithMedia: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-6 p-4">
+      <TrainerProfileEditor onClose={onClose} />
+      <MediaUploadSection
+        title="Upload Your Media"
+        description="Add photos, videos, and certifications to showcase your expertise"
+        uploadType="all"
+        onFilesUploaded={(files) => {
+          toast({
+            title: 'Success',
+            description: `${files.length} file(s) uploaded successfully`
+          })
+        }}
+      />
+    </div>
+  )
+}

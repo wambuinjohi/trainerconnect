@@ -1,0 +1,222 @@
+import { apiRequest, withAuth, getApiUrl } from '@/lib/api'
+import { getApiBaseUrl } from '@/lib/api-config'
+
+export type MpesaSettings = {
+  environment: 'sandbox' | 'production'
+  consumerKey: string
+  consumerSecret: string
+  passkey: string
+  initiatorName: string
+  securityCredential: string
+  shortcode: string
+  resultUrl: string
+  queueTimeoutUrl: string
+  commandId: string
+  transactionType: string
+  c2bCallbackUrl: string
+  b2cCallbackUrl: string
+}
+
+export type PlatformSettings = {
+  // Finance
+  commissionRate: number
+  taxRate: number
+  payoutSchedule: 'weekly' | 'biweekly' | 'monthly'
+  currency: 'USD' | 'KES' | 'EUR' | 'GBP'
+  // Referral (existing)
+  referralClientDiscount: number
+  referralClientBookings: number
+  referralTrainerDiscount: number
+  referralTrainerBookings: number
+  enableReferralProgram: boolean
+  useReferrerPhoneAsCode: boolean
+  // Referral/Affiliate (new)
+  referralReferrerPercent: number
+  referralReferredPercent: number
+  promptReferralOnFirstBooking: boolean
+  applyReferralDiscountImmediately: boolean
+  // Platform charges (new)
+  platformChargeTrainerPercent: number
+  platformChargeClientPercent: number
+  compensationFeePercent: number
+  maintenanceFeePercent: number
+  // Platform
+  platformName: string
+  supportEmail: string
+  timezone: 'Africa/Nairobi' | 'UTC' | 'America/New_York' | 'Europe/London'
+  emailNotifications: boolean
+  maintenanceMode: boolean
+  // Theme
+  theme?: 'light' | 'dark' | 'system'
+  // Booking policies
+  cancellationHours: number
+  rescheduleHours: number
+  maxDailySessionsPerTrainer: number
+  // M-Pesa Settings
+  mpesa?: MpesaSettings
+}
+
+const KEY = 'platform_settings_v1'
+
+function getDefaultMpesaCallbackUrls() {
+  const baseUrl = getApiBaseUrl();
+
+  // Build callback URLs based on the API base URL
+  let callbackBase = baseUrl;
+  if (baseUrl.endsWith('/api.php')) {
+    callbackBase = baseUrl.replace('/api.php', '');
+  } else if (!baseUrl.endsWith('/')) {
+    callbackBase = baseUrl + '/';
+  }
+
+  const resultUrl = callbackBase.endsWith('/')
+    ? callbackBase + 'b2c_callback.php'
+    : callbackBase + '/b2c_callback.php';
+  const c2bUrl = callbackBase.endsWith('/')
+    ? callbackBase + 'c2b_callback.php'
+    : callbackBase + '/c2b_callback.php';
+
+  return {
+    resultUrl,
+    queueTimeoutUrl: resultUrl,
+    c2bCallbackUrl: c2bUrl,
+    b2cCallbackUrl: resultUrl,
+  };
+}
+
+export const defaultMpesaSettings: MpesaSettings = {
+  environment: 'sandbox',
+  consumerKey: '',
+  consumerSecret: '',
+  passkey: '',
+  initiatorName: '',
+  securityCredential: '',
+  shortcode: '',
+  ...getDefaultMpesaCallbackUrls(),
+  commandId: 'BusinessPayment',
+  transactionType: 'BusinessPayment',
+}
+
+export const defaultSettings: PlatformSettings = {
+  // Finance
+  commissionRate: 15,
+  taxRate: 0,
+  payoutSchedule: 'monthly',
+  currency: 'KES',
+  // Referral (existing)
+  referralClientDiscount: 10,
+  referralClientBookings: 5,
+  referralTrainerDiscount: 10,
+  referralTrainerBookings: 3,
+  enableReferralProgram: true,
+  useReferrerPhoneAsCode: false,
+  // Referral/Affiliate (new)
+  referralReferrerPercent: 15,
+  referralReferredPercent: 15,
+  promptReferralOnFirstBooking: true,
+  applyReferralDiscountImmediately: true,
+  // Platform charges (new)
+  platformChargeTrainerPercent: 10,
+  platformChargeClientPercent: 15,
+  compensationFeePercent: 10,
+  maintenanceFeePercent: 15,
+  // Platform
+  platformName: 'Skatryk Trainer',
+  supportEmail: 'support@skatryk.com',
+  timezone: 'Africa/Nairobi',
+  emailNotifications: true,
+  maintenanceMode: false,
+  theme: 'system',
+  // Booking policies
+  cancellationHours: 24,
+  rescheduleHours: 24,
+  maxDailySessionsPerTrainer: 8,
+  // M-Pesa Settings
+  mpesa: { ...defaultMpesaSettings },
+}
+
+export function loadSettings(): PlatformSettings {
+  try {
+    const raw = localStorage.getItem(KEY)
+    if (!raw) return { ...defaultSettings }
+    const parsed = JSON.parse(raw)
+    return { ...defaultSettings, ...parsed }
+  } catch {
+    return { ...defaultSettings }
+  }
+}
+
+export function saveSettings(s: PlatformSettings) {
+  localStorage.setItem(KEY, JSON.stringify(s))
+}
+
+// Attempt to load settings from PHP API
+export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
+  try {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'settings_get' })
+    })
+
+    if (!response.ok) {
+      console.error('Failed to load settings: HTTP', response.status)
+      return null
+    }
+
+    // Clone response to safely read body
+    const clonedResponse = response.clone()
+    const responseText = await clonedResponse.text()
+    const contentType = response.headers.get('content-type')
+
+    if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {
+      console.error('API returned HTML instead of JSON:', responseText.substring(0, 500))
+      return null
+    }
+
+    const data = JSON.parse(responseText)
+    if (!data?.data?.mpesa) return null
+
+    const merged = { ...defaultSettings, mpesa: data.data.mpesa }
+    return merged
+  } catch (err) {
+    console.error('Failed to load settings from DB:', err)
+    return null
+  }
+}
+
+export async function saveSettingsToDb(s: PlatformSettings): Promise<boolean> {
+  try {
+    const apiUrl = getApiUrl()
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'settings_save',
+        settings: s
+      })
+    })
+
+    if (!response.ok) {
+      console.error('Failed to save settings: HTTP', response.status)
+      return false
+    }
+
+    // Clone response to safely read body
+    const clonedResponse = response.clone()
+    const responseText = await clonedResponse.text()
+    const contentType = response.headers.get('content-type')
+
+    if (contentType?.includes('text/html') || responseText.trim().startsWith('<!')) {
+      console.error('API returned HTML instead of JSON:', responseText.substring(0, 500))
+      return false
+    }
+
+    const data = JSON.parse(responseText)
+    return data?.status === 'success'
+  } catch (err) {
+    console.error('Failed to save settings to DB:', err)
+    return false
+  }
+}
