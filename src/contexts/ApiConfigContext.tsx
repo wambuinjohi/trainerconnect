@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { getApiUrl, setApiUrl as setStoredApiUrl, clearApiUrl } from '@/lib/api-config';
 
 interface ApiConfigContextType {
   apiUrl: string;
@@ -12,20 +13,16 @@ interface ApiConfigContextType {
 
 const ApiConfigContext = createContext<ApiConfigContextType | undefined>(undefined);
 
-const DEFAULT_API_URL = '/api.php';
-
 export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
-  const [apiUrl, setApiUrlState] = useState<string>(DEFAULT_API_URL);
+  const [apiUrl, setApiUrlState] = useState<string>(getApiUrl());
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState<boolean>(false);
 
-  // Load API URL from localStorage on mount
+  // Load API URL from environment or localStorage on mount
   useEffect(() => {
-    const storedUrl = localStorage.getItem('api_url');
-    if (storedUrl) {
-      setApiUrlState(storedUrl);
-    }
+    const url = getApiUrl();
+    setApiUrlState(url);
     setInitialized(true);
   }, []);
 
