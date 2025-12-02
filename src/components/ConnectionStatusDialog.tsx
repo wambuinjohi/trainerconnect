@@ -38,7 +38,10 @@ export function ConnectionStatusDialog() {
   const handleRetry = async () => {
     try {
       setIsTesting(true);
-      await testConnection();
+      const result = await testConnection();
+      if (!result) {
+        console.error('Connection test returned false');
+      }
     } catch (error) {
       // Error is already handled in ApiConfigContext
       console.error('Connection test failed:', error);
