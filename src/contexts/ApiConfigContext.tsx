@@ -28,7 +28,7 @@ export const ApiConfigProvider = ({ children }: { children: ReactNode }) => {
 
   const setApiUrl = (url: string) => {
     setApiUrlState(url);
-    localStorage.setItem('api_url', url);
+    setStoredApiUrl(url);
   };
 
   const testConnection = async (): Promise<boolean> => {
