@@ -438,13 +438,12 @@ export default defineConfig(({ mode, command }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // CRITICAL FIX: Disable Vite's problematic dependency pre-bundling
-  // The pre-bundled deps were causing React to be null when Radix UI hooks initialized
-  // By disabling this for production, Rollup will handle all bundling ensuring proper module context
-  ...(command === 'build' && {
+  // CRITICAL FIX: For production builds, don't use Vite's pre-bundled deps
+  // They were causing React to be null when Radix UI hooks tried to initialize
+  // In dev, keep minimal optimization for faster dev server startup
+  ...(command === 'build' ? {} : {
     optimizeDeps: {
-      noDiscovery: true, // Disable automatic dependency discovery
-      include: [], // Don't pre-bundle anything in production
+      include: ['react', 'react-dom'],
     },
   }),
   build: {
