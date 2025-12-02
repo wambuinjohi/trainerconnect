@@ -3,32 +3,63 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Verify React is available
+if (!window.React) {
+  console.warn("[main.tsx] React object not on window - this is expected with modern JSX");
+}
+
 // Global error handlers
 window.addEventListener('error', (event) => {
   console.error('[Global Error Handler]', event.error);
+  if (event.error?.message?.includes('useRef')) {
+    console.error('[React Hook Error] Likely cause: Module resolution issue or duplicate React versions');
+  }
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[Unhandled Promise Rejection]', event.reason);
-  // Don't prevent default - let browser handle it, but we're logging it
 });
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
   console.error("Root element not found!");
-  document.body.innerHTML = "<div style='padding: 20px; color: red;'>Error: Root element not found in DOM</div>";
+  document.body.innerHTML = "<div style='padding: 20px; color: red; font-family: monospace;'>Error: Root element not found in DOM</div>";
 } else {
   try {
-    console.log("Mounting React app...");
-    createRoot(rootElement).render(
+    console.log("[main.tsx] Starting React app mount...");
+    const root = createRoot(rootElement);
+
+    root.render(
       <StrictMode>
         <App />
       </StrictMode>
     );
-    console.log("React app mounted successfully");
+
+    console.log("[main.tsx] React app mounted successfully");
   } catch (error) {
-    console.error("Failed to mount React app:", error);
-    document.body.innerHTML = `<div style='padding: 20px; color: red; font-family: monospace;'>Error mounting app: ${error}</div>`;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+
+    console.error("[main.tsx] Failed to mount React app:", error);
+    console.error("[main.tsx] Error details:", { errorMsg, errorStack });
+
+    const isHookError = errorMsg.includes('useRef') || errorMsg.includes('Hook');
+    const suggestion = isHookError
+      ? '<br><br><strong>Suggestion:</strong> This appears to be a React hooks error. Try:<br>1. Clear browser cache<br>2. Check that all providers are properly nested<br>3. Ensure React modules are not duplicated'
+      : '';
+
+    document.body.innerHTML = `
+      <div style='padding: 20px; color: red; font-family: monospace; white-space: pre-wrap; max-width: 800px;'>
+        <h2>Error Mounting Application</h2>
+        <p>${errorMsg}</p>
+        ${suggestion}
+        <hr style='margin: 20px 0;'>
+        <details style='cursor: pointer;'>
+          <summary>Stack trace (click to expand)</summary>
+          <pre style='font-size: 11px; overflow-x: auto;'>${errorStack}</pre>
+        </details>
+      </div>
+    `;
   }
 }
 
