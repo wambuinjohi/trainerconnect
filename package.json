@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:clean": "rm -rf dist node_modules/.vite node_modules/.cache && vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "npm run build && vite preview --host 0.0.0.0 --port ${PORT:-3000}",
+    "deploy:fly": "npm run build:clean && flyctl deploy --no-cache",
     "test:e2e": "playwright test"
   },
   "dependencies": {
