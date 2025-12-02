@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Settings } from 'lucide-react';
 import { useApiConfig } from '@/contexts/ApiConfigContext';
+import { useNavigate } from 'react-router-dom';
 
 export function ConnectionStatusDialog() {
   const { apiUrl, setApiUrl, isConnected, connectionError, testConnection } = useApiConfig();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [editUrl, setEditUrl] = useState(apiUrl);
@@ -38,7 +40,10 @@ export function ConnectionStatusDialog() {
   const handleRetry = async () => {
     try {
       setIsTesting(true);
-      await testConnection();
+      const result = await testConnection();
+      if (!result) {
+        console.error('Connection test returned false');
+      }
     } catch (error) {
       // Error is already handled in ApiConfigContext
       console.error('Connection test failed:', error);
@@ -167,14 +172,24 @@ export function ConnectionStatusDialog() {
           </div>
 
           {!isConnected && (
-            <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm text-yellow-900 dark:text-yellow-100">
-              <p className="font-medium mb-2">Troubleshooting:</p>
-              <ul className="space-y-1 text-xs list-disc ml-4">
-                <li>Check your internet connection</li>
-                <li>Verify the API endpoint is correct</li>
-                <li>Ensure the server is running</li>
-                <li>Click "Edit" to change the API endpoint if needed</li>
-              </ul>
+            <div className="space-y-3">
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded text-sm text-yellow-900 dark:text-yellow-100">
+                <p className="font-medium mb-2">Troubleshooting:</p>
+                <ul className="space-y-1 text-xs list-disc ml-4">
+                  <li>Check your internet connection</li>
+                  <li>Verify the API endpoint is correct</li>
+                  <li>Ensure the server is running</li>
+                  <li>Click "Edit" to change the API endpoint if needed</li>
+                </ul>
+              </div>
+              <Button
+                onClick={() => navigate('/api-diagnostics')}
+                variant="outline"
+                className="w-full text-xs gap-2"
+              >
+                <Settings className="h-3 w-3" />
+                Advanced Diagnostics
+              </Button>
             </div>
           )}
         </div>

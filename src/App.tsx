@@ -29,6 +29,7 @@ import UploadDemo from "./pages/UploadDemo";
 import PasswordReset from "./pages/PasswordReset";
 import ResetPasswords from "./pages/ResetPasswords";
 import MpesaMigration from "./pages/MpesaMigration";
+import ApiDiagnostics from "./pages/ApiDiagnostics";
 
 const queryClient = new QueryClient();
 
@@ -77,11 +78,11 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Sonner />
-          <ApiConfigProvider>
-            <AuthProvider>
-              <AutoSetupWrapper>
-                <ConnectionStatusDialog />
-                <BrowserRouter>
+          <BrowserRouter>
+            <ApiConfigProvider>
+              <AuthProvider>
+                <AutoSetupWrapper>
+                  <ConnectionStatusDialog />
                   <Routes>
                     <Route path="/" element={<AppContent />} />
                     <Route
@@ -113,12 +114,13 @@ const App = () => (
                     <Route path="/clear-cache" element={<ClearCache />} />
                     <Route path="/upload-demo" element={<UploadDemo />} />
                     <Route path="/admin/mpesamigration" element={<MpesaMigration />} />
+                    <Route path="/api-diagnostics" element={<ApiDiagnostics />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </BrowserRouter>
-              </AutoSetupWrapper>
-            </AuthProvider>
-          </ApiConfigProvider>
+                </AutoSetupWrapper>
+              </AuthProvider>
+            </ApiConfigProvider>
+          </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
     </ThemeProvider>

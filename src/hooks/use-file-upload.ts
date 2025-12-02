@@ -116,13 +116,19 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         onError?.(errorMsg);
         toast.error(errorMsg);
       } else {
-        const apiBaseUrl = getApiBaseUrl();
-        const uploaded = (data.data?.uploaded || []).map((file: UploadedFile) => ({
+        // Use the URLs returned by the API (they should be full URLs now)
+        const uploaded = (data.data?.uploaded || []);
+
+        // Fallback: if URLs are relative, prepend the upload base URL
+        const normalizedUploaded = uploaded.map((file: UploadedFile) => ({
           ...file,
-          url: file.url.startsWith('http') ? file.url : `${apiBaseUrl}${file.url}`
+          url: file.url.startsWith('http')
+            ? file.url
+            : `https://skatryk.co.ke/uploads/${file.url.split('/').pop()}`
         }));
-        setUploadedFiles(prev => [...prev, ...uploaded]);
-        onSuccess?.(uploaded);
+
+        setUploadedFiles(prev => [...prev, ...normalizedUploaded]);
+        onSuccess?.(normalizedUploaded);
         
         const successMsg = data.data?.count === 1 
           ? '1 file uploaded successfully'

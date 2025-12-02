@@ -11,34 +11,17 @@ if (ob_get_level()) {
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-// CORS Configuration for Apache Production
-// Determine allowed origins for CORS
-$allowedOrigins = [
-    'https://trainer.skatryk.co.ke',
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'http://localhost:8080',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5173',
-    'http://127.0.0.1:8080',
-];
-
+// Get the requesting origin
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-$corsOrigin = in_array($origin, $allowedOrigins) ? $origin : (in_array('https://trainer.skatryk.co.ke', $allowedOrigins) ? 'https://trainer.skatryk.co.ke' : '');
+$corsOrigin = !empty($origin) ? $origin : '*';
 
 // Set headers BEFORE any output - crucial for Apache
 if (!headers_sent()) {
     header("Content-Type: application/json; charset=utf-8");
 
-    // CORS Headers
-    if (!empty($corsOrigin)) {
-        header("Access-Control-Allow-Origin: " . $corsOrigin);
-        header("Access-Control-Allow-Credentials: true");
-    } else if (in_array('*', ['https://trainer.skatryk.co.ke'])) {
-        // Fallback for development
-        header("Access-Control-Allow-Origin: *");
-    }
-
+    // CORS Headers - Allow any origin
+    header("Access-Control-Allow-Origin: " . $corsOrigin);
+    header("Access-Control-Allow-Credentials: true");
     header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
     header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     header("Access-Control-Max-Age: 86400");
@@ -57,12 +40,8 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) use ($corsOrigin
         header("Content-Type: application/json; charset=utf-8");
 
         // Add CORS headers to error responses
-        if (!empty($corsOrigin)) {
-            header("Access-Control-Allow-Origin: " . $corsOrigin);
-            header("Access-Control-Allow-Credentials: true");
-        } else {
-            header("Access-Control-Allow-Origin: *");
-        }
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
+        header("Access-Control-Allow-Credentials: true");
         header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
@@ -82,12 +61,8 @@ register_shutdown_function(function() use ($corsOrigin) {
             header("Content-Type: application/json; charset=utf-8");
 
             // Add CORS headers to fatal error responses
-            if (!empty($corsOrigin)) {
-                header("Access-Control-Allow-Origin: " . $corsOrigin);
-                header("Access-Control-Allow-Credentials: true");
-            } else {
-                header("Access-Control-Allow-Origin: *");
-            }
+            header("Access-Control-Allow-Origin: " . $corsOrigin);
+            header("Access-Control-Allow-Credentials: true");
             header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
             header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
         }
@@ -133,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
     // Re-add CORS headers for preflight responses
     if (!headers_sent()) {
-        header("Access-Control-Allow-Origin: " . ($corsOrigin ?? "*"));
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
         header("Access-Control-Allow-Credentials: true");
         header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
@@ -152,12 +127,8 @@ function respond($status, $message, $data = null, $code = 200) {
         header("Content-Type: application/json; charset=utf-8");
 
         // Add CORS headers to all responses
-        if (!empty($corsOrigin)) {
-            header("Access-Control-Allow-Origin: " . $corsOrigin);
-            header("Access-Control-Allow-Credentials: true");
-        } else {
-            header("Access-Control-Allow-Origin: *");
-        }
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
+        header("Access-Control-Allow-Credentials: true");
         header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
@@ -170,6 +141,32 @@ function respond($status, $message, $data = null, $code = 200) {
         echo $json;
     }
     exit;
+}
+
+// Normalize image URLs to absolute URLs
+function normalizeImageUrl($imageUrl) {
+    if (empty($imageUrl)) {
+        return null;
+    }
+
+    // If already absolute (starts with http), return as-is
+    if (strpos($imageUrl, 'http://') === 0 || strpos($imageUrl, 'https://') === 0) {
+        return $imageUrl;
+    }
+
+    // If relative, prepend the upload base URL
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    $uploadBaseUrl = rtrim($uploadBaseUrl, '/');
+
+    // Handle paths like /uploads/file.jpg or uploads/file.jpg
+    if (strpos($imageUrl, 'uploads/') !== false) {
+        // Extract just the filename
+        $fileName = preg_replace('|^.*uploads/|', '', $imageUrl);
+        return $uploadBaseUrl . '/' . $fileName;
+    }
+
+    // For other relative paths, just prepend the base URL
+    return $uploadBaseUrl . '/' . ltrim($imageUrl, '/');
 }
 
 // Safe query builder helper
@@ -352,6 +349,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         'application/zip', 'application/x-rar-compressed'
     ];
 
+    // Get the upload base URL (default to https://skatryk.co.ke/uploads)
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
             respond("error", "Failed to create uploads directory.", null, 500);
@@ -425,7 +425,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
 
             chmod($uploadPath, 0644);
 
-            $fileUrl = '/uploads/' . $uniqueFileName;
+            // Construct full URL for uploaded file
+            $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+            $fileUrl = rtrim($uploadBaseUrl, '/') . '/' . $uniqueFileName;
 
             $uploadedFiles[] = [
                 'originalName' => $fileName,
@@ -635,6 +637,11 @@ switch ($action) {
         if ($table === 'user_profiles') {
             $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
             foreach ($rows as &$row) {
+                // Normalize profile image URL
+                if (!empty($row['profile_image'])) {
+                    $row['profile_image'] = normalizeImageUrl($row['profile_image']);
+                }
+
                 foreach ($jsonFields as $field) {
                     if (isset($row[$field]) && is_string($row[$field]) && !empty($row[$field])) {
                         $parsed = json_decode($row[$field], true);
@@ -1309,6 +1316,10 @@ switch ($action) {
 
         $users = [];
         while ($row = $result->fetch_assoc()) {
+            // Normalize image URLs
+            if (!empty($row['profile_image'])) {
+                $row['profile_image'] = normalizeImageUrl($row['profile_image']);
+            }
             $users[] = $row;
         }
 
@@ -2271,6 +2282,11 @@ switch ($action) {
         }
 
         $profile = $result->fetch_assoc();
+
+        // Normalize profile image URL
+        if (!empty($profile['profile_image'])) {
+            $profile['profile_image'] = normalizeImageUrl($profile['profile_image']);
+        }
 
         // Parse JSON fields for proper response format
         $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];

@@ -43,6 +43,12 @@ export function getLastSuccessfulApiUrl(): string | null {
   return lastSuccessfulApiUrl
 }
 
+// Export getter function instead of static constant to respect environment variables and localStorage
+export function getAPI_URL(): string {
+  return getApiUrl()
+}
+
+// For backwards compatibility, also export as a getter property
 export const API_URL = getApiUrl()
 
 export type ApiResponse<T = any> = {
