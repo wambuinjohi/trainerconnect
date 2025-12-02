@@ -210,9 +210,45 @@ flyctl releases
 flyctl releases rollback
 ```
 
+## Fly.io Cache Clearing (If Error Persists)
+
+The most common issue is that Fly.io is caching the old Vite deps bundle. To force a clean rebuild:
+
+### Option 1: Clear Fly.io Builder Cache
+```bash
+# This removes all cached builds on Fly.io
+flyctl builds list
+flyctl builds delete <BUILD_ID>  # Delete old builds
+
+# Then redeploy
+flyctl deploy
+```
+
+### Option 2: Force a Fresh Deployment
+```bash
+# This forces Fly.io to rebuild without using cache
+flyctl deploy --no-cache
+```
+
+### Option 3: Rebuild Machines
+```bash
+# Restart machines to ensure they get the latest deploy
+flyctl machines list
+flyctl machines restart <MACHINE_ID>
+```
+
+### Option 4: Complete Reset (Nuclear Option)
+```bash
+# Only use if all else fails - removes all Fly.io resources
+flyctl destroy
+
+# Then redeploy (creates new app)
+flyctl launch
+```
+
 ## Troubleshooting
 
-### If the error persists:
+### If the error persists after clearing cache:
 
 1. **Clear browser cache and hard refresh**:
    - Press `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac)
