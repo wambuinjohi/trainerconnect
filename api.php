@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
     // Re-add CORS headers for preflight responses
     if (!headers_sent()) {
-        header("Access-Control-Allow-Origin: " . ($corsOrigin ?? "*"));
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
         header("Access-Control-Allow-Credentials: true");
         header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
