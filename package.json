@@ -10,7 +10,15 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "npm run build && vite preview --host 0.0.0.0 --port ${PORT:-3000}",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "cap:init": "npx cap init",
+    "cap:add:android": "npx cap add android",
+    "cap:copy": "npx cap copy",
+    "cap:sync": "npx cap sync",
+    "cap:sync:android": "npx cap sync android",
+    "cap:open:android": "npx cap open android",
+    "android:setup": "npm install && npm run build && npm run cap:add:android && npm run cap:sync",
+    "android:debug": "npm run build && npx cap copy android && npx cap sync android && npm run cap:open:android"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
