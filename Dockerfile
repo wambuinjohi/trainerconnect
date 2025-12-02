@@ -16,8 +16,15 @@ COPY . .
 # Build the app
 ENV NODE_ENV=production
 
-# Clear vite cache and build with fresh dependencies
-RUN rm -rf node_modules/.vite node_modules/.cache && npm run build
+# Clear ALL cache and build with completely fresh dependencies
+# This ensures Vite creates a clean, working bundle
+RUN rm -rf \
+    node_modules/.vite \
+    node_modules/.cache \
+    node_modules/.bin \
+    dist \
+    .vite \
+    && npm run build
 
 # Production stage
 FROM node:20-alpine
