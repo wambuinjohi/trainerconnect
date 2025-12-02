@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { API_URL } from '@/lib/api';
+import { getApiUrl } from '@/lib/api-config';
 
 // Helper function to detect if running on Capacitor (mobile app)
 function isCapacitorApp(): boolean {
@@ -18,6 +18,10 @@ export function useAutoSetup() {
   useEffect(() => {
     const checkAndSetup = async () => {
       console.log('[useAutoSetup] Starting setup check...');
+
+      // Get the API URL dynamically (respects environment variables)
+      const API_URL = getApiUrl();
+      console.log('[useAutoSetup] Using API URL:', API_URL);
 
       // On mobile (Capacitor), skip auto-setup and allow app to load
       // The app will work with whatever authentication state the user has
@@ -60,6 +64,13 @@ export function useAutoSetup() {
         const responseText = await clonedCheckResponse.text();
         if (!responseText) {
           throw new Error('Server returned empty response');
+        }
+
+        // Check if response is HTML (error page)
+        if (responseText.trim().startsWith('<')) {
+          console.warn('[useAutoSetup] Server returned HTML instead of JSON, skipping auto-setup');
+          setIsSetupComplete(true);
+          return;
         }
 
         const checkResult = JSON.parse(responseText);
