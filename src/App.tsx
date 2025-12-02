@@ -114,6 +114,7 @@ const App = () => (
                     <Route path="/clear-cache" element={<ClearCache />} />
                     <Route path="/upload-demo" element={<UploadDemo />} />
                     <Route path="/admin/mpesamigration" element={<MpesaMigration />} />
+                    <Route path="/api-diagnostics" element={<ApiDiagnostics />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </BrowserRouter>
