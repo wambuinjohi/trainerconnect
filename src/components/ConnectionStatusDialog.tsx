@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Loader2, Settings } from 'lucide-react';
 import { useApiConfig } from '@/contexts/ApiConfigContext';
+import { useNavigate } from 'react-router-dom';
 
 export function ConnectionStatusDialog() {
   const { apiUrl, setApiUrl, isConnected, connectionError, testConnection } = useApiConfig();
