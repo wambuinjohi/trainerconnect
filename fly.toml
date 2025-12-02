@@ -1,0 +1,54 @@
+# fly.toml app configuration generated for Trainer Coach Connect
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+app = "trainer-coach-connect"
+
+[env]
+  NODE_ENV = "production"
+  NPM_CONFIG_PRODUCTION = "true"
+
+[build]
+  builder = "heroku"
+  
+[build.args]
+  # Ensure we build with proper Node version
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
+# Configure the build process
+[build.dockerfile_build_args]
+  BUILDKIT_INLINE_CACHE = "1"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 900
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+  processes = "app"
+
+# Health check configuration
+[[checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/"
+  protocol = "http"
+  timeout = "10s"
+  type = "http"
+
+# Define release command (runs once during deploy before machines start)
+[deploy]
+  release_command = "echo 'Build completed successfully'"
+
+[metrics]
+  port = 9090
