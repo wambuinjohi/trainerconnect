@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 
 export function ConnectionStatusDialog() {
   const { apiUrl, setApiUrl, isConnected, connectionError, testConnection } = useApiConfig();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [editUrl, setEditUrl] = useState(apiUrl);
