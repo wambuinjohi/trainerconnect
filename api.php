@@ -40,12 +40,8 @@ set_error_handler(function($errno, $errstr, $errfile, $errline) use ($corsOrigin
         header("Content-Type: application/json; charset=utf-8");
 
         // Add CORS headers to error responses
-        if (!empty($corsOrigin)) {
-            header("Access-Control-Allow-Origin: " . $corsOrigin);
-            header("Access-Control-Allow-Credentials: true");
-        } else {
-            header("Access-Control-Allow-Origin: *");
-        }
+        header("Access-Control-Allow-Origin: " . $corsOrigin);
+        header("Access-Control-Allow-Credentials: true");
         header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS");
         header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token, X-Admin-Actor, X-Requested-With");
     }
