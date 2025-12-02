@@ -399,7 +399,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
 
             chmod($uploadPath, 0644);
 
-            $fileUrl = '/uploads/' . $uniqueFileName;
+            // Construct full URL for uploaded file
+            $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+            $fileUrl = rtrim($uploadBaseUrl, '/') . '/' . $uniqueFileName;
 
             $uploadedFiles[] = [
                 'originalName' => $fileName,
