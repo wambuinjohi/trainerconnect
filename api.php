@@ -1311,6 +1311,10 @@ switch ($action) {
 
         $users = [];
         while ($row = $result->fetch_assoc()) {
+            // Normalize image URLs
+            if (!empty($row['profile_image'])) {
+                $row['profile_image'] = normalizeImageUrl($row['profile_image']);
+            }
             $users[] = $row;
         }
 
