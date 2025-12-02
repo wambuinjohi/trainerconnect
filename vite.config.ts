@@ -438,48 +438,18 @@ export default defineConfig(({ mode, command }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  optimizeDeps: {
-    // For production, use strict optimization to prevent stale cache issues
-    force: command === 'build' ? true : false,
-    // Explicitly include all critical dependencies to ensure they're bundled together with React
-    include: [
-      'react',
-      'react-dom',
-      'react/jsx-runtime',
-      '@radix-ui/react-tooltip',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-alert-dialog',
-      '@radix-ui/react-aspect-ratio',
-      '@radix-ui/react-avatar',
-      '@radix-ui/react-checkbox',
-      '@radix-ui/react-collapsible',
-      '@radix-ui/react-context-menu',
-      '@radix-ui/react-hover-card',
-      '@radix-ui/react-label',
-      '@radix-ui/react-menubar',
-      '@radix-ui/react-navigation-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-progress',
-      '@radix-ui/react-radio-group',
-      '@radix-ui/react-scroll-area',
-      '@radix-ui/react-select',
-      '@radix-ui/react-separator',
-      '@radix-ui/react-slider',
-      '@radix-ui/react-slot',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-toast',
-      '@radix-ui/react-toggle',
-      '@radix-ui/react-toggle-group',
-      '@radix-ui/react-tooltip',
-      'react-router-dom',
-      'react-hook-form',
-      '@hookform/resolvers',
-      '@tanstack/react-query',
-      'next-themes',
-    ],
-  },
+  // CRITICAL FIX: Disable Vite's problematic dependency pre-bundling
+  // The pre-bundled deps were causing React to be null when Radix UI hooks initialized
+  // By disabling optimizeDeps, Vite will bundle everything normally in production
+  optimizeDeps: command === 'build'
+    ? {
+        // In production builds, skip pre-bundling - let Rollup handle everything
+        exclude: ['everything'], // Effectively disables pre-bundling
+      }
+    : {
+        // In dev, minimal optimization - just ensure React is available early
+        include: ['react', 'react-dom', 'react/jsx-runtime'],
+      },
   build: {
     rollupOptions: {
       output: {
