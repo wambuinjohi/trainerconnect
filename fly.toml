@@ -7,8 +7,9 @@ app = "trainer-coach-connect"
   NPM_CONFIG_PRODUCTION = "true"
 
 [build]
-  builder = "heroku"
-  
+  builder = "dockerfile"
+  dockerfile = "./Dockerfile"
+
 [build.args]
   # Ensure we build with proper Node version
   NODE_VERSION = "20"
