@@ -143,6 +143,32 @@ function respond($status, $message, $data = null, $code = 200) {
     exit;
 }
 
+// Normalize image URLs to absolute URLs
+function normalizeImageUrl($imageUrl) {
+    if (empty($imageUrl)) {
+        return null;
+    }
+
+    // If already absolute (starts with http), return as-is
+    if (strpos($imageUrl, 'http://') === 0 || strpos($imageUrl, 'https://') === 0) {
+        return $imageUrl;
+    }
+
+    // If relative, prepend the upload base URL
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    $uploadBaseUrl = rtrim($uploadBaseUrl, '/');
+
+    // Handle paths like /uploads/file.jpg or uploads/file.jpg
+    if (strpos($imageUrl, 'uploads/') !== false) {
+        // Extract just the filename
+        $fileName = preg_replace('|^.*uploads/|', '', $imageUrl);
+        return $uploadBaseUrl . '/' . $fileName;
+    }
+
+    // For other relative paths, just prepend the base URL
+    return $uploadBaseUrl . '/' . ltrim($imageUrl, '/');
+}
+
 // Safe query builder helper
 function buildWhereClause($conditions) {
     if (empty($conditions)) return "";
