@@ -15,7 +15,10 @@ COPY . .
 
 # Build the app
 ENV NODE_ENV=production
-RUN npm run build
+
+# Make build script executable and run clean build
+RUN chmod +x scripts/clean-build.sh && \
+    scripts/clean-build.sh
 
 # Production stage
 FROM node:20-alpine
