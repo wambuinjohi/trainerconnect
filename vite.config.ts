@@ -438,14 +438,12 @@ export default defineConfig(({ mode, command }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // CRITICAL FIX: For production builds, don't use Vite's pre-bundled deps
-  // They were causing React to be null when Radix UI hooks tried to initialize
-  // In dev, keep minimal optimization for faster dev server startup
-  ...(command === 'build' ? {} : {
-    optimizeDeps: {
-      include: ['react', 'react-dom'],
-    },
-  }),
+  // CRITICAL FIX: Completely disable Vite's problematic pre-bundling
+  // Pre-bundled deps were causing React to be null in Radix UI hook context
+  // Vite will now use native ES modules for all dependencies
+  optimizeDeps: {
+    disabled: true,
+  },
   build: {
     rollupOptions: {
       output: {
