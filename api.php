@@ -323,6 +323,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         'application/zip', 'application/x-rar-compressed'
     ];
 
+    // Get the upload base URL (default to https://skatryk.co.ke/uploads)
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
             respond("error", "Failed to create uploads directory.", null, 500);
