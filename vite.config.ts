@@ -439,30 +439,34 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'react/jsx-runtime'],
+    include: ['react', 'react-dom', 'react/jsx-runtime', '@radix-ui/react-tooltip'],
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // Keep React and React-DOM in main bundle
+          // Keep React and React-DOM in main bundle for stability
           if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
             return undefined;
           }
-          // Group Radix UI components
+          // Keep Radix UI in main bundle to avoid hook context issues
           if (id.includes('@radix-ui')) {
-            return 'radix-ui';
+            return undefined;
           }
-          // Group tanstack/react-query
-          if (id.includes('tanstack')) {
-            return 'tanstack';
+          // Keep react-router in main for routing stability
+          if (id.includes('react-router')) {
+            return undefined;
           }
-          // Group other vendors
+          // Group other large vendors to reduce main chunk size
           if (id.includes('node_modules')) {
             return 'vendor';
           }
         },
       },
     },
+    // Improve build stability
+    minify: 'terser',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
   },
 }));
