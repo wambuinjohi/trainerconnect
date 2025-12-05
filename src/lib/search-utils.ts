@@ -10,7 +10,7 @@ export function fuzzyScore(haystack: string, needle: string): number {
   if (!h.includes(n)) return 0
 
   let score = 0
-  let matchStart = h.indexOf(n)
+  const matchStart = h.indexOf(n)
 
   // Exact substring match gets a high score
   if (matchStart === 0) score = 0.9

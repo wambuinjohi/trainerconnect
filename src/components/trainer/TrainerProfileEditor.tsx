@@ -46,7 +46,7 @@ const cleanAndParseArray = (value: any): string[] => {
 
   // If string, try to parse as JSON first
   if (typeof value === 'string') {
-    let stringValue = value.trim()
+    const stringValue = value.trim()
 
     // Try JSON parsing
     if (stringValue.startsWith('[') || stringValue.startsWith('{')) {
