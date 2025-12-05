@@ -1,7 +1,5 @@
 import React, { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-
-console.log("[App.tsx] Loading app module...");
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -37,11 +35,10 @@ const AppContent = () => {
   const { user, userType, loading } = useAuth();
 
   useEffect(() => {
-    console.log("[AppContent] Auth state updated:", { user, userType, loading });
+    // Auth state updated
   }, [user, userType, loading]);
 
   if (loading) {
-    console.log("[AppContent] Rendering loading state");
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -53,12 +50,9 @@ const AppContent = () => {
   }
 
   if (!user) {
-    console.log("[AppContent] No user authenticated, rendering Home");
-    // Show public Home page when not authenticated
     return <Home />;
   }
 
-  console.log("[AppContent] User authenticated as:", userType);
   // Route based on user type
   switch (userType) {
     case "client":
