@@ -82,28 +82,20 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     for (const fallbackUrl of FALLBACK_API_URLS) {
       if (apiUrl === fallbackUrl) continue // Skip if we already tried this
 
-      console.warn(`Primary API endpoint failed (${apiUrl}), trying fallback (${fallbackUrl})`)
       try {
         const response = await apiRequest_Internal<T>(fallbackUrl, action, payload, headers, init)
         lastSuccessfulApiUrl = fallbackUrl
-        console.log(`Fallback API endpoint successful (${fallbackUrl})`)
         return response
       } catch (fallbackError) {
-        console.warn(`Fallback ${fallbackUrl} also failed, continuing to next fallback`)
         continue
       }
     }
 
     // All API endpoints failed, try mock data as last resort
-    console.warn(`All API endpoints failed, using mock data for action: ${action}`)
     const mockResponse = getMockResponse(action, payload)
     if (mockResponse) {
-      console.log(`Using mock data for action: ${action}`)
       return (mockResponse.data as T) ?? (mockResponse as unknown as T)
     }
-
-    // No mock data available, throw the original error
-    console.error('No API available and no mock data found for action:', action)
     throw primaryError
   }
 }
@@ -140,7 +132,6 @@ async function apiRequest_Internal<T = any>(
     json = JSON.parse(text)
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : 'Unknown error'
-    console.error('Failed to parse API response:', errorMsg, 'Status:', res.status, 'StatusText:', res.statusText)
     throw new Error(`Invalid API response from ${apiUrl}: ${errorMsg}`)
   }
 

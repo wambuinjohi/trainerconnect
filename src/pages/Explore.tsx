@@ -199,8 +199,8 @@ const Explore: React.FC = () => {
       searchQuery: searchQuery,
     }
 
-    let enrichedTrainers = enrichTrainersWithDistance(trainers, userLocation)
-    let result = filterTrainers(enrichedTrainers, filterCriteria)
+    const enrichedTrainers = enrichTrainersWithDistance(trainers, userLocation)
+    const result = filterTrainers(enrichedTrainers, filterCriteria)
     setFilteredTrainers(result)
   }, [trainers, filters, searchQuery, userLocation])
 
