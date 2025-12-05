@@ -8,7 +8,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ApiConfigProvider } from "@/contexts/ApiConfigContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AutoSetupWrapper } from "@/components/AutoSetupWrapper";
-import { ConnectionStatusDialog } from "@/components/ConnectionStatusDialog";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { ClientDashboard } from "@/components/client/ClientDashboard";
 import { TrainerDashboard } from "@/components/trainer/TrainerDashboard";
@@ -76,7 +75,6 @@ const App = () => (
             <ApiConfigProvider>
               <AuthProvider>
                 <AutoSetupWrapper>
-                  <ConnectionStatusDialog />
                   <Routes>
                     <Route path="/" element={<AppContent />} />
                     <Route
