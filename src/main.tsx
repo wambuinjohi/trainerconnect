@@ -5,29 +5,24 @@ import "./index.css";
 
 // Global error handlers
 window.addEventListener('error', (event) => {
-  console.error('[Global Error Handler]', event.error);
+  // Global error handler
 });
 
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('[Unhandled Promise Rejection]', event.reason);
-  // Don't prevent default - let browser handle it, but we're logging it
+  // Unhandled promise rejection handler
 });
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
-  console.error("Root element not found!");
   document.body.innerHTML = "<div style='padding: 20px; color: red;'>Error: Root element not found in DOM</div>";
 } else {
   try {
-    console.log("Mounting React app...");
     createRoot(rootElement).render(
       <StrictMode>
         <App />
       </StrictMode>
     );
-    console.log("React app mounted successfully");
   } catch (error) {
-    console.error("Failed to mount React app:", error);
     document.body.innerHTML = `<div style='padding: 20px; color: red; font-family: monospace;'>Error mounting app: ${error}</div>`;
   }
 }
@@ -46,14 +41,11 @@ if (typeof window !== "undefined" && "serviceWorker" in navigator) {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
-          console.log("[SW] Service worker registered successfully", registration);
+          // Service worker registered
         })
         .catch((err) => {
-          console.error("[SW] ServiceWorker registration failed: ", err);
-          // Don't fail the app if SW fails to register
+          // Service worker registration failed
         });
-    } else {
-      console.log("[SW] Skipping service worker registration (protocol or hostname not supported)");
     }
   });
 }
