@@ -27,6 +27,20 @@ if (!rootElement) {
   }
 }
 
+// Prevent native install prompt on desktop
+// The app is designed for mobile, so we suppress the desktop install UI
+window.addEventListener("beforeinstallprompt", (e) => {
+  // Check if device is mobile
+  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+
+  // Only allow the install prompt on mobile devices
+  if (!isMobileDevice) {
+    e.preventDefault();
+  }
+});
+
 // Register a service worker for PWA/offline support (web only)
 // Only register on web with HTTPS or localhost
 // Skip registration on native platforms (Capacitor Android/iOS)
