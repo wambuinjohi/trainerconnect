@@ -27,28 +27,39 @@ if (!rootElement) {
   }
 }
 
-// Prevent native install prompt on desktop
-// The app is designed for mobile, so we suppress the desktop install UI
+// Prevent native install prompt
+// Only register service workers and allow PWA installation on localhost (development)
+// This prevents unwanted installation prompts on production deployments
 window.addEventListener("beforeinstallprompt", (e) => {
-  // Check if device is mobile
-  const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
+  const isDevelopment =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
 
-  // Only allow the install prompt on mobile devices
-  if (!isMobileDevice) {
+  // Only allow install prompts in development on mobile devices
+  if (!isDevelopment) {
     e.preventDefault();
+  } else {
+    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+    if (!isMobileDevice) {
+      e.preventDefault();
+    }
   }
 });
 
 // Register a service worker for PWA/offline support (web only)
-// Only register on web with HTTPS or localhost
+// Only register on localhost to prevent PWA behavior on production
 // Skip registration on native platforms (Capacitor Android/iOS)
 // where file:// protocol doesn't support service workers
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
+    const isDevelopment =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
     const shouldRegisterSW =
-      (window.location.protocol === "https:" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+      isDevelopment &&
       !window.location.protocol.startsWith("file");
 
     if (shouldRegisterSW) {
