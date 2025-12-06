@@ -62,9 +62,7 @@ export const PWAInstallPrompt = () => {
     checkIfInstalled();
 
     return () => {
-      if (isMobileDevice) {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      }
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
       window.removeEventListener('resize', checkMobile);
     };
