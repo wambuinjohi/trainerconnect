@@ -27,12 +27,15 @@ export const PWAInstallPrompt = () => {
     const isMobileDevice = checkMobile();
     window.addEventListener('resize', checkMobile);
 
-    // Handle the beforeinstallprompt event - only on mobile
+    // Handle the beforeinstallprompt event - prevent browser's native prompt on all platforms
     const handleBeforeInstallPrompt = (e: Event) => {
       const beforeInstallPromptEvent = e as BeforeInstallPromptEvent;
       beforeInstallPromptEvent.preventDefault();
-      setDeferredPrompt(beforeInstallPromptEvent);
-      setShowPrompt(true);
+      // Only store and show prompt on mobile devices
+      if (isMobileDevice) {
+        setDeferredPrompt(beforeInstallPromptEvent);
+        setShowPrompt(true);
+      }
     };
 
     // Listen for app installed event
@@ -43,10 +46,8 @@ export const PWAInstallPrompt = () => {
       localStorage.setItem('pwa_installed', 'true');
     };
 
-    // Only add beforeinstallprompt listener on mobile devices
-    if (isMobileDevice) {
-      window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    }
+    // Add beforeinstallprompt listener on all platforms to prevent browser's native prompt
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
     // Check if already installed
