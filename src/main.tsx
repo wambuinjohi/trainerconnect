@@ -27,25 +27,9 @@ if (!rootElement) {
   }
 }
 
-// Prevent native install prompt
-// Only register service workers and allow PWA installation on localhost (development)
-// This prevents unwanted installation prompts on production deployments
+// Prevent native install prompt completely
 window.addEventListener("beforeinstallprompt", (e) => {
-  const isDevelopment =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
-
-  // Only allow install prompts in development on mobile devices
-  if (!isDevelopment) {
-    e.preventDefault();
-  } else {
-    const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    );
-    if (!isMobileDevice) {
-      e.preventDefault();
-    }
-  }
+  e.preventDefault();
 });
 
 // Register a service worker for PWA/offline support (web only)
