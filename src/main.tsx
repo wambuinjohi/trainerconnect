@@ -27,10 +27,12 @@ if (!rootElement) {
   }
 }
 
-// Prevent native install prompt completely
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-});
+// Prevent native install prompt completely (for all browsers)
+if (typeof window !== "undefined") {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+  });
+}
 
 // Register a service worker for PWA/offline support (web only)
 // Only register on localhost to prevent PWA behavior on production

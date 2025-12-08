@@ -4,7 +4,7 @@
   "description": "Trainer marketplace and admin portal",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
