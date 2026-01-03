@@ -3378,7 +3378,50 @@ switch ($action) {
 
             if (isset($input['settings']) && is_array($input['settings'])) {
                 $settings = $input['settings'];
+                $savedSettings = [];
 
+                // Save Platform Settings (non-M-Pesa)
+                $platformFields = [
+                    'platformName', 'supportEmail', 'timezone', 'currency',
+                    'commissionRate', 'taxRate', 'payoutSchedule',
+                    'emailNotifications', 'maintenanceMode',
+                    'cancellationHours', 'rescheduleHours', 'maxDailySessionsPerTrainer',
+                    'enableReferralProgram', 'referralClientDiscount', 'referralClientBookings',
+                    'referralTrainerDiscount', 'referralTrainerBookings', 'useReferrerPhoneAsCode',
+                    'referralReferrerPercent', 'referralReferredPercent',
+                    'promptReferralOnFirstBooking', 'applyReferralDiscountImmediately',
+                    'platformChargeTrainerPercent', 'platformChargeClientPercent',
+                    'compensationFeePercent', 'maintenanceFeePercent'
+                ];
+
+                $platformSettingsChanged = false;
+                foreach ($platformFields as $field) {
+                    if (isset($settings[$field])) {
+                        // Save to settings_cache table if available
+                        if (table_exists('settings_cache')) {
+                            $saveQuery = "INSERT INTO settings_cache (setting_key, setting_value, updated_at)
+                                         VALUES (?, ?, NOW())
+                                         ON DUPLICATE KEY UPDATE setting_value=?, updated_at=NOW()";
+                            $stmt = $conn->prepare($saveQuery);
+                            $settingValue = is_array($settings[$field]) ? json_encode($settings[$field]) : (string)$settings[$field];
+                            $stmt->bind_param('sss', $field, $settingValue, $settingValue);
+                            if ($stmt->execute()) {
+                                $savedSettings[$field] = $settings[$field];
+                                $platformSettingsChanged = true;
+                            }
+                        }
+                    }
+                }
+
+                // Log platform settings update if any changes were made
+                if ($platformSettingsChanged) {
+                    logEvent('admin_settings_updated', [
+                        'setting' => 'platform_settings',
+                        'fields' => implode(',', array_keys($savedSettings))
+                    ]);
+                }
+
+                // Save M-Pesa Settings
                 if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
                     $mpesaCreds = $settings['mpesa'];
 
@@ -3419,6 +3462,7 @@ switch ($action) {
 
                 respond("success", "Settings saved successfully.", [
                     "saved_at" => date('Y-m-d H:i:s'),
+                    "platform_settings_saved" => count($savedSettings) > 0,
                     "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
                 ]);
             } else {
