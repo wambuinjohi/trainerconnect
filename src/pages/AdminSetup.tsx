@@ -220,7 +220,7 @@ export default function AdminSetup() {
             {/* View Waitlist Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">5. Manage Waitlist</h3>
+                <h3 className="text-lg font-semibold">6. Manage Waitlist</h3>
               </div>
               <p className="text-sm text-muted-foreground">
                 View and manage all waitlist entries.
