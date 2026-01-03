@@ -55,6 +55,37 @@ export default function AdminSetup() {
     }
   };
 
+  const runWaitlistMigration = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('waitlist_migration');
+      addMessage('success', result.message || 'Waitlist table created');
+      toast({ title: 'Success', description: result.message });
+    } catch (error: any) {
+      const msg = error.message || 'Waitlist migration failed';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runWaitlistAlter = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('waitlist_alter_table');
+      setWaitlistMigrationDone(true);
+      addMessage('success', result.message || 'Waitlist table altered');
+      toast({ title: 'Success', description: result.message });
+    } catch (error: any) {
+      const msg = error.message || 'Waitlist alter failed';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 pb-24">
       <div className="max-w-2xl mx-auto">
