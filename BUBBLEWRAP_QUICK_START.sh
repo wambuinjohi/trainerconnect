@@ -143,7 +143,7 @@ EOF
     echo "   npm run twa:build:release"
     echo ""
     echo "3. Deploy assetlinks.json to:"
-    echo "   https://trainer.skatryk.co.ke/.well-known/assetlinks.json"
+    echo "   https://trainercoachconnect.com/.well-known/assetlinks.json"
     echo ""
     echo "4. Upload to Google Play Store"
     echo ""
