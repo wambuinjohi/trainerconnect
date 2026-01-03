@@ -10,7 +10,6 @@ import { Loader2, User, Dumbbell, Eye, EyeOff } from 'lucide-react'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
-import { clearAppCache } from '@/lib/clearCache'
 import { Link } from 'react-router-dom'
 
 interface AuthFormProps {
@@ -21,7 +20,6 @@ interface AuthFormProps {
 export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'signin' }) => {
   const { signIn, signUp } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
@@ -34,7 +32,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     locationLat: null as number | null,
     locationLng: null as number | null,
   })
-  const [dbDiag, setDbDiag] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -90,29 +87,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     }
   }
 
-  // Fallback for DB check (removed Supabase)
-  const handleSyncConnection = async () => {
-    setIsSyncing(true)
-    setDbDiag(null)
-    toast({ title: 'Database check skipped', description: 'Supabase references removed, using local fallback.' })
-    try {
-      const { cleared } = await clearAppCache()
-      toast({ title: 'Cache cleared', description: cleared.join(', ') })
-      setTimeout(() => { try { window.location.reload() } catch {} }, 300)
-    } catch (e:any) {
-      console.error('Clear cache failed:', e)
-    }
-    setIsSyncing(false)
-  }
-
-  const handleClearCacheOnly = async () => {
-    try {
-      const { cleared } = await clearAppCache()
-      toast({ title: 'Cache cleared', description: cleared.join(', ') })
-    } catch (e: any) {
-      toast({ title: 'Cache error', description: e?.message || 'Failed to clear cache.' })
-    }
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -169,15 +143,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                   <Button type="submit" className="w-full border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10 disabled:bg-transparent" disabled={isLoading}>
                     {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}
                   </Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="border-trainer-primary text-trainer-primary hover:bg-trainer-primary/10" onClick={handleSyncConnection} disabled={isSyncing}>
-                      {isSyncing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Check & Clear…</> : 'Check DB & Clear Cache'}
-                    </Button>
-                    <Button type="button" variant="secondary" className="border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10" onClick={handleClearCacheOnly}>
-                      Empty Cache
-                    </Button>
-                  </div>
-                  {dbDiag && <pre className="mt-2 p-2 bg-muted/10 rounded text-sm max-h-40 overflow-auto">{dbDiag}</pre>}
                 </div>
               </form>
             </TabsContent>

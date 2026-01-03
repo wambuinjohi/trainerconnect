@@ -36,22 +36,37 @@ export function getApiBaseUrl(): string {
   // Check if user has manually set an API URL
   const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('api_url') : null;
   if (storedUrl) {
+    if (typeof window !== 'undefined') {
+      console.log('[API Config] Using URL from localStorage:', storedUrl);
+    }
     return storedUrl;
   }
 
   // Check environment variable
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
+    if (typeof window !== 'undefined') {
+      console.log('[API Config] Using URL from VITE_API_URL environment variable:', envUrl);
+    }
     return envUrl;
   }
 
   // For native Capacitor apps, use the remote server
   if (isCapacitorApp()) {
-    return 'https://trainer.skatryk.co.ke/api.php';
+    const nativeUrl = 'https://trainer.skatryk.co.ke/api.php';
+    if (typeof window !== 'undefined') {
+      console.log('[API Config] Using native app URL:', nativeUrl);
+    }
+    return nativeUrl;
   }
 
   // For web apps, default to relative path (works with local/deployed servers)
-  return '/api.php';
+  const defaultUrl = '/api.php';
+  if (typeof window !== 'undefined') {
+    console.log('[API Config] Using default relative path:', defaultUrl);
+    console.warn('[API Config] In production, set VITE_API_URL environment variable to your backend server');
+  }
+  return defaultUrl;
 }
 
 /**

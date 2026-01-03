@@ -3378,7 +3378,75 @@ switch ($action) {
 
             if (isset($input['settings']) && is_array($input['settings'])) {
                 $settings = $input['settings'];
+                $savedSettings = [];
 
+                // Ensure platform_settings table exists
+                $tableCheck = @$conn->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME='platform_settings' AND TABLE_SCHEMA=DATABASE() LIMIT 1");
+                if (!$tableCheck || $tableCheck->num_rows == 0) {
+                    $conn->query("CREATE TABLE IF NOT EXISTS `platform_settings` (
+                        `setting_key` VARCHAR(255) PRIMARY KEY,
+                        `value` LONGTEXT,
+                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )");
+                }
+
+                // Save Platform Settings (non-M-Pesa)
+                $platformFields = [
+                    'platformName', 'supportEmail', 'timezone', 'currency',
+                    'commissionRate', 'taxRate', 'payoutSchedule',
+                    'emailNotifications', 'maintenanceMode',
+                    'cancellationHours', 'rescheduleHours', 'maxDailySessionsPerTrainer',
+                    'enableReferralProgram', 'referralClientDiscount', 'referralClientBookings',
+                    'referralTrainerDiscount', 'referralTrainerBookings', 'useReferrerPhoneAsCode',
+                    'referralReferrerPercent', 'referralReferredPercent',
+                    'promptReferralOnFirstBooking', 'applyReferralDiscountImmediately',
+                    'platformChargeTrainerPercent', 'platformChargeClientPercent',
+                    'compensationFeePercent', 'maintenanceFeePercent'
+                ];
+
+                $platformSettingsChanged = false;
+                foreach ($platformFields as $field) {
+                    if (isset($settings[$field])) {
+                        try {
+                            $saveQuery = "INSERT INTO platform_settings (setting_key, value, updated_at)
+                                         VALUES (?, ?, NOW())
+                                         ON DUPLICATE KEY UPDATE value=?, updated_at=NOW()";
+                            $stmt = $conn->prepare($saveQuery);
+
+                            // Convert value to string for storage
+                            $rawValue = $settings[$field];
+                            if (is_bool($rawValue)) {
+                                $settingValue = $rawValue ? 'true' : 'false';
+                            } elseif (is_array($rawValue)) {
+                                $settingValue = json_encode($rawValue);
+                            } elseif (is_numeric($rawValue)) {
+                                $settingValue = (string)$rawValue;
+                            } else {
+                                $settingValue = (string)$rawValue;
+                            }
+
+                            $stmt->bind_param('sss', $field, $settingValue, $settingValue);
+                            if ($stmt->execute()) {
+                                $savedSettings[$field] = $settings[$field];
+                                $platformSettingsChanged = true;
+                            }
+                            $stmt->close();
+                        } catch (Exception $e) {
+                            error_log("Error saving setting $field: " . $e->getMessage());
+                        }
+                    }
+                }
+
+                // Log platform settings update if any changes were made
+                if ($platformSettingsChanged) {
+                    logEvent('admin_settings_updated', [
+                        'setting' => 'platform_settings',
+                        'fields' => implode(',', array_keys($savedSettings))
+                    ]);
+                }
+
+                // Save M-Pesa Settings
                 if (isset($settings['mpesa']) && is_array($settings['mpesa'])) {
                     $mpesaCreds = $settings['mpesa'];
 
@@ -3386,19 +3454,40 @@ switch ($action) {
                         respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
                     }
 
+                    // Get current M-Pesa settings to check if anything changed
+                    $currentMpesa = null;
+                    if (function_exists('getMpesaCredentialsForAdmin')) {
+                        $currentMpesa = @getMpesaCredentialsForAdmin();
+                    }
+
+                    // Check if M-Pesa settings actually changed
+                    $mpesaChanged = true;
+                    if (is_array($currentMpesa)) {
+                        // Compare key fields to determine if there was a real change
+                        $mpesaChanged = (
+                            ($currentMpesa['consumer_key'] ?? '') !== ($mpesaCreds['consumerKey'] ?? '') ||
+                            ($currentMpesa['consumer_secret'] ?? '') !== ($mpesaCreds['consumerSecret'] ?? '') ||
+                            ($currentMpesa['environment'] ?? '') !== ($mpesaCreds['environment'] ?? '')
+                        );
+                    }
+
                     $saveResult = saveMpesaCredentials($mpesaCreds);
                     if (!$saveResult) {
                         respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
                     }
 
-                    logEvent('admin_settings_updated', [
-                        'setting' => 'mpesa_credentials',
-                        'environment' => $mpesaCreds['environment'] ?? 'unknown'
-                    ]);
+                    // Only log if M-Pesa settings actually changed
+                    if ($mpesaChanged) {
+                        logEvent('admin_settings_updated', [
+                            'setting' => 'mpesa_credentials',
+                            'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                        ]);
+                    }
                 }
 
                 respond("success", "Settings saved successfully.", [
                     "saved_at" => date('Y-m-d H:i:s'),
+                    "platform_settings_saved" => count($savedSettings) > 0,
                     "mpesa_configured" => !empty($settings['mpesa']['consumerKey'])
                 ]);
             } else {
@@ -3410,11 +3499,36 @@ switch ($action) {
         }
         break;
 
-    // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
+    // GET ADMIN SETTINGS (retrieve all settings including M-Pesa credentials)
     case 'settings_get':
         try {
+            $platformSettings = [];
             $mpesaCreds = null;
 
+            // Retrieve platform settings from database
+            if ($conn) {
+                $result = @$conn->query("SELECT setting_key, value FROM platform_settings");
+                if ($result) {
+                    while ($row = $result->fetch_assoc()) {
+                        $key = $row['setting_key'];
+                        $value = $row['value'];
+
+                        // Convert boolean-like values
+                        if ($value === 'true') {
+                            $platformSettings[$key] = true;
+                        } elseif ($value === 'false') {
+                            $platformSettings[$key] = false;
+                        } else {
+                            // Try to decode JSON values
+                            $decoded = @json_decode($value, true);
+                            // Try to convert numeric strings to numbers
+                            $platformSettings[$key] = $decoded !== null ? $decoded : (is_numeric($value) ? (strpos($value, '.') !== false ? floatval($value) : intval($value)) : $value);
+                        }
+                    }
+                }
+            }
+
+            // Retrieve M-Pesa credentials
             if (function_exists('getMpesaCredentialsForAdmin')) {
                 $mpesaCreds = @getMpesaCredentialsForAdmin();
             }
@@ -3424,12 +3538,14 @@ switch ($action) {
             }
 
             respond("success", "Settings retrieved.", [
+                "platformSettings" => $platformSettings,
                 "mpesa" => $mpesaCreds,
                 "mpesa_source" => $mpesaCreds && isset($mpesaCreds['source']) ? $mpesaCreds['source'] : null
             ]);
         } catch (Exception $e) {
             logEvent('settings_get_error', ['error' => $e->getMessage()]);
             respond("success", "Settings retrieved (with defaults).", [
+                "platformSettings" => [],
                 "mpesa" => null,
                 "mpesa_source" => null
             ]);
