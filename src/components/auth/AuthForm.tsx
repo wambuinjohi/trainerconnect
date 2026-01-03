@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import { Loader2, User, Dumbbell, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
 import { Link } from 'react-router-dom'
+import { useEffect } from 'react'
 
 interface AuthFormProps {
   onSuccess?: () => void
