@@ -376,7 +376,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
 
             chmod($uploadPath, 0644);
 
-            $fileUrl = '/uploads/' . $uniqueFileName;
+            // Generate absolute URL for uploaded file (for Android APK and all clients)
+            $fileUrl = getBaseUrl() . '/uploads/' . $uniqueFileName;
 
             $uploadedFiles[] = [
                 'originalName' => $fileName,
