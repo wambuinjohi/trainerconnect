@@ -489,7 +489,7 @@ export const WaitingListManager: React.FC = () => {
               />
             </div>
 
-            {/* Coach Checkbox */}
+            {/* User Type Checkbox */}
             <div className="flex items-center gap-3">
               <Checkbox
                 id="add-isCoach"
@@ -497,7 +497,7 @@ export const WaitingListManager: React.FC = () => {
                 onCheckedChange={handleCheckboxChange}
               />
               <Label htmlFor="add-isCoach" className="text-foreground font-normal cursor-pointer text-sm">
-                This is a coach/trainer
+                Coach/Trainer (leave unchecked for Client)
               </Label>
             </div>
 
