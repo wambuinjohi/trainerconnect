@@ -51,12 +51,15 @@ export const WaitingListManager: React.FC = () => {
 
       const result = await response.json()
 
+      console.log('[WaitingListManager] API Response:', result)
       if (result.status === 'success') {
         const data = Array.isArray(result.data) ? result.data : []
+        console.log('[WaitingListManager] Entries loaded:', data.length, data)
         setEntries(data)
         setTotalCount(result.total || 0)
         setCurrentPage(page)
       } else {
+        console.error('[WaitingListManager] API Error:', result.message)
         setError(result.message || 'Failed to fetch waiting list')
         setEntries([])
       }
