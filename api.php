@@ -3487,11 +3487,27 @@ switch ($action) {
         }
         break;
 
-    // GET ADMIN SETTINGS (retrieve M-Pesa credentials)
+    // GET ADMIN SETTINGS (retrieve all settings including M-Pesa credentials)
     case 'settings_get':
         try {
+            $platformSettings = [];
             $mpesaCreds = null;
 
+            // Retrieve platform settings from database
+            if ($conn) {
+                $result = @$conn->query("SELECT setting_key, value FROM platform_settings");
+                if ($result) {
+                    while ($row = $result->fetch_assoc()) {
+                        $key = $row['setting_key'];
+                        $value = $row['value'];
+                        // Try to decode JSON values
+                        $decoded = @json_decode($value, true);
+                        $platformSettings[$key] = $decoded !== null ? $decoded : $value;
+                    }
+                }
+            }
+
+            // Retrieve M-Pesa credentials
             if (function_exists('getMpesaCredentialsForAdmin')) {
                 $mpesaCreds = @getMpesaCredentialsForAdmin();
             }
@@ -3501,12 +3517,14 @@ switch ($action) {
             }
 
             respond("success", "Settings retrieved.", [
+                "platformSettings" => $platformSettings,
                 "mpesa" => $mpesaCreds,
                 "mpesa_source" => $mpesaCreds && isset($mpesaCreds['source']) ? $mpesaCreds['source'] : null
             ]);
         } catch (Exception $e) {
             logEvent('settings_get_error', ['error' => $e->getMessage()]);
             respond("success", "Settings retrieved (with defaults).", [
+                "platformSettings" => [],
                 "mpesa" => null,
                 "mpesa_source" => null
             ]);
