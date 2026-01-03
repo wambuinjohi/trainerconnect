@@ -12,7 +12,6 @@ import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
 import { Link } from 'react-router-dom'
-import { useEffect } from 'react'
 
 interface AuthFormProps {
   onSuccess?: () => void
