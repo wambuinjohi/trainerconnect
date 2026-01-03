@@ -583,7 +583,7 @@ switch ($action) {
         $rows = [];
         while ($row = $result->fetch_assoc()) $rows[] = $row;
 
-        // Parse JSON fields for user_profiles table
+        // Parse JSON fields for user_profiles table and convert image URLs
         if ($table === 'user_profiles') {
             $jsonFields = ['availability', 'hourly_rate_by_radius', 'pricing_packages', 'skills', 'certifications'];
             foreach ($rows as &$row) {
@@ -594,6 +594,10 @@ switch ($action) {
                             $row[$field] = $parsed;
                         }
                     }
+                }
+                // Convert profile_image to absolute URL for Android APK and all clients
+                if (!empty($row['profile_image'])) {
+                    $row['profile_image'] = makeImageUrlAbsolute($row['profile_image']);
                 }
             }
             unset($row);
