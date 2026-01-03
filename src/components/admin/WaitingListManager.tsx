@@ -116,6 +116,80 @@ export const WaitingListManager: React.FC = () => {
     }
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      isCoach: checked,
+    }))
+  }
+
+  const handleAddWaitlistEntry = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'waitlist_submit',
+          name: formData.name,
+          email: formData.email,
+          telephone: formData.telephone,
+          is_coach: formData.isCoach ? 1 : 0,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.status === 'success') {
+        toast({
+          title: 'Success!',
+          description: 'Entry added to waiting list successfully.',
+        })
+
+        // Reset form and close dialog
+        setFormData({
+          name: '',
+          email: '',
+          telephone: '',
+          isCoach: false,
+        })
+        setAddDialogOpen(false)
+
+        // Refresh the list
+        fetchWaitlist(0)
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to add to waiting list. Please try again.',
+          variant: 'destructive',
+        })
+        console.error('API Error:', result.message)
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Network error. Please check your connection and try again.',
+        variant: 'destructive',
+      })
+      console.error('Error submitting waitlist form:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleDownloadCSV = () => {
     const headers = ['Name', 'Email', 'Telephone', 'Is Coach', 'Status', 'Joined Date']
     const rows = entries.map(entry => [
