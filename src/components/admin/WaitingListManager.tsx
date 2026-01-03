@@ -1,0 +1,332 @@
+import React, { useEffect, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Trash2, Download, RefreshCw } from 'lucide-react'
+
+interface WaitlistEntry {
+  id: string
+  name: string
+  email: string
+  telephone: string
+  is_coach: number
+  status: string
+  created_at: string
+  updated_at: string
+}
+
+export const WaitingListManager: React.FC = () => {
+  const [entries, setEntries] = useState<WaitlistEntry[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+
+  const pageSize = 10
+
+  const fetchWaitlist = async (page = 0) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await fetch('http://localhost/api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'waitlist_get',
+          limit: pageSize,
+          offset: page * pageSize,
+          sort_by: 'created_at',
+          sort_order: 'DESC',
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.status === 'success') {
+        setEntries(result.data || [])
+        setTotalCount(result.total || 0)
+        setCurrentPage(page)
+      } else {
+        setError(result.message || 'Failed to fetch waiting list')
+      }
+    } catch (err) {
+      setError('Network error: Unable to fetch waiting list')
+      console.error('Fetch error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchWaitlist(0)
+  }, [])
+
+  const handleDelete = async (entryId: string) => {
+    try {
+      const response = await fetch('http://localhost/api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'waitlist_delete',
+          waitlist_id: entryId,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.status === 'success') {
+        // Refresh the list
+        fetchWaitlist(currentPage)
+        setDeleteConfirm(null)
+      } else {
+        setError(result.message || 'Failed to delete entry')
+      }
+    } catch (err) {
+      setError('Network error: Unable to delete entry')
+      console.error('Delete error:', err)
+    }
+  }
+
+  const handleDownloadCSV = () => {
+    const headers = ['Name', 'Email', 'Telephone', 'Is Coach', 'Status', 'Joined Date']
+    const rows = entries.map(entry => [
+      entry.name,
+      entry.email,
+      entry.telephone,
+      entry.is_coach ? 'Yes' : 'No',
+      entry.status,
+      new Date(entry.created_at).toLocaleDateString(),
+    ])
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+
+    link.setAttribute('href', url)
+    link.setAttribute('download', `waiting_list_${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const filteredEntries = entries.filter(entry =>
+    entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    entry.telephone.includes(searchTerm)
+  )
+
+  const coachCount = entries.filter(e => e.is_coach === 1).length
+  const clientCount = entries.filter(e => e.is_coach === 0).length
+  const totalPages = Math.ceil(totalCount / pageSize)
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total on Waitlist</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{totalCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Across all pages</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Coaches</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{coachCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Interested trainers</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Clients</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{clientCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Looking for trainers</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Waiting List Entries</CardTitle>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fetchWaitlist(currentPage)}
+              disabled={loading}
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownloadCSV}
+              disabled={entries.length === 0}
+              className="gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Search */}
+          <Input
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="max-w-sm"
+          />
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-md p-4">
+              <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              Loading waiting list...
+            </div>
+          ) : filteredEntries.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No entries found
+            </div>
+          ) : (
+            <>
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 font-semibold">Name</th>
+                      <th className="text-left py-3 px-4 font-semibold">Email</th>
+                      <th className="text-left py-3 px-4 font-semibold">Phone</th>
+                      <th className="text-center py-3 px-4 font-semibold">Type</th>
+                      <th className="text-center py-3 px-4 font-semibold">Status</th>
+                      <th className="text-left py-3 px-4 font-semibold">Joined</th>
+                      <th className="text-center py-3 px-4 font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((entry) => (
+                      <tr key={entry.id} className="border-b hover:bg-muted/50">
+                        <td className="py-3 px-4">{entry.name}</td>
+                        <td className="py-3 px-4 text-muted-foreground">{entry.email}</td>
+                        <td className="py-3 px-4 font-mono text-sm">{entry.telephone}</td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge variant={entry.is_coach ? 'default' : 'secondary'}>
+                            {entry.is_coach ? 'Coach' : 'Client'}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge variant="outline" className="capitalize">
+                            {entry.status}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground text-sm">
+                          {new Date(entry.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setDeleteConfirm(entry.id)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {currentPage + 1} of {totalPages} ({totalCount} total)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fetchWaitlist(currentPage - 1)}
+                      disabled={currentPage === 0}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => fetchWaitlist(currentPage + 1)}
+                      disabled={currentPage >= totalPages - 1}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Entry</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this waiting list entry? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+export default WaitingListManager
