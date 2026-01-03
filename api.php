@@ -4547,6 +4547,29 @@ switch ($action) {
         }
         break;
 
+    // WAITING LIST: ALTER TABLE TO ADD CATEGORY
+    case 'waitlist_alter_table':
+        $alterSql = "
+            ALTER TABLE `waiting_list`
+            ADD COLUMN IF NOT EXISTS `category_id` INT NULL,
+            ADD FOREIGN KEY IF NOT EXISTS `fk_waiting_list_category_id` (`category_id`)
+                REFERENCES `categories`(`id`)
+                ON DELETE SET NULL,
+            ADD INDEX IF NOT EXISTS `idx_category_id` (`category_id`)
+        ";
+
+        if ($conn->query($alterSql)) {
+            logEvent('waitlist_alter_table_success');
+            respond("success", "Waiting list table altered successfully.", [
+                "table" => "waiting_list",
+                "message" => "Category column added to waiting_list table"
+            ]);
+        } else {
+            logEvent('waitlist_alter_table_failed', ['error' => $conn->error]);
+            respond("error", "Failed to alter waiting list table: " . $conn->error, null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
