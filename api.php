@@ -4547,6 +4547,85 @@ switch ($action) {
         }
         break;
 
+    // SEED CATEGORIES
+    case 'seed_categories':
+        $testCategories = [
+            [
+                'name' => 'Strength Training',
+                'icon' => '💪',
+                'description' => 'Build muscle and increase strength'
+            ],
+            [
+                'name' => 'Cardio',
+                'icon' => '🏃',
+                'description' => 'Improve cardiovascular fitness'
+            ],
+            [
+                'name' => 'Yoga',
+                'icon' => '🧘',
+                'description' => 'Flexibility and mindfulness'
+            ],
+            [
+                'name' => 'HIIT',
+                'icon' => '⚡',
+                'description' => 'High-intensity interval training'
+            ],
+            [
+                'name' => 'Pilates',
+                'icon' => '🤸',
+                'description' => 'Core strength and flexibility'
+            ],
+            [
+                'name' => 'Dance Fitness',
+                'icon' => '💃',
+                'description' => 'Fun and energetic fitness through dance'
+            ],
+            [
+                'name' => 'Swimming',
+                'icon' => '🏊',
+                'description' => 'Full-body low-impact exercise'
+            ],
+            [
+                'name' => 'Boxing',
+                'icon' => '🥊',
+                'description' => 'Combat training and fitness'
+            ]
+        ];
+
+        $inserted = 0;
+        $skipped = 0;
+
+        foreach ($testCategories as $category) {
+            $name = $conn->real_escape_string($category['name']);
+            $icon = $conn->real_escape_string($category['icon']);
+            $description = $conn->real_escape_string($category['description']);
+            $now = date('Y-m-d H:i:s');
+
+            // Check if category already exists
+            $checkSql = "SELECT id FROM categories WHERE name = '$name' LIMIT 1";
+            $checkResult = $conn->query($checkSql);
+
+            if ($checkResult && $checkResult->num_rows > 0) {
+                $skipped++;
+                continue;
+            }
+
+            $stmt = $conn->prepare("INSERT INTO categories (name, icon, description, created_at) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $name, $icon, $description, $now);
+
+            if ($stmt->execute()) {
+                $inserted++;
+            }
+            $stmt->close();
+        }
+
+        respond("success", "Categories seeded successfully.", [
+            "inserted" => $inserted,
+            "skipped" => $skipped,
+            "total" => count($testCategories)
+        ]);
+        break;
+
     // WAITING LIST: ALTER TABLE TO ADD CATEGORY
     case 'waitlist_alter_table':
         $alterSql = "
