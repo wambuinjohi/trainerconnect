@@ -319,9 +319,10 @@ export const TrainerDashboard: React.FC = () => {
       {profileData.profile_image && (
         <div className="mb-6 rounded-lg overflow-hidden h-48 w-full">
           <img
-            src={profileData.profile_image}
+            src={getImageUrl(profileData.profile_image)}
             alt="Profile"
             className="w-full h-full object-cover"
+            onError={(e) => handleImageError(e, undefined)}
           />
         </div>
       )}
