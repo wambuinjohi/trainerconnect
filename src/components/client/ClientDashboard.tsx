@@ -287,17 +287,8 @@ export const ClientDashboard: React.FC = () => {
     }
   }, [userLocation])
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      toast({ title: 'Location not supported' })
-      return
-    }
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      toast({ title: 'Location set' })
-    }, (err) => {
-      toast({ title: 'Location error' })
-    })
+  const requestLocation = async () => {
+    await requestGeoLocation()
   }
 
   const inviteFriends = () => {
