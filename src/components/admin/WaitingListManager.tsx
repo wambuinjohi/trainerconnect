@@ -427,6 +427,93 @@ export const WaitingListManager: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Entry Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Waiting List Entry</DialogTitle>
+            <DialogDescription>
+              Add a new entry to the waiting list manually
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddWaitlistEntry} className="space-y-4">
+            {/* Name Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Name</Label>
+              <Input
+                id="add-name"
+                name="name"
+                type="text"
+                placeholder="Enter full name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* Email Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email</Label>
+              <Input
+                id="add-email"
+                name="email"
+                type="email"
+                placeholder="Enter email address"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* Telephone Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-telephone">Telephone</Label>
+              <Input
+                id="add-telephone"
+                name="telephone"
+                type="tel"
+                placeholder="+254 XX XXX XXXX"
+                value={formData.telephone}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* Coach Checkbox */}
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="add-isCoach"
+                checked={formData.isCoach}
+                onCheckedChange={handleCheckboxChange}
+              />
+              <Label htmlFor="add-isCoach" className="text-foreground font-normal cursor-pointer text-sm">
+                This is a coach/trainer
+              </Label>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-trainer-primary hover:bg-trainer-primary/90"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Entry'
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
