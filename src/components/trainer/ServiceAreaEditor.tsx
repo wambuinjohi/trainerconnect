@@ -10,12 +10,21 @@ import { toast } from '@/hooks/use-toast'
 
 export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
+  const { location: geoLocation, requestLocation: requestGeoLocation } = useGeolocation()
   const userId = user?.id
   const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
   const [label, setLabel] = useState<string>('')
   const [radius, setRadius] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
+
+  // Sync geolocation result to form fields
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setLat(String(geoLocation.lat))
+      setLng(String(geoLocation.lng))
+    }
+  }, [geoLocation])
 
   useEffect(() => {
     if (!userId) return
