@@ -10,6 +10,7 @@ export default function AdminSetup() {
   const [loading, setLoading] = useState(false);
   const [migrationDone, setMigrationDone] = useState(false);
   const [seedingDone, setSeedingDone] = useState(false);
+  const [categoriesSeeded, setCategoriesSeeded] = useState(false);
   const [waitlistMigrationDone, setWaitlistMigrationDone] = useState(false);
   const [waitlistModalOpen, setWaitlistModalOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ type: 'success' | 'error', text: string }>>([]);
