@@ -10,7 +10,7 @@ primary_region = "ewr" # East Coast US region (change as needed)
 
 [env]
   # Set the API URL to point to your PHP backend server
-  VITE_API_URL = "https://trainer.skatryk.co.ke/api.php"
+  VITE_API_URL = "https://trainercoachconnect.com/api.php"
   # NODE_ENV is automatically set to 'production' by Fly
   # NODE_ENV = "production"
 

@@ -5,7 +5,7 @@
  * This callback is invoked by Safaricom's M-Pesa API when a B2C (Business to Consumer)
  * payment is completed or fails. The platform uses this to send payouts to trainers and clients.
  * 
- * Callback URL: https://trainer.skatryk.co.ke/b2c_callback.php
+ * Callback URL: https://trainercoachconnect.com/b2c_callback.php
  * 
  * Expected POST format from M-Pesa:
  * {

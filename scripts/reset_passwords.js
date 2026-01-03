@@ -3,10 +3,10 @@
 /**
  * Reset test user passwords script
  * Usage: node scripts/reset_passwords.js <api_url>
- * Example: node scripts/reset_passwords.js https://trainer.skatryk.co.ke/api.php
+ * Example: node scripts/reset_passwords.js https://trainercoachconnect.com/api.php
  */
 
-const apiUrl = process.argv[2] || 'https://trainer.skatryk.co.ke/api.php';
+const apiUrl = process.argv[2] || 'https://trainercoachconnect.com/api.php';
 
 console.log(`🔄 Resetting user passwords via API: ${apiUrl}`);
 console.log(`📝 Resetting passwords for test users to: Pass1234\n`);

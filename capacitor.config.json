@@ -6,8 +6,8 @@
     "androidScheme": "https",
     "cleartext": false,
     "allowNavigation": [
-      "trainer.skatryk.co.ke",
-      "*.trainer.skatryk.co.ke",
+      "trainercoachconnect.com",
+      "*.trainercoachconnect.com",
       "*"
     ]
   },
