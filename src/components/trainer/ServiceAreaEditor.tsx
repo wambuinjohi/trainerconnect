@@ -5,16 +5,26 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import { toast } from '@/hooks/use-toast'
 
 export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
   const { user } = useAuth()
+  const { location: geoLocation, requestLocation: requestGeoLocation } = useGeolocation()
   const userId = user?.id
   const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
   const [label, setLabel] = useState<string>('')
   const [radius, setRadius] = useState<number | ''>('')
   const [loading, setLoading] = useState(false)
+
+  // Sync geolocation result to form fields
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setLat(String(geoLocation.lat))
+      setLng(String(geoLocation.lng))
+    }
+  }, [geoLocation])
 
   useEffect(() => {
     if (!userId) return
@@ -65,19 +75,8 @@ export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose 
     return () => { mounted = false }
   }, [userId])
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast({ title: 'Geolocation not supported', description: 'Enter coordinates manually', variant: 'destructive' })
-      return
-    }
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setLat(String(pos.coords.latitude))
-      setLng(String(pos.coords.longitude))
-      toast({ title: 'Location captured' })
-    }, (err) => {
-      console.warn('geo error', err)
-      toast({ title: 'Failed to get location', description: 'Enter coordinates manually', variant: 'destructive' })
-    })
+  const useMyLocation = async () => {
+    await requestGeoLocation()
   }
 
   const save = async () => {

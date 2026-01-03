@@ -67,12 +67,14 @@ import { SearchBar } from './SearchBar'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchHistory } from '@/hooks/use-search-history'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import * as apiService from '@/lib/api-service'
 import { enrichTrainersWithDistance } from '@/lib/distance-utils'
 import { apiRequest, withAuth } from '@/lib/api'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
+  const { location: geoLocation, requestLocation: requestGeoLocation, loading: geoLoading } = useGeolocation()
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [activeTab, setActiveTab] = useState('home')
@@ -98,6 +100,13 @@ export const ClientDashboard: React.FC = () => {
   const [nextSessionBooking, setNextSessionBooking] = useState<any | null>(null)
 
   const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Sync geolocation hook result to userLocation state
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setUserLocation({ lat: geoLocation.lat, lng: geoLocation.lng })
+    }
+  }, [geoLocation])
 
   // Generate suggestions from trainer names
   const suggestions = useMemo(() => {
@@ -278,17 +287,8 @@ export const ClientDashboard: React.FC = () => {
     }
   }, [userLocation])
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      toast({ title: 'Location not supported' })
-      return
-    }
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      toast({ title: 'Location set' })
-    }, (err) => {
-      toast({ title: 'Location error' })
-    })
+  const requestLocation = async () => {
+    await requestGeoLocation()
   }
 
   const inviteFriends = () => {

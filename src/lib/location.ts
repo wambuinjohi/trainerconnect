@@ -19,8 +19,39 @@ const clampCoord = (n: any) => {
   return v;
 };
 
+async function requestLocationPermission(): Promise<boolean> {
+  try {
+    const permission = await Geolocation.requestPermissions();
+    return permission.location === 'granted';
+  } catch (err) {
+    console.warn('Permission request failed:', err);
+    return false;
+  }
+}
+
+async function checkLocationPermission(): Promise<boolean> {
+  try {
+    const permission = await Geolocation.checkPermissions();
+    return permission.location === 'granted';
+  } catch (err) {
+    console.warn('Permission check failed:', err);
+    return false;
+  }
+}
+
 async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation | null> {
   try {
+    // Check and request permissions
+    let hasPermission = await checkLocationPermission();
+    if (!hasPermission) {
+      hasPermission = await requestLocationPermission();
+    }
+
+    if (!hasPermission) {
+      console.warn('Location permission not granted');
+      return null;
+    }
+
     const coordinates = await Geolocation.getCurrentPosition({
       enableHighAccuracy: true,
       timeout: timeoutMs,
@@ -38,7 +69,8 @@ async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation
         source: 'capacitor-geolocation',
       };
     }
-  } catch {
+  } catch (err) {
+    console.error('Capacitor geolocation error:', err);
     // Fall through to browser geolocation
   }
 

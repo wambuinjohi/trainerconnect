@@ -10,6 +10,7 @@ import { FiltersModal } from '@/components/client/FiltersModal'
 import { SearchBar } from '@/components/client/SearchBar'
 import { toast } from '@/hooks/use-toast'
 import { useSearchHistory } from '@/hooks/use-search-history'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import * as apiService from '@/lib/api-service'
 import {
   enrichTrainersWithDistance,
@@ -94,6 +95,7 @@ const TrainerRow: React.FC<{
 // Main Explore page
 const Explore: React.FC = () => {
   const [searchParams] = useSearchParams()
+  const { location: geoLocation, requestLocation: requestGeoLocation, loading: geoLoading } = useGeolocation()
   const [trainers, setTrainers] = useState<TrainerWithCategories[]>([])
   const [filteredTrainers, setFilteredTrainers] = useState<TrainerWithCategories[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -102,9 +104,15 @@ const Explore: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<any>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationLoading, setLocationLoading] = useState(false)
 
   const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Sync geolocation hook result to userLocation state
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setUserLocation({ lat: geoLocation.lat, lng: geoLocation.lng })
+    }
+  }, [geoLocation])
 
   // Initialize filters from URL parameters
   useEffect(() => {
@@ -204,36 +212,8 @@ const Explore: React.FC = () => {
     setFilteredTrainers(result)
   }, [trainers, filters, searchQuery, userLocation])
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: 'Location not supported',
-        description: 'Geolocation is not available in your browser',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setLocationLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        toast({
-          title: 'Location set',
-          description: 'Trainers sorted by distance',
-        })
-        setLocationLoading(false)
-      },
-      (err) => {
-        console.error('Geolocation error:', err)
-        toast({
-          title: 'Location error',
-          description: 'Could not access your location. Please enable location services.',
-          variant: 'destructive',
-        })
-        setLocationLoading(false)
-      }
-    )
+  const requestLocation = async () => {
+    await requestGeoLocation()
   }
 
   const clearFilters = () => {

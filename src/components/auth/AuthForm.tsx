@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/AuthContext'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import { Loader2, User, Dumbbell, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
@@ -19,6 +20,7 @@ interface AuthFormProps {
 
 export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'signin' }) => {
   const { signIn, signUp } = useAuth()
+  const { location: geoLocation, requestLocation: requestGeoLocation } = useGeolocation()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -34,6 +36,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Sync geolocation result to form data
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setFormData(prev => ({
+        ...prev,
+        locationLat: geoLocation.lat,
+        locationLng: geoLocation.lng,
+        locationLabel: prev.locationLabel || 'My location',
+      }))
+    }
+  }, [geoLocation])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -190,19 +204,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                   <div className="flex gap-2">
                     <Input id="signup-location" type="text" placeholder="e.g. Nairobi, Parklands" value={formData.locationLabel} onChange={(e) => handleInputChange('locationLabel', e.target.value)} className="bg-input border-border" />
                     <Button type="button" variant="outline" onClick={() => {
-                      if (!navigator.geolocation) {
-                        toast({ title: 'Location not supported', description: 'Your browser does not support geolocation' })
-                        return
-                      }
-                      const t = window.setTimeout(() => toast({ title: 'Location timeout', description: 'Could not get GPS in time' }), 5000)
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        window.clearTimeout(t)
-                        setFormData(prev => ({ ...prev, locationLat: pos.coords.latitude, locationLng: pos.coords.longitude, locationLabel: prev.locationLabel || 'My location' }))
-                        toast({ title: 'Location captured' })
-                      }, () => {
-                        window.clearTimeout(t)
-                        toast({ title: 'Location error', description: 'Unable to fetch GPS position', variant: 'destructive' })
-                      }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 })
+                      requestGeoLocation()
                     }}>Use GPS</Button>
                   </div>
                   {(formData.locationLat != null && formData.locationLng != null) && (
