@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ArrowUp } from 'lucide-react'
 import {
   Dialog,
@@ -13,6 +13,13 @@ import AuthLogo from '@/components/auth/AuthLogo'
 import { getApiUrl } from '@/lib/api-config'
 import { toast } from '@/hooks/use-toast'
 
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
+
 interface WaitlistDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -24,8 +31,39 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
     email: '',
     telephone: '',
     isCoach: false,
+    categoryId: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const apiUrl = getApiUrl()
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'get_categories' }),
+        })
+
+        const result = await response.json()
+        if (result.status === 'success' && result.data) {
+          setCategories(Array.isArray(result.data) ? result.data : [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    if (open) {
+      fetchCategories()
+    }
+  }, [open])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
