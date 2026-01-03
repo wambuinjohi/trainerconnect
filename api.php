@@ -3413,7 +3413,19 @@ switch ($action) {
                                          VALUES (?, ?, NOW())
                                          ON DUPLICATE KEY UPDATE value=?, updated_at=NOW()";
                             $stmt = $conn->prepare($saveQuery);
-                            $settingValue = is_array($settings[$field]) ? json_encode($settings[$field]) : (string)$settings[$field];
+
+                            // Convert value to string for storage
+                            $rawValue = $settings[$field];
+                            if (is_bool($rawValue)) {
+                                $settingValue = $rawValue ? 'true' : 'false';
+                            } elseif (is_array($rawValue)) {
+                                $settingValue = json_encode($rawValue);
+                            } elseif (is_numeric($rawValue)) {
+                                $settingValue = (string)$rawValue;
+                            } else {
+                                $settingValue = (string)$rawValue;
+                            }
+
                             $stmt->bind_param('sss', $field, $settingValue, $settingValue);
                             if ($stmt->execute()) {
                                 $savedSettings[$field] = $settings[$field];
