@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Trash2, Download, RefreshCw } from 'lucide-react'
+import { getApiUrl } from '@/lib/api-config'
 
 interface WaitlistEntry {
   id: string
