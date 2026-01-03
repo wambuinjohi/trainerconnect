@@ -76,7 +76,16 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
             <div className="grid grid-cols-1 gap-4">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-full bg-gradient-primary flex items-center justify-center text-3xl overflow-hidden">
-                  {profile?.profile_image ? <img src={profile.profile_image} alt="Profile" className="w-full h-full object-cover" /> : trainer.image}
+                  {profile?.profile_image ? (
+                    <img
+                      src={getImageUrl(profile.profile_image)}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => handleImageError(e, undefined)}
+                    />
+                  ) : (
+                    trainer.image
+                  )}
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
