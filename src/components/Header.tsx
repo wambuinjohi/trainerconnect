@@ -41,6 +41,13 @@ const Header: React.FC = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setWaitlistOpen(true)}
+                className="text-trainer-primary border-trainer-primary"
+              >
+                Join Waitlist
+              </Button>
               <Link to="/signin">
                 <Button variant="ghost">Sign In</Button>
               </Link>
@@ -50,7 +57,7 @@ const Header: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {open && (
           <div className="md:hidden border-t border-border py-6 px-2">
@@ -60,6 +67,13 @@ const Header: React.FC = () => {
               <NavLink to="/about">About</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               <div className="border-t border-border pt-4 mt-2 space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setWaitlistOpen(true)}
+                  className="w-full text-trainer-primary border-trainer-primary"
+                >
+                  Join Waitlist
+                </Button>
                 <Link to="/signin" className="block">
                   <Button variant="ghost" className="w-full justify-center">Sign In</Button>
                 </Link>
@@ -71,6 +85,9 @@ const Header: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Waitlist Dialog */}
+      <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </header>
   )
 }
