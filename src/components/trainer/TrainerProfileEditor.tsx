@@ -10,6 +10,7 @@ import { useFileUpload } from '@/hooks/use-file-upload'
 import { Upload, X } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
 import { apiRequest, withAuth } from '@/lib/api'
+import { getImageUrl, handleImageError } from '@/lib/image-utils'
 
 interface TrainerProfile {
   user_id?: string
