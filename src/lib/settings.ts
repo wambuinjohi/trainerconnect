@@ -176,9 +176,17 @@ export async function loadSettingsFromDb(): Promise<PlatformSettings | null> {
     }
 
     const data = JSON.parse(responseText)
-    if (!data?.data?.mpesa) return null
+    if (!data?.data) return null
 
-    const merged = { ...defaultSettings, mpesa: data.data.mpesa }
+    // Merge platform settings and M-Pesa settings from the API response
+    const platformSettings = data.data?.platformSettings || {}
+    const mpesa = data.data?.mpesa || undefined
+
+    const merged = {
+      ...defaultSettings,
+      ...platformSettings,
+      ...(mpesa ? { mpesa } : {})
+    }
     return merged
   } catch (err) {
     console.error('Failed to load settings from DB:', err)
