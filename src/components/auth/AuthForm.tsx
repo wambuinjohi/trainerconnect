@@ -169,15 +169,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                   <Button type="submit" className="w-full border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10 disabled:bg-transparent" disabled={isLoading}>
                     {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Signing in...</> : 'Sign In'}
                   </Button>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" variant="outline" className="border-trainer-primary text-trainer-primary hover:bg-trainer-primary/10" onClick={handleSyncConnection} disabled={isSyncing}>
-                      {isSyncing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Check & Clear…</> : 'Check DB & Clear Cache'}
-                    </Button>
-                    <Button type="button" variant="secondary" className="border border-trainer-primary bg-transparent text-trainer-primary hover:bg-trainer-primary/10" onClick={handleClearCacheOnly}>
-                      Empty Cache
-                    </Button>
-                  </div>
-                  {dbDiag && <pre className="mt-2 p-2 bg-muted/10 rounded text-sm max-h-40 overflow-auto">{dbDiag}</pre>}
                 </div>
               </form>
             </TabsContent>
