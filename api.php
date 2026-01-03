@@ -4403,6 +4403,7 @@ switch ($action) {
         $email = $conn->real_escape_string(trim($input['email']));
         $telephone = $conn->real_escape_string(trim($input['telephone']));
         $isCoach = isset($input['is_coach']) ? intval($input['is_coach']) : 0;
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : null;
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -4419,28 +4420,43 @@ switch ($action) {
         $waitlistId = 'waitlist_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        $stmt = $conn->prepare("
-            INSERT INTO waiting_list (id, name, email, telephone, is_coach, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
+        if ($categoryId !== null) {
+            $stmt = $conn->prepare("
+                INSERT INTO waiting_list (id, name, email, telephone, is_coach, category_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
 
-        if (!$stmt) {
-            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            if (!$stmt) {
+                respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param("sssissss", $waitlistId, $name, $email, $telephone, $isCoach, $categoryId, $now, $now);
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO waiting_list (id, name, email, telephone, is_coach, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$stmt) {
+                respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param("sssisss", $waitlistId, $name, $email, $telephone, $isCoach, $now, $now);
         }
-
-        $stmt->bind_param("sssisss", $waitlistId, $name, $email, $telephone, $isCoach, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
             logEvent('waitlist_submitted', [
                 'waitlist_id' => $waitlistId,
                 'email' => $email,
-                'is_coach' => $isCoach
+                'is_coach' => $isCoach,
+                'category_id' => $categoryId
             ]);
 
             respond("success", "Successfully added to waiting list!", [
                 "waitlist_id" => $waitlistId,
                 "email" => $email,
+                "category_id" => $categoryId,
                 "message" => "Welcome! We'll notify you when Trainer launches in April 2026."
             ]);
         } else {
