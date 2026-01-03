@@ -12,6 +12,7 @@ import { EmojiPickerComponent } from './EmojiPickerComponent'
 import { CategoryForm } from './CategoryForm'
 import { CategoryList } from './CategoryList'
 import { ContactsList } from './ContactsList'
+import { WaitingListManager } from './WaitingListManager'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
