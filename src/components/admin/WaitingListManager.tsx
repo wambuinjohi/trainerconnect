@@ -41,6 +41,18 @@ export const WaitingListManager: React.FC = () => {
 
   const pageSize = 10
 
+  // Helper function to get user type display - handles both string and numeric values
+  const getUserTypeDisplay = (isCoach: number | string) => {
+    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
+    return coachValue === 1 ? 'Coach' : 'Client'
+  }
+
+  // Helper function to check if user is coach - handles both string and numeric values
+  const isCoachValue = (isCoach: number | string) => {
+    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
+    return coachValue === 1
+  }
+
   const fetchWaitlist = async (page = 0) => {
     try {
       setLoading(true)
