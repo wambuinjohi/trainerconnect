@@ -3500,9 +3500,18 @@ switch ($action) {
                     while ($row = $result->fetch_assoc()) {
                         $key = $row['setting_key'];
                         $value = $row['value'];
-                        // Try to decode JSON values
-                        $decoded = @json_decode($value, true);
-                        $platformSettings[$key] = $decoded !== null ? $decoded : $value;
+
+                        // Convert boolean-like values
+                        if ($value === 'true') {
+                            $platformSettings[$key] = true;
+                        } elseif ($value === 'false') {
+                            $platformSettings[$key] = false;
+                        } else {
+                            // Try to decode JSON values
+                            $decoded = @json_decode($value, true);
+                            // Try to convert numeric strings to numbers
+                            $platformSettings[$key] = $decoded !== null ? $decoded : (is_numeric($value) ? (strpos($value, '.') !== false ? floatval($value) : intval($value)) : $value);
+                        }
                     }
                 }
             }
