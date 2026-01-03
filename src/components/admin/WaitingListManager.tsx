@@ -229,6 +229,11 @@ export const WaitingListManager: React.FC = () => {
   const clientCount = entries.filter(e => e.is_coach === 0).length
   const totalPages = Math.ceil(totalCount / pageSize)
 
+  // Helper function to get user type display
+  const getUserTypeDisplay = (isCoach: number) => {
+    return isCoach === 1 ? 'Coach' : 'Client'
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
