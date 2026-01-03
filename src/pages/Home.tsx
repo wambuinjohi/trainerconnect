@@ -130,9 +130,9 @@ const Home: React.FC = () => {
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-                Find Your Perfect{' '}
+                FIND YOUR COACH.{' '}
                 <span className="bg-gradient-primary bg-clip-text text-transparent">
-                  Fitness Trainer
+                  FIND YOUR FREEDOM.
                 </span>
               </h1>
               
