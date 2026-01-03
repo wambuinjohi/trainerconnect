@@ -40,6 +40,7 @@ import { TrainerDisputes } from './TrainerDisputes'
 import * as apiService from '@/lib/api-service'
 import { AnnouncementBanner } from '@/components/shared/AnnouncementBanner'
 import { NotificationsCenter } from '@/components/client/NotificationsCenter'
+import { getImageUrl, handleImageError } from '@/lib/image-utils'
 
 export const TrainerDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
