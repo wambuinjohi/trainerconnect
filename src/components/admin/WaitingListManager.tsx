@@ -3,9 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Trash2, Download, RefreshCw } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Trash2, Download, RefreshCw, Plus, Loader2 } from 'lucide-react'
 import { getApiUrl } from '@/lib/api-config'
+import { toast } from '@/hooks/use-toast'
 
 interface WaitlistEntry {
   id: string
@@ -26,8 +30,28 @@ export const WaitingListManager: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    telephone: '',
+    isCoach: false,
+  })
 
   const pageSize = 10
+
+  // Helper function to get user type display - handles both string and numeric values
+  const getUserTypeDisplay = (isCoach: number | string) => {
+    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
+    return coachValue === 1 ? 'Coach' : 'Client'
+  }
+
+  // Helper function to check if user is coach - handles both string and numeric values
+  const isCoachValue = (isCoach: number | string) => {
+    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
+    return coachValue === 1
+  }
 
   const fetchWaitlist = async (page = 0) => {
     try {
@@ -52,14 +76,19 @@ export const WaitingListManager: React.FC = () => {
       const result = await response.json()
 
       if (result.status === 'success') {
-        setEntries(result.data || [])
-        setTotalCount(result.total || 0)
+        // The API wraps the data twice: result.data.data contains the actual array
+        const entriesData = result.data?.data || result.data || []
+        const data = Array.isArray(entriesData) ? entriesData : []
+        setEntries(data)
+        setTotalCount(result.data?.total || 0)
         setCurrentPage(page)
       } else {
         setError(result.message || 'Failed to fetch waiting list')
+        setEntries([])
       }
     } catch (err) {
       setError('Network error: Unable to fetch waiting list')
+      setEntries([])
       console.error('Fetch error:', err)
     } finally {
       setLoading(false)
@@ -99,6 +128,80 @@ export const WaitingListManager: React.FC = () => {
     }
   }
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      isCoach: checked,
+    }))
+  }
+
+  const handleAddWaitlistEntry = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+
+    try {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'waitlist_submit',
+          name: formData.name,
+          email: formData.email,
+          telephone: formData.telephone,
+          is_coach: formData.isCoach ? 1 : 0,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (result.status === 'success') {
+        toast({
+          title: 'Success!',
+          description: 'Entry added to waiting list successfully.',
+        })
+
+        // Reset form and close dialog
+        setFormData({
+          name: '',
+          email: '',
+          telephone: '',
+          isCoach: false,
+        })
+        setAddDialogOpen(false)
+
+        // Refresh the list
+        fetchWaitlist(0)
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to add to waiting list. Please try again.',
+          variant: 'destructive',
+        })
+        console.error('API Error:', result.message)
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Network error. Please check your connection and try again.',
+        variant: 'destructive',
+      })
+      console.error('Error submitting waitlist form:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const handleDownloadCSV = () => {
     const headers = ['Name', 'Email', 'Telephone', 'Is Coach', 'Status', 'Joined Date']
     const rows = entries.map(entry => [
@@ -134,8 +237,8 @@ export const WaitingListManager: React.FC = () => {
     entry.telephone.includes(searchTerm)
   )
 
-  const coachCount = entries.filter(e => e.is_coach === 1).length
-  const clientCount = entries.filter(e => e.is_coach === 0).length
+  const coachCount = entries.filter(e => isCoachValue(e.is_coach)).length
+  const clientCount = entries.filter(e => !isCoachValue(e.is_coach)).length
   const totalPages = Math.ceil(totalCount / pageSize)
 
   return (
@@ -154,11 +257,11 @@ export const WaitingListManager: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Coaches</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Coaches/Trainers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{coachCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Interested trainers</p>
+            <p className="text-xs text-muted-foreground mt-1">Professionals offering services</p>
           </CardContent>
         </Card>
 
@@ -178,6 +281,14 @@ export const WaitingListManager: React.FC = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Waiting List Entries</CardTitle>
           <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => setAddDialogOpen(true)}
+              className="gap-2 bg-trainer-primary hover:bg-trainer-primary/90 text-white"
+            >
+              <Plus className="w-4 h-4" />
+              Add Entry
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -249,8 +360,8 @@ export const WaitingListManager: React.FC = () => {
                         <td className="py-3 px-4 text-muted-foreground">{entry.email}</td>
                         <td className="py-3 px-4 font-mono text-sm">{entry.telephone}</td>
                         <td className="py-3 px-4 text-center">
-                          <Badge variant={entry.is_coach ? 'default' : 'secondary'}>
-                            {entry.is_coach ? 'Coach' : 'Client'}
+                          <Badge variant={isCoachValue(entry.is_coach) ? 'default' : 'secondary'}>
+                            {getUserTypeDisplay(entry.is_coach)}
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -328,6 +439,93 @@ export const WaitingListManager: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Entry Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Waiting List Entry</DialogTitle>
+            <DialogDescription>
+              Add a new entry to the waiting list manually
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleAddWaitlistEntry} className="space-y-4">
+            {/* Name Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Name</Label>
+              <Input
+                id="add-name"
+                name="name"
+                type="text"
+                placeholder="Enter full name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* Email Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-email">Email</Label>
+              <Input
+                id="add-email"
+                name="email"
+                type="email"
+                placeholder="Enter email address"
+                value={formData.email}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* Telephone Input */}
+            <div className="space-y-2">
+              <Label htmlFor="add-telephone">Telephone</Label>
+              <Input
+                id="add-telephone"
+                name="telephone"
+                type="tel"
+                placeholder="+254 XX XXX XXXX"
+                value={formData.telephone}
+                onChange={handleInputChange}
+                required
+                className="border-input bg-background"
+              />
+            </div>
+
+            {/* User Type Checkbox */}
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="add-isCoach"
+                checked={formData.isCoach}
+                onCheckedChange={handleCheckboxChange}
+              />
+              <Label htmlFor="add-isCoach" className="text-foreground font-normal cursor-pointer text-sm">
+                Coach/Trainer (leave unchecked for Client)
+              </Label>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-trainer-primary hover:bg-trainer-primary/90"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                'Add Entry'
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

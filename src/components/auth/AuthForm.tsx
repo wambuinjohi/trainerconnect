@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useAuth } from '@/contexts/AuthContext'
-import { Loader2, User, Dumbbell, Eye, EyeOff } from 'lucide-react'
+import { Loader2, User, Dumbbell, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { toast } from '@/hooks/use-toast'
@@ -92,9 +92,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border shadow-card">
         <CardHeader className="text-center">
+          <div className="flex items-center justify-between mb-6">
+            <Link to="/" className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-trainer-primary/30 text-trainer-primary hover:bg-trainer-primary/10 hover:border-trainer-primary transition-all duration-200 text-sm font-medium">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+            <ThemeToggle />
+          </div>
           <div className="relative mb-6 flex justify-center">
             <AuthLogo />
-            <ThemeToggle />
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">Welcome</CardTitle>
           <CardDescription className="text-muted-foreground">
