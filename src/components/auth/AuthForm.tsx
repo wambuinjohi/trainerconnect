@@ -92,9 +92,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md border-border shadow-card">
         <CardHeader className="text-center">
+          <div className="flex items-center justify-between mb-4">
+            <Link to="/" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Link>
+            <ThemeToggle />
+          </div>
           <div className="relative mb-6 flex justify-center">
             <AuthLogo />
-            <ThemeToggle />
           </div>
           <CardTitle className="text-2xl font-bold text-foreground">Welcome</CardTitle>
           <CardDescription className="text-muted-foreground">
