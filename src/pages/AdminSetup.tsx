@@ -244,6 +244,9 @@ export default function AdminSetup() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Waitlist Modal */}
+      <AdminWaitlistModal open={waitlistModalOpen} onOpenChange={setWaitlistModalOpen} />
     </div>
   );
 }
