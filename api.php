@@ -3386,15 +3386,35 @@ switch ($action) {
                         respond("error", "M-Pesa credentials incomplete: consumerKey and consumerSecret required.", null, 400);
                     }
 
+                    // Get current M-Pesa settings to check if anything changed
+                    $currentMpesa = null;
+                    if (function_exists('getMpesaCredentialsForAdmin')) {
+                        $currentMpesa = @getMpesaCredentialsForAdmin();
+                    }
+
+                    // Check if M-Pesa settings actually changed
+                    $mpesaChanged = true;
+                    if (is_array($currentMpesa)) {
+                        // Compare key fields to determine if there was a real change
+                        $mpesaChanged = (
+                            ($currentMpesa['consumer_key'] ?? '') !== ($mpesaCreds['consumerKey'] ?? '') ||
+                            ($currentMpesa['consumer_secret'] ?? '') !== ($mpesaCreds['consumerSecret'] ?? '') ||
+                            ($currentMpesa['environment'] ?? '') !== ($mpesaCreds['environment'] ?? '')
+                        );
+                    }
+
                     $saveResult = saveMpesaCredentials($mpesaCreds);
                     if (!$saveResult) {
                         respond("error", "Failed to save M-Pesa credentials to database.", null, 500);
                     }
 
-                    logEvent('admin_settings_updated', [
-                        'setting' => 'mpesa_credentials',
-                        'environment' => $mpesaCreds['environment'] ?? 'unknown'
-                    ]);
+                    // Only log if M-Pesa settings actually changed
+                    if ($mpesaChanged) {
+                        logEvent('admin_settings_updated', [
+                            'setting' => 'mpesa_credentials',
+                            'environment' => $mpesaCreds['environment'] ?? 'unknown'
+                        ]);
+                    }
                 }
 
                 respond("success", "Settings saved successfully.", [
