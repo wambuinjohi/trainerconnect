@@ -54,6 +54,31 @@ include('connection.php');
 // Include M-Pesa helper functions
 include('mpesa_helper.php');
 
+// Utility function to get the base URL for absolute paths
+function getBaseUrl() {
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $baseUrl = $protocol . '://' . $host;
+    return rtrim($baseUrl, '/');
+}
+
+// Utility function to convert relative image paths to absolute URLs
+function makeImageUrlAbsolute($imageUrl) {
+    if (empty($imageUrl)) {
+        return null;
+    }
+    // If already absolute, return as-is
+    if (filter_var($imageUrl, FILTER_VALIDATE_URL)) {
+        return $imageUrl;
+    }
+    // If relative, make it absolute
+    if (strpos($imageUrl, '/') === 0) {
+        return getBaseUrl() . $imageUrl;
+    }
+    // Otherwise prepend base + /uploads/
+    return getBaseUrl() . '/uploads/' . $imageUrl;
+}
+
 // Utility function for logging API events
 function logEvent($eventType, $details = []) {
     $timestamp = date('Y-m-d H:i:s');
