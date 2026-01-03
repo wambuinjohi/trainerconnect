@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ArrowUp } from 'lucide-react'
 import {
   Dialog,
@@ -13,6 +13,13 @@ import AuthLogo from '@/components/auth/AuthLogo'
 import { getApiUrl } from '@/lib/api-config'
 import { toast } from '@/hooks/use-toast'
 
+interface Category {
+  id: number
+  name: string
+  icon?: string
+  description?: string
+}
+
 interface WaitlistDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -24,10 +31,49 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
     email: '',
     telephone: '',
     isCoach: false,
+    categoryId: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [loadingCategories, setLoadingCategories] = useState(true)
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const apiUrl = getApiUrl()
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'get_categories' }),
+        })
+
+        const result = await response.json()
+        if (result.status === 'success' && result.data) {
+          setCategories(Array.isArray(result.data) ? result.data : [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error)
+      } finally {
+        setLoadingCategories(false)
+      }
+    }
+
+    if (open) {
+      fetchCategories()
+    }
+  }, [open])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -59,6 +105,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
           email: formData.email,
           telephone: formData.telephone,
           is_coach: formData.isCoach ? 1 : 0,
+          ...(formData.categoryId && { category_id: parseInt(formData.categoryId) }),
         }),
       })
 
@@ -77,6 +124,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
           email: '',
           telephone: '',
           isCoach: false,
+          categoryId: '',
         })
         onOpenChange(false)
       } else {
@@ -121,7 +169,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
 
             {/* Logo and Arrow */}
             <div className="flex flex-col items-center gap-4">
-              <AuthLogo compact containerClassName="h-48 w-48" className="h-36" />
+              <AuthLogo compact containerClassName="h-96 w-96" className="h-72" />
               <ArrowUp className="w-8 h-8 text-trainer-primary animate-bounce" />
             </div>
 
@@ -186,6 +234,31 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
               required
               className="border-input bg-background"
             />
+          </div>
+
+          {/* Category Select */}
+          <div className="space-y-2">
+            <Label htmlFor="categoryId" className="text-foreground font-medium">
+              Category of Interest
+            </Label>
+            {loadingCategories ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : (
+              <select
+                id="categoryId"
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleSelectChange}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-trainer-primary"
+              >
+                <option value="">Select a category (optional)</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
             {/* Coach Checkbox */}

@@ -4,11 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import AdminWaitlistModal from '@/components/AdminWaitlistModal';
 
 export default function AdminSetup() {
   const [loading, setLoading] = useState(false);
   const [migrationDone, setMigrationDone] = useState(false);
   const [seedingDone, setSeedingDone] = useState(false);
+  const [categoriesSeeded, setCategoriesSeeded] = useState(false);
+  const [waitlistMigrationDone, setWaitlistMigrationDone] = useState(false);
+  const [waitlistModalOpen, setWaitlistModalOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ type: 'success' | 'error', text: string }>>([]);
 
   const addMessage = (type: 'success' | 'error', text: string) => {
@@ -45,6 +49,58 @@ export default function AdminSetup() {
       });
     } catch (error: any) {
       const msg = error.message || 'Seeding failed';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runWaitlistMigration = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('waitlist_migration');
+      addMessage('success', result.message || 'Waitlist table created');
+      toast({ title: 'Success', description: result.message });
+    } catch (error: any) {
+      const msg = error.message || 'Waitlist migration failed';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runWaitlistAlter = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('waitlist_alter_table');
+      setWaitlistMigrationDone(true);
+      addMessage('success', result.message || 'Waitlist table altered');
+      toast({ title: 'Success', description: result.message });
+    } catch (error: any) {
+      const msg = error.message || 'Waitlist alter failed';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const seedCategories = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('seed_categories');
+      setCategoriesSeeded(true);
+      addMessage('success', result.message || 'Categories seeded');
+      const inserted = result.data?.inserted || 0;
+      const skipped = result.data?.skipped || 0;
+      toast({
+        title: 'Categories Seeded',
+        description: `Inserted: ${inserted}, Skipped: ${skipped}`
+      });
+    } catch (error: any) {
+      const msg = error.message || 'Failed to seed categories';
       addMessage('error', msg);
       toast({ title: 'Error', description: msg, variant: 'destructive' });
     } finally {
@@ -105,6 +161,79 @@ export default function AdminSetup() {
               </Button>
             </div>
 
+            {/* Seed Categories Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">3. Seed Categories</h3>
+                {categoriesSeeded && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Populate the categories table with test data (Strength Training, Cardio, Yoga, HIIT, etc.)
+              </p>
+              <Button
+                onClick={seedCategories}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {categoriesSeeded ? '✓ Categories Seeded' : 'Seed Categories'}
+              </Button>
+            </div>
+
+            {/* Waitlist Migration Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">4. Setup Waitlist Table</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Create the waiting_list table for managing waitlist entries.
+              </p>
+              <Button
+                onClick={runWaitlistMigration}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Waitlist Table
+              </Button>
+            </div>
+
+            {/* Waitlist Alter Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">5. Add Category to Waitlist</h3>
+                {waitlistMigrationDone && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Add category_id column to the waiting_list table to track coaching categories.
+              </p>
+              <Button
+                onClick={runWaitlistAlter}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {waitlistMigrationDone ? '✓ Category Added' : 'Add Category Column'}
+              </Button>
+            </div>
+
+            {/* View Waitlist Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">6. Manage Waitlist</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                View and manage all waitlist entries.
+              </p>
+              <Button
+                onClick={() => setWaitlistModalOpen(true)}
+                disabled={loading}
+                className="w-full"
+              >
+                View Waitlist Entries
+              </Button>
+            </div>
+
             {/* Messages */}
             {messages.length > 0 && (
               <div className="space-y-2 border-t pt-4">
@@ -156,6 +285,9 @@ export default function AdminSetup() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Waitlist Modal */}
+      <AdminWaitlistModal open={waitlistModalOpen} onOpenChange={setWaitlistModalOpen} />
     </div>
   );
 }

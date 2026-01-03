@@ -4403,6 +4403,7 @@ switch ($action) {
         $email = $conn->real_escape_string(trim($input['email']));
         $telephone = $conn->real_escape_string(trim($input['telephone']));
         $isCoach = isset($input['is_coach']) ? intval($input['is_coach']) : 0;
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : null;
 
         // Validate email format
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -4419,28 +4420,43 @@ switch ($action) {
         $waitlistId = 'waitlist_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        $stmt = $conn->prepare("
-            INSERT INTO waiting_list (id, name, email, telephone, is_coach, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ");
+        if ($categoryId !== null) {
+            $stmt = $conn->prepare("
+                INSERT INTO waiting_list (id, name, email, telephone, is_coach, category_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ");
 
-        if (!$stmt) {
-            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            if (!$stmt) {
+                respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param("sssissss", $waitlistId, $name, $email, $telephone, $isCoach, $categoryId, $now, $now);
+        } else {
+            $stmt = $conn->prepare("
+                INSERT INTO waiting_list (id, name, email, telephone, is_coach, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ");
+
+            if (!$stmt) {
+                respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+            }
+
+            $stmt->bind_param("sssisss", $waitlistId, $name, $email, $telephone, $isCoach, $now, $now);
         }
-
-        $stmt->bind_param("sssisss", $waitlistId, $name, $email, $telephone, $isCoach, $now, $now);
 
         if ($stmt->execute()) {
             $stmt->close();
             logEvent('waitlist_submitted', [
                 'waitlist_id' => $waitlistId,
                 'email' => $email,
-                'is_coach' => $isCoach
+                'is_coach' => $isCoach,
+                'category_id' => $categoryId
             ]);
 
             respond("success", "Successfully added to waiting list!", [
                 "waitlist_id" => $waitlistId,
                 "email" => $email,
+                "category_id" => $categoryId,
                 "message" => "Welcome! We'll notify you when Trainer launches in April 2026."
             ]);
         } else {
@@ -4528,6 +4544,108 @@ switch ($action) {
         } else {
             logEvent('waitlist_migration_failed', ['error' => $conn->error]);
             respond("error", "Failed to create waiting list table: " . $conn->error, null, 500);
+        }
+        break;
+
+    // SEED CATEGORIES
+    case 'seed_categories':
+        $testCategories = [
+            [
+                'name' => 'Strength Training',
+                'icon' => '💪',
+                'description' => 'Build muscle and increase strength'
+            ],
+            [
+                'name' => 'Cardio',
+                'icon' => '🏃',
+                'description' => 'Improve cardiovascular fitness'
+            ],
+            [
+                'name' => 'Yoga',
+                'icon' => '🧘',
+                'description' => 'Flexibility and mindfulness'
+            ],
+            [
+                'name' => 'HIIT',
+                'icon' => '⚡',
+                'description' => 'High-intensity interval training'
+            ],
+            [
+                'name' => 'Pilates',
+                'icon' => '🤸',
+                'description' => 'Core strength and flexibility'
+            ],
+            [
+                'name' => 'Dance Fitness',
+                'icon' => '💃',
+                'description' => 'Fun and energetic fitness through dance'
+            ],
+            [
+                'name' => 'Swimming',
+                'icon' => '🏊',
+                'description' => 'Full-body low-impact exercise'
+            ],
+            [
+                'name' => 'Boxing',
+                'icon' => '🥊',
+                'description' => 'Combat training and fitness'
+            ]
+        ];
+
+        $inserted = 0;
+        $skipped = 0;
+
+        foreach ($testCategories as $category) {
+            $name = $conn->real_escape_string($category['name']);
+            $icon = $conn->real_escape_string($category['icon']);
+            $description = $conn->real_escape_string($category['description']);
+            $now = date('Y-m-d H:i:s');
+
+            // Check if category already exists
+            $checkSql = "SELECT id FROM categories WHERE name = '$name' LIMIT 1";
+            $checkResult = $conn->query($checkSql);
+
+            if ($checkResult && $checkResult->num_rows > 0) {
+                $skipped++;
+                continue;
+            }
+
+            $stmt = $conn->prepare("INSERT INTO categories (name, icon, description, created_at) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $name, $icon, $description, $now);
+
+            if ($stmt->execute()) {
+                $inserted++;
+            }
+            $stmt->close();
+        }
+
+        respond("success", "Categories seeded successfully.", [
+            "inserted" => $inserted,
+            "skipped" => $skipped,
+            "total" => count($testCategories)
+        ]);
+        break;
+
+    // WAITING LIST: ALTER TABLE TO ADD CATEGORY
+    case 'waitlist_alter_table':
+        $alterSql = "
+            ALTER TABLE `waiting_list`
+            ADD COLUMN IF NOT EXISTS `category_id` INT NULL,
+            ADD FOREIGN KEY IF NOT EXISTS `fk_waiting_list_category_id` (`category_id`)
+                REFERENCES `categories`(`id`)
+                ON DELETE SET NULL,
+            ADD INDEX IF NOT EXISTS `idx_category_id` (`category_id`)
+        ";
+
+        if ($conn->query($alterSql)) {
+            logEvent('waitlist_alter_table_success');
+            respond("success", "Waiting list table altered successfully.", [
+                "table" => "waiting_list",
+                "message" => "Category column added to waiting_list table"
+            ]);
+        } else {
+            logEvent('waitlist_alter_table_failed', ['error' => $conn->error]);
+            respond("error", "Failed to alter waiting list table: " . $conn->error, null, 500);
         }
         break;
 
