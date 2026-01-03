@@ -139,6 +139,60 @@ export default function AdminSetup() {
               </Button>
             </div>
 
+            {/* Waitlist Migration Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">3. Setup Waitlist Table</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Create the waiting_list table for managing waitlist entries.
+              </p>
+              <Button
+                onClick={runWaitlistMigration}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Waitlist Table
+              </Button>
+            </div>
+
+            {/* Waitlist Alter Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">4. Add Category to Waitlist</h3>
+                {waitlistMigrationDone && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Add category_id column to the waiting_list table to track coaching categories.
+              </p>
+              <Button
+                onClick={runWaitlistAlter}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {waitlistMigrationDone ? '✓ Category Added' : 'Add Category Column'}
+              </Button>
+            </div>
+
+            {/* View Waitlist Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">5. Manage Waitlist</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                View and manage all waitlist entries.
+              </p>
+              <Button
+                onClick={() => setWaitlistModalOpen(true)}
+                disabled={loading}
+                className="w-full"
+              >
+                View Waitlist Entries
+              </Button>
+            </div>
+
             {/* Messages */}
             {messages.length > 0 && (
               <div className="space-y-2 border-t pt-4">
