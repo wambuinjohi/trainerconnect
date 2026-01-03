@@ -79,8 +79,8 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
 
           {/* Logo and Arrow */}
           <div className="flex flex-col items-center gap-4">
-            <AuthLogo compact containerClassName="h-16 w-16" className="h-12" />
-            <ArrowUp className="w-6 h-6 text-trainer-primary animate-bounce" />
+            <AuthLogo compact containerClassName="h-48 w-48" className="h-36" />
+            <ArrowUp className="w-8 h-8 text-trainer-primary animate-bounce" />
           </div>
 
           {/* TRAINER Text */}
