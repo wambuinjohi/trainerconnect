@@ -15,7 +15,7 @@ export const ThemeToggle: React.FC = () => {
     <button
       aria-label="Toggle theme"
       onClick={() => setTheme(current === 'dark' ? 'light' : 'dark')}
-      className="absolute -top-2 right-0 p-2 rounded-md bg-transparent hover:bg-muted/20"
+      className="absolute -top-2 right-0 p-3 rounded-md bg-transparent hover:bg-muted/20"
     >
       {current === 'dark' ? <Sun className="h-8 w-8 text-foreground" /> : <Moon className="h-8 w-8 text-foreground" />}
     </button>
