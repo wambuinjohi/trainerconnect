@@ -272,7 +272,7 @@ export const WaitingListManager: React.FC = () => {
             <Button
               size="sm"
               onClick={() => setAddDialogOpen(true)}
-              className="gap-2 bg-trainer-primary hover:bg-trainer-primary/90"
+              className="gap-2 bg-trainer-primary hover:bg-trainer-primary/90 text-white"
             >
               <Plus className="w-4 h-4" />
               Add Entry
