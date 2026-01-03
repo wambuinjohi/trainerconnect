@@ -225,8 +225,8 @@ export const WaitingListManager: React.FC = () => {
     entry.telephone.includes(searchTerm)
   )
 
-  const coachCount = entries.filter(e => e.is_coach === 1).length
-  const clientCount = entries.filter(e => e.is_coach === 0).length
+  const coachCount = entries.filter(e => isCoachValue(e.is_coach)).length
+  const clientCount = entries.filter(e => !isCoachValue(e.is_coach)).length
   const totalPages = Math.ceil(totalCount / pageSize)
 
   // Helper function to get user type display - handles both string and numeric values
