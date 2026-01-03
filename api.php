@@ -1265,6 +1265,10 @@ switch ($action) {
 
         $users = [];
         while ($row = $result->fetch_assoc()) {
+            // Convert profile_image to absolute URL for Android APK and all clients
+            if (!empty($row['profile_image'])) {
+                $row['profile_image'] = makeImageUrlAbsolute($row['profile_image']);
+            }
             $users[] = $row;
         }
 
