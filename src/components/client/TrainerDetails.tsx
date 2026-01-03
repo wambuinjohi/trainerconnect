@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { BookingForm } from './BookingForm'
 import { Chat } from './Chat'
 import * as apiService from '@/lib/api-service'
+import { getImageUrl, handleImageError } from '@/lib/image-utils'
 
 // Helper function for formatting trainer hourly rate
 function formatHourlyRate(rate: number | null | undefined): string {
