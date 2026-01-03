@@ -89,13 +89,15 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
         <form onSubmit={handleSubmit} className="flex flex-col">
           {/* Header Section with Logo and Tagline */}
           <div className="bg-gradient-to-b from-background to-background/50 px-6 py-8 space-y-6 border-b border-border">
-            {/* Tagline */}
+            {/* Beautified Tagline with Border */}
             <div className="space-y-3 text-center">
-              <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight">
-                FIND YOUR COACH.
-                <br />
-                FIND YOUR FREEDOM.
-              </h2>
+              <div className="border-4 border-trainer-primary rounded-3xl px-6 py-4 inline-block mx-auto">
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight text-foreground">
+                  FIND YOUR COACH.
+                  <br />
+                  FIND YOUR FREEDOM.
+                </h2>
+              </div>
             </div>
 
             {/* Logo and Arrow */}
@@ -104,14 +106,13 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
               <ArrowUp className="w-8 h-8 text-trainer-primary animate-bounce" />
             </div>
 
-            {/* TRAINER Text */}
+            {/* Highlighted Launch Statement */}
             <div className="space-y-3 text-center">
-              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-                TRAINER
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Launching April 2026 in Nairobi.
-              </p>
+              <div className="bg-trainer-primary/10 border border-trainer-primary rounded-lg px-4 py-3 inline-block mx-auto">
+                <p className="text-sm font-semibold text-trainer-primary">
+                  Launching April 2026 in Nairobi.
+                </p>
+              </div>
             </div>
           </div>
 
