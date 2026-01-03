@@ -10,6 +10,7 @@ import { FiltersModal } from '@/components/client/FiltersModal'
 import { SearchBar } from '@/components/client/SearchBar'
 import { toast } from '@/hooks/use-toast'
 import { useSearchHistory } from '@/hooks/use-search-history'
+import { useGeolocation } from '@/hooks/use-geolocation'
 import * as apiService from '@/lib/api-service'
 import {
   enrichTrainersWithDistance,
