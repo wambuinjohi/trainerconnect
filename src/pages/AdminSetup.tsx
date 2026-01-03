@@ -161,10 +161,29 @@ export default function AdminSetup() {
               </Button>
             </div>
 
+            {/* Seed Categories Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">3. Seed Categories</h3>
+                {categoriesSeeded && <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Populate the categories table with test data (Strength Training, Cardio, Yoga, HIIT, etc.)
+              </p>
+              <Button
+                onClick={seedCategories}
+                disabled={loading}
+                className="w-full"
+              >
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {categoriesSeeded ? '✓ Categories Seeded' : 'Seed Categories'}
+              </Button>
+            </div>
+
             {/* Waitlist Migration Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">3. Setup Waitlist Table</h3>
+                <h3 className="text-lg font-semibold">4. Setup Waitlist Table</h3>
               </div>
               <p className="text-sm text-muted-foreground">
                 Create the waiting_list table for managing waitlist entries.
