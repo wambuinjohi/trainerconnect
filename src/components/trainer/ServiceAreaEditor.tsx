@@ -75,19 +75,8 @@ export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose 
     return () => { mounted = false }
   }, [userId])
 
-  const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      toast({ title: 'Geolocation not supported', description: 'Enter coordinates manually', variant: 'destructive' })
-      return
-    }
-    navigator.geolocation.getCurrentPosition((pos) => {
-      setLat(String(pos.coords.latitude))
-      setLng(String(pos.coords.longitude))
-      toast({ title: 'Location captured' })
-    }, (err) => {
-      console.warn('geo error', err)
-      toast({ title: 'Failed to get location', description: 'Enter coordinates manually', variant: 'destructive' })
-    })
+  const useMyLocation = async () => {
+    await requestGeoLocation()
   }
 
   const save = async () => {
