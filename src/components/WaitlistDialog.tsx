@@ -105,6 +105,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
           email: formData.email,
           telephone: formData.telephone,
           is_coach: formData.isCoach ? 1 : 0,
+          ...(formData.categoryId && { category_id: parseInt(formData.categoryId) }),
         }),
       })
 
