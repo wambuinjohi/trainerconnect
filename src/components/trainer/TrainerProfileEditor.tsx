@@ -441,9 +441,10 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
               {profile.profile_image && (
                 <div className="relative w-32 h-32 mx-auto rounded-lg overflow-hidden border-2 border-border bg-muted">
                   <img
-                    src={profile.profile_image}
+                    src={getImageUrl(profile.profile_image)}
                     alt="Profile preview"
                     className="w-full h-full object-cover"
+                    onError={(e) => handleImageError(e, undefined)}
                   />
                   <button
                     type="button"
