@@ -95,6 +95,7 @@ const TrainerRow: React.FC<{
 // Main Explore page
 const Explore: React.FC = () => {
   const [searchParams] = useSearchParams()
+  const { location: geoLocation, requestLocation: requestGeoLocation, loading: geoLoading } = useGeolocation()
   const [trainers, setTrainers] = useState<TrainerWithCategories[]>([])
   const [filteredTrainers, setFilteredTrainers] = useState<TrainerWithCategories[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -103,9 +104,15 @@ const Explore: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<any>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [locationLoading, setLocationLoading] = useState(false)
 
   const { recentSearches, popularSearches, addSearch } = useSearchHistory({ trainers })
+
+  // Sync geolocation hook result to userLocation state
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setUserLocation({ lat: geoLocation.lat, lng: geoLocation.lng })
+    }
+  }, [geoLocation])
 
   // Initialize filters from URL parameters
   useEffect(() => {
