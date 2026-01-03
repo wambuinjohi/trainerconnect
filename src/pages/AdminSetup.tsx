@@ -4,11 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from '@/hooks/use-toast';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiRequest } from '@/lib/api';
+import AdminWaitlistModal from '@/components/AdminWaitlistModal';
 
 export default function AdminSetup() {
   const [loading, setLoading] = useState(false);
   const [migrationDone, setMigrationDone] = useState(false);
   const [seedingDone, setSeedingDone] = useState(false);
+  const [waitlistMigrationDone, setWaitlistMigrationDone] = useState(false);
+  const [waitlistModalOpen, setWaitlistModalOpen] = useState(false);
   const [messages, setMessages] = useState<Array<{ type: 'success' | 'error', text: string }>>([]);
 
   const addMessage = (type: 'success' | 'error', text: string) => {
