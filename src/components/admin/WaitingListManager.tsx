@@ -271,6 +271,14 @@ export const WaitingListManager: React.FC = () => {
           <div className="flex gap-2">
             <Button
               size="sm"
+              onClick={() => setAddDialogOpen(true)}
+              className="gap-2 bg-trainer-primary hover:bg-trainer-primary/90"
+            >
+              <Plus className="w-4 h-4" />
+              Add Entry
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               onClick={() => fetchWaitlist(currentPage)}
               disabled={loading}
