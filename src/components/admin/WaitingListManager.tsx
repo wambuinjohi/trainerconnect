@@ -30,6 +30,14 @@ export const WaitingListManager: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    telephone: '',
+    isCoach: false,
+  })
 
   const pageSize = 10
 
