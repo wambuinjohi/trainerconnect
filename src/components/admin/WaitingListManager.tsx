@@ -241,18 +241,6 @@ export const WaitingListManager: React.FC = () => {
   const clientCount = entries.filter(e => !isCoachValue(e.is_coach)).length
   const totalPages = Math.ceil(totalCount / pageSize)
 
-  // Helper function to get user type display - handles both string and numeric values
-  const getUserTypeDisplay = (isCoach: number | string) => {
-    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
-    return coachValue === 1 ? 'Coach' : 'Client'
-  }
-
-  // Helper function to check if user is coach - handles both string and numeric values
-  const isCoachValue = (isCoach: number | string) => {
-    const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
-    return coachValue === 1
-  }
-
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
