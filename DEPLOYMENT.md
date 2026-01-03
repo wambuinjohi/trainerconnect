@@ -19,7 +19,7 @@ If deploying to Fly.io:
 1. Set the environment variable in `fly.toml`:
 ```toml
 [env]
-  VITE_API_URL = "https://trainer.skatryk.co.ke/api.php"
+  VITE_API_URL = "https://trainercoachconnect.com/api.php"
 ```
 
 2. Deploy:
@@ -57,7 +57,7 @@ The app determines which API endpoint to use in this order:
 1. **Environment Variable** (`VITE_API_URL`) - Best for production
 2. **LocalStorage** (`api_url`) - User-configurable in browser
 3. **Platform Detection**:
-   - Native Apps (Capacitor): `https://trainer.skatryk.co.ke/api.php`
+   - Native Apps (Capacitor): `https://trainercoachconnect.com/api.php`
    - Web Apps: `/api.php` (relative path - only works for local dev)
 
 ### Troubleshooting "Failed to fetch" Errors
@@ -80,7 +80,7 @@ If you see "Failed to fetch" errors when the app loads:
 
 The app logs the current API URL when it loads. Check the browser console for messages like:
 ```
-[API Config] Using endpoint: https://trainer.skatryk.co.ke/api.php
+[API Config] Using endpoint: https://trainercoachconnect.com/api.php
 ```
 
 If this shows `http://localhost:8080/api.php` or similar in production, your environment variables aren't configured correctly.
