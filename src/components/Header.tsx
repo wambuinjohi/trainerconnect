@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { Button } from '@/components/ui/button'
+import WaitlistDialog from '@/components/WaitlistDialog'
 
 const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => (
   <Link to={to} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
@@ -12,6 +13,7 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
 
 const Header: React.FC = () => {
   const [open, setOpen] = React.useState(false)
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
