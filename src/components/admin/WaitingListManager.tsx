@@ -62,6 +62,7 @@ export const WaitingListManager: React.FC = () => {
       }
     } catch (err) {
       setError('Network error: Unable to fetch waiting list')
+      setEntries([])
       console.error('Fetch error:', err)
     } finally {
       setLoading(false)
