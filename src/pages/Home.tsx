@@ -129,7 +129,7 @@ const Home: React.FC = () => {
                 Trusted by 5,000+ fitness enthusiasts
               </div>
               
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">
                 FIND YOUR COACH.{' '}
                 <span className="bg-gradient-primary bg-clip-text text-transparent">
                   FIND YOUR FREEDOM.
