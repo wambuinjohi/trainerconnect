@@ -250,11 +250,11 @@ export const WaitingListManager: React.FC = () => {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Coaches</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Coaches/Trainers</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{coachCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Interested trainers</p>
+            <p className="text-xs text-muted-foreground mt-1">Professionals offering services</p>
           </CardContent>
         </Card>
 
