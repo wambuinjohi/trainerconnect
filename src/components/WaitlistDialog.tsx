@@ -67,6 +67,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
+        <DialogTitle className="sr-only">Join the Trainer Waitlist</DialogTitle>
         {/* Header Section with Logo and Tagline */}
         <div className="bg-gradient-to-b from-background to-background/50 px-6 py-8 space-y-6 border-b border-border">
           {/* Tagline */}
