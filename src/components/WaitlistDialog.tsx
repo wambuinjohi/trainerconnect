@@ -65,6 +65,12 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
       const result = await response.json()
 
       if (result.status === 'success') {
+        // Show success toast
+        toast({
+          title: 'Success!',
+          description: 'You have been added to the waiting list. We\'ll notify you when Trainer launches in April 2026.',
+        })
+
         // Reset form and close dialog on success
         setFormData({
           name: '',
@@ -74,9 +80,21 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
         })
         onOpenChange(false)
       } else {
+        // Show error toast
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to join waiting list. Please try again.',
+          variant: 'destructive',
+        })
         console.error('API Error:', result.message)
       }
     } catch (error) {
+      // Show error toast for network errors
+      toast({
+        title: 'Error',
+        description: 'Network error. Please check your connection and try again.',
+        variant: 'destructive',
+      })
       console.error('Error submitting waitlist form:', error)
     } finally {
       setIsSubmitting(false)
