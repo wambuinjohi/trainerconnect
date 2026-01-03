@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Users, Calendar, BarChart3, UserCheck, AlertCircle, Settings, TrendingUp, CheckCircle, MessageSquare, DollarSign, Plus, Trash2, Database } from 'lucide-react'
+import { Users, Calendar, BarChart3, UserCheck, AlertCircle, Settings, TrendingUp, CheckCircle, MessageSquare, DollarSign, Plus, Trash2, Database, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_LOGO_URL, APP_LOGO_DARK_URL, APP_LOGO_ALT } from '@/lib/branding'
 import { useTheme } from 'next-themes'
