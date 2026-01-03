@@ -34,7 +34,8 @@ export const WaitingListManager: React.FC = () => {
       setLoading(true)
       setError(null)
 
-      const response = await fetch('http://localhost/api.php', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
