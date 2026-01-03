@@ -3380,6 +3380,17 @@ switch ($action) {
                 $settings = $input['settings'];
                 $savedSettings = [];
 
+                // Ensure platform_settings table exists
+                $tableCheck = @$conn->query("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME='platform_settings' AND TABLE_SCHEMA=DATABASE() LIMIT 1");
+                if (!$tableCheck || $tableCheck->num_rows == 0) {
+                    $conn->query("CREATE TABLE IF NOT EXISTS `platform_settings` (
+                        `setting_key` VARCHAR(255) PRIMARY KEY,
+                        `value` LONGTEXT,
+                        `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                    )");
+                }
+
                 // Save Platform Settings (non-M-Pesa)
                 $platformFields = [
                     'platformName', 'supportEmail', 'timezone', 'currency',
@@ -3397,11 +3408,10 @@ switch ($action) {
                 $platformSettingsChanged = false;
                 foreach ($platformFields as $field) {
                     if (isset($settings[$field])) {
-                        // Save to settings_cache table if available
-                        if (table_exists('settings_cache')) {
-                            $saveQuery = "INSERT INTO settings_cache (setting_key, setting_value, updated_at)
+                        try {
+                            $saveQuery = "INSERT INTO platform_settings (setting_key, value, updated_at)
                                          VALUES (?, ?, NOW())
-                                         ON DUPLICATE KEY UPDATE setting_value=?, updated_at=NOW()";
+                                         ON DUPLICATE KEY UPDATE value=?, updated_at=NOW()";
                             $stmt = $conn->prepare($saveQuery);
                             $settingValue = is_array($settings[$field]) ? json_encode($settings[$field]) : (string)$settings[$field];
                             $stmt->bind_param('sss', $field, $settingValue, $settingValue);
@@ -3409,6 +3419,9 @@ switch ($action) {
                                 $savedSettings[$field] = $settings[$field];
                                 $platformSettingsChanged = true;
                             }
+                            $stmt->close();
+                        } catch (Exception $e) {
+                            error_log("Error saving setting $field: " . $e->getMessage());
                         }
                     }
                 }
