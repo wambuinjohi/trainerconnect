@@ -53,10 +53,12 @@ export const WaitingListManager: React.FC = () => {
 
       console.log('[WaitingListManager] API Response:', result)
       if (result.status === 'success') {
-        const data = Array.isArray(result.data) ? result.data : []
+        // The API wraps the data twice: result.data.data contains the actual array
+        const entriesData = result.data?.data || result.data || []
+        const data = Array.isArray(entriesData) ? entriesData : []
         console.log('[WaitingListManager] Entries loaded:', data.length, data)
         setEntries(data)
-        setTotalCount(result.total || 0)
+        setTotalCount(result.data?.total || 0)
         setCurrentPage(page)
       } else {
         console.error('[WaitingListManager] API Error:', result.message)
