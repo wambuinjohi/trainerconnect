@@ -12,6 +12,7 @@ import { EmojiPickerComponent } from './EmojiPickerComponent'
 import { CategoryForm } from './CategoryForm'
 import { CategoryList } from './CategoryList'
 import { ContactsList } from './ContactsList'
+import { WaitingListManager } from './WaitingListManager'
 import { useNavigate } from 'react-router-dom'
 import {
   Users,
@@ -2089,6 +2090,15 @@ export const AdminDashboard: React.FC = () => {
                 <TabsContent value="promotions">{renderPromotions()}</TabsContent>
                 <TabsContent value="payouts"><AdminPayoutManager /></TabsContent>
                 <TabsContent value="categories">{renderCategories()}</TabsContent>
+                <TabsContent value="waitlist">
+                  <div className="space-y-6">
+                    <div>
+                      <h1 className="text-3xl font-bold text-foreground">Waiting List Management</h1>
+                      <p className="text-sm text-muted-foreground mt-2">Manage Trainer app launch waiting list entries</p>
+                    </div>
+                    <WaitingListManager />
+                  </div>
+                </TabsContent>
                 <TabsContent value="settings">{renderSettings()}</TabsContent>
               </div>
             </main>

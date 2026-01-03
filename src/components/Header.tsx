@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import AuthLogo from '@/components/auth/AuthLogo'
 import ThemeToggle from '@/components/ui/ThemeToggle'
 import { Button } from '@/components/ui/button'
+import WaitlistDialog from '@/components/WaitlistDialog'
 
 const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => (
   <Link to={to} className="text-sm font-medium text-foreground hover:text-primary transition-colors">
@@ -12,6 +13,7 @@ const NavLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chil
 
 const Header: React.FC = () => {
   const [open, setOpen] = React.useState(false)
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -39,6 +41,13 @@ const Header: React.FC = () => {
               </button>
             </div>
             <div className="hidden md:flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => setWaitlistOpen(true)}
+                className="text-trainer-primary border-trainer-primary"
+              >
+                Join Waitlist
+              </Button>
               <Link to="/signin">
                 <Button variant="ghost">Sign In</Button>
               </Link>
@@ -48,7 +57,7 @@ const Header: React.FC = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {open && (
           <div className="md:hidden border-t border-border py-6 px-2">
@@ -58,6 +67,13 @@ const Header: React.FC = () => {
               <NavLink to="/about">About</NavLink>
               <NavLink to="/contact">Contact</NavLink>
               <div className="border-t border-border pt-4 mt-2 space-y-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setWaitlistOpen(true)}
+                  className="w-full text-trainer-primary border-trainer-primary"
+                >
+                  Join Waitlist
+                </Button>
                 <Link to="/signin" className="block">
                   <Button variant="ghost" className="w-full justify-center">Sign In</Button>
                 </Link>
@@ -69,6 +85,9 @@ const Header: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Waitlist Dialog */}
+      <WaitlistDialog open={waitlistOpen} onOpenChange={setWaitlistOpen} />
     </header>
   )
 }

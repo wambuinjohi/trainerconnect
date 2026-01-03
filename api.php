@@ -4393,6 +4393,144 @@ switch ($action) {
         ]);
         break;
 
+    // WAITING LIST: SUBMIT FORM
+    case 'waitlist_submit':
+        if (!isset($input['name']) || !isset($input['email']) || !isset($input['telephone'])) {
+            respond("error", "Missing required fields: name, email, telephone.", null, 400);
+        }
+
+        $name = $conn->real_escape_string(trim($input['name']));
+        $email = $conn->real_escape_string(trim($input['email']));
+        $telephone = $conn->real_escape_string(trim($input['telephone']));
+        $isCoach = isset($input['is_coach']) ? intval($input['is_coach']) : 0;
+
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            respond("error", "Invalid email address.", null, 400);
+        }
+
+        // Check if email already exists in waitlist
+        $checkSql = "SELECT id FROM waiting_list WHERE email = '$email' LIMIT 1";
+        $checkResult = $conn->query($checkSql);
+        if ($checkResult && $checkResult->num_rows > 0) {
+            respond("error", "This email is already on the waiting list.", null, 409);
+        }
+
+        $waitlistId = 'waitlist_' . uniqid();
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $conn->prepare("
+            INSERT INTO waiting_list (id, name, email, telephone, is_coach, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ");
+
+        if (!$stmt) {
+            respond("error", "Failed to prepare statement: " . $conn->error, null, 500);
+        }
+
+        $stmt->bind_param("sssisss", $waitlistId, $name, $email, $telephone, $isCoach, $now, $now);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('waitlist_submitted', [
+                'waitlist_id' => $waitlistId,
+                'email' => $email,
+                'is_coach' => $isCoach
+            ]);
+
+            respond("success", "Successfully added to waiting list!", [
+                "waitlist_id" => $waitlistId,
+                "email" => $email,
+                "message" => "Welcome! We'll notify you when Trainer launches in April 2026."
+            ]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to add to waiting list: " . $conn->error, null, 500);
+        }
+        break;
+
+    // WAITING LIST: GET ALL ENTRIES
+    case 'waitlist_get':
+        $limit = isset($input['limit']) ? intval($input['limit']) : 50;
+        $offset = isset($input['offset']) ? intval($input['offset']) : 0;
+        $sortBy = isset($input['sort_by']) ? $conn->real_escape_string($input['sort_by']) : 'created_at';
+        $sortOrder = isset($input['sort_order']) && strtoupper($input['sort_order']) === 'ASC' ? 'ASC' : 'DESC';
+
+        $sql = "SELECT * FROM waiting_list ORDER BY $sortBy $sortOrder LIMIT $limit OFFSET $offset";
+        $result = $conn->query($sql);
+
+        if (!$result) {
+            respond("error", "Query failed: " . $conn->error, null, 500);
+        }
+
+        $entries = [];
+        while ($row = $result->fetch_assoc()) {
+            $entries[] = $row;
+        }
+
+        // Get total count
+        $countSql = "SELECT COUNT(*) as total FROM waiting_list";
+        $countResult = $conn->query($countSql);
+        $countRow = $countResult->fetch_assoc();
+        $totalCount = intval($countRow['total']);
+
+        respond("success", "Waiting list entries fetched successfully.", [
+            "data" => $entries,
+            "count" => count($entries),
+            "total" => $totalCount,
+            "page" => intval($offset / $limit) + 1,
+            "limit" => $limit
+        ]);
+        break;
+
+    // WAITING LIST: DELETE ENTRY
+    case 'waitlist_delete':
+        if (!isset($input['waitlist_id'])) {
+            respond("error", "Missing waitlist_id.", null, 400);
+        }
+
+        $waitlistId = $conn->real_escape_string($input['waitlist_id']);
+        $sql = "DELETE FROM waiting_list WHERE id = '$waitlistId'";
+
+        if ($conn->query($sql)) {
+            logEvent('waitlist_deleted', ['waitlist_id' => $waitlistId]);
+            respond("success", "Entry deleted successfully.", ["affected_rows" => $conn->affected_rows]);
+        } else {
+            respond("error", "Failed to delete entry: " . $conn->error, null, 500);
+        }
+        break;
+
+    // WAITING LIST: MIGRATION/CREATE TABLE
+    case 'waitlist_migration':
+        $sql = "
+            CREATE TABLE IF NOT EXISTS `waiting_list` (
+                `id` VARCHAR(36) PRIMARY KEY,
+                `name` VARCHAR(255) NOT NULL,
+                `email` VARCHAR(255) NOT NULL UNIQUE,
+                `telephone` VARCHAR(20) NOT NULL,
+                `is_coach` BOOLEAN DEFAULT FALSE,
+                `status` VARCHAR(50) DEFAULT 'pending',
+                `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_email (email),
+                INDEX idx_is_coach (is_coach),
+                INDEX idx_created_at (created_at),
+                INDEX idx_status (status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ";
+
+        if ($conn->query($sql)) {
+            logEvent('waitlist_migration_success');
+            respond("success", "Waiting list table created successfully.", [
+                "table" => "waiting_list",
+                "message" => "Database is ready for waiting list submissions"
+            ]);
+        } else {
+            logEvent('waitlist_migration_failed', ['error' => $conn->error]);
+            respond("error", "Failed to create waiting list table: " . $conn->error, null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
