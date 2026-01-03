@@ -22,6 +22,8 @@
     "cap:copy": "npx cap copy",
     "cap:build:web": "npm run build",
     "cap:build:android": "npm run build && npx cap copy android && npx cap sync android",
+    "android:icons": "node scripts/generate-android-icons.js",
+    "android:icons:bash": "bash scripts/setup-android-icon.sh",
     "migrate:mysql:api": "node scripts/mysql_migrate_via_api.mjs --api=https://events.skatryk.co.ke/api.php --plan=scripts/mysql_migration_plan.json",
     "migrate:pg:to:mysqlapi": "node scripts/pg_to_mysql_api.mjs --api=https://events.skatryk.co.ke/api.php"
   },
