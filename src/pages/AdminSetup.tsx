@@ -87,6 +87,27 @@ export default function AdminSetup() {
     }
   };
 
+  const seedCategories = async () => {
+    setLoading(true);
+    try {
+      const result = await apiRequest('seed_categories');
+      setCategoriesSeeded(true);
+      addMessage('success', result.message || 'Categories seeded');
+      const inserted = result.data?.inserted || 0;
+      const skipped = result.data?.skipped || 0;
+      toast({
+        title: 'Categories Seeded',
+        description: `Inserted: ${inserted}, Skipped: ${skipped}`
+      });
+    } catch (error: any) {
+      const msg = error.message || 'Failed to seed categories';
+      addMessage('error', msg);
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4 pb-24">
       <div className="max-w-2xl mx-auto">
