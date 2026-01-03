@@ -137,10 +137,10 @@ foreach ($_FILES as $fieldName => $fileData) {
         
         // Set proper permissions
         chmod($uploadPath, 0644);
-        
-        // Build file URL
-        $fileUrl = rtrim(dirname($_SERVER['PHP_SELF']), '/') . '/uploads/' . $uniqueFileName;
-        
+
+        // Build absolute file URL for Android APK and all clients
+        $fileUrl = getBaseUrl() . '/uploads/' . $uniqueFileName;
+
         $uploadedFiles[] = [
             'originalName' => $fileName,
             'fileName' => $uniqueFileName,
