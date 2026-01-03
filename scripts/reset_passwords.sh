@@ -2,9 +2,9 @@
 
 # Reset test user passwords script
 # Usage: bash scripts/reset_passwords.sh <api_url>
-# Example: bash scripts/reset_passwords.sh https://trainer.skatryk.co.ke/api.php
+# Example: bash scripts/reset_passwords.sh https://trainercoachconnect.com/api.php
 
-API_URL="${1:-https://trainer.skatryk.co.ke/api.php}"
+API_URL="${1:-https://trainercoachconnect.com/api.php}"
 
 echo "🔄 Resetting user passwords via API: $API_URL"
 echo "📝 Resetting passwords for test users to: Pass1234"

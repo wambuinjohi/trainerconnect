@@ -2,10 +2,10 @@
 /**
  * Reset test user passwords script
  * Usage: php scripts/reset_passwords.php <api_url>
- * Example: php scripts/reset_passwords.php https://trainer.skatryk.co.ke/api.php
+ * Example: php scripts/reset_passwords.php https://trainercoachconnect.com/api.php
  */
 
-$apiUrl = isset($argv[1]) ? $argv[1] : 'https://trainer.skatryk.co.ke/api.php';
+$apiUrl = isset($argv[1]) ? $argv[1] : 'https://trainercoachconnect.com/api.php';
 $newPassword = 'Pass1234';
 
 echo "🔄 Resetting user passwords via API: $apiUrl\n";
