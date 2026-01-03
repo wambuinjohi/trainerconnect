@@ -21,6 +21,7 @@ interface AuthFormProps {
 
 export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'signin' }) => {
   const { signIn, signUp } = useAuth()
+  const { location: geoLocation, requestLocation: requestGeoLocation } = useGeolocation()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
@@ -36,6 +37,18 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Sync geolocation result to form data
+  useEffect(() => {
+    if (geoLocation?.lat != null && geoLocation?.lng != null) {
+      setFormData(prev => ({
+        ...prev,
+        locationLat: geoLocation.lat,
+        locationLng: geoLocation.lng,
+        locationLabel: prev.locationLabel || 'My location',
+      }))
+    }
+  }, [geoLocation])
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
