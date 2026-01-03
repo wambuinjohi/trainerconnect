@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import AuthLogo from '@/components/auth/AuthLogo'
 import { getApiUrl } from '@/lib/api-config'
+import { toast } from '@/hooks/use-toast'
 
 interface WaitlistDialogProps {
   open: boolean
