@@ -236,6 +236,31 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
             />
           </div>
 
+          {/* Category Select */}
+          <div className="space-y-2">
+            <Label htmlFor="categoryId" className="text-foreground font-medium">
+              Category of Interest
+            </Label>
+            {loadingCategories ? (
+              <div className="text-sm text-muted-foreground">Loading categories...</div>
+            ) : (
+              <select
+                id="categoryId"
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleSelectChange}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-trainer-primary"
+              >
+                <option value="">Select a category (optional)</option>
+                {categories.map(category => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
             {/* Coach Checkbox */}
             <div className="flex items-center gap-3 pt-2">
               <Checkbox
