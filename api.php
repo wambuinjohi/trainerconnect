@@ -2235,6 +2235,11 @@ switch ($action) {
             }
         }
 
+        // Convert profile_image to absolute URL for Android APK and all clients
+        if (!empty($profile['profile_image'])) {
+            $profile['profile_image'] = makeImageUrlAbsolute($profile['profile_image']);
+        }
+
         respond("success", "Profile fetched successfully.", ["data" => $profile]);
         break;
 
