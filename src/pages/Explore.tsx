@@ -212,36 +212,8 @@ const Explore: React.FC = () => {
     setFilteredTrainers(result)
   }, [trainers, filters, searchQuery, userLocation])
 
-  const requestLocation = () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: 'Location not supported',
-        description: 'Geolocation is not available in your browser',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setLocationLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        toast({
-          title: 'Location set',
-          description: 'Trainers sorted by distance',
-        })
-        setLocationLoading(false)
-      },
-      (err) => {
-        console.error('Geolocation error:', err)
-        toast({
-          title: 'Location error',
-          description: 'Could not access your location. Please enable location services.',
-          variant: 'destructive',
-        })
-        setLocationLoading(false)
-      }
-    )
+  const requestLocation = async () => {
+    await requestGeoLocation()
   }
 
   const clearFilters = () => {
