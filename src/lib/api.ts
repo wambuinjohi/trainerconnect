@@ -73,20 +73,27 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     apiUrl = lastSuccessfulApiUrl
   }
 
+  console.log(`[API] ${action}`, { url: apiUrl, payload });
+
   try {
     const response = await apiRequest_Internal<T>(apiUrl, action, payload, headers, init)
     lastSuccessfulApiUrl = apiUrl
     return response
   } catch (primaryError) {
+    console.error(`[API] ${action} failed with primary URL:`, primaryError, { url: apiUrl })
+
     // Try fallback URLs if primary fails
     for (const fallbackUrl of FALLBACK_API_URLS) {
       if (apiUrl === fallbackUrl) continue // Skip if we already tried this
 
+      console.log(`[API] ${action} - trying fallback URL:`, fallbackUrl)
       try {
         const response = await apiRequest_Internal<T>(fallbackUrl, action, payload, headers, init)
         lastSuccessfulApiUrl = fallbackUrl
+        console.log(`[API] ${action} - fallback URL succeeded:`, fallbackUrl)
         return response
       } catch (fallbackError) {
+        console.error(`[API] ${action} - fallback URL failed:`, fallbackError, { url: fallbackUrl })
         continue
       }
     }
