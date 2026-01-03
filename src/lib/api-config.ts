@@ -53,7 +53,7 @@ export function getApiBaseUrl(): string {
 
   // For native Capacitor apps, use the remote server
   if (isCapacitorApp()) {
-    const nativeUrl = 'https://trainer.skatryk.co.ke/api.php';
+    const nativeUrl = 'https://trainercoachconnect.com/api.php';
     if (typeof window !== 'undefined') {
       console.log('[API Config] Using native app URL:', nativeUrl);
     }
