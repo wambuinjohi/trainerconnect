@@ -5,7 +5,7 @@
  * This callback is invoked by Safaricom's M-Pesa API when an STK Push payment
  * (customer-to-business) is completed or fails. Used for client payments.
  * 
- * Callback URL: https://trainer.skatryk.co.ke/c2b_callback.php
+ * Callback URL: https://trainercoachconnect.com/c2b_callback.php
  * 
  * Expected POST format from M-Pesa (STK Push):
  * {
