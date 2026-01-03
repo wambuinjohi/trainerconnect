@@ -205,19 +205,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
                   <div className="flex gap-2">
                     <Input id="signup-location" type="text" placeholder="e.g. Nairobi, Parklands" value={formData.locationLabel} onChange={(e) => handleInputChange('locationLabel', e.target.value)} className="bg-input border-border" />
                     <Button type="button" variant="outline" onClick={() => {
-                      if (!navigator.geolocation) {
-                        toast({ title: 'Location not supported', description: 'Your browser does not support geolocation' })
-                        return
-                      }
-                      const t = window.setTimeout(() => toast({ title: 'Location timeout', description: 'Could not get GPS in time' }), 5000)
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        window.clearTimeout(t)
-                        setFormData(prev => ({ ...prev, locationLat: pos.coords.latitude, locationLng: pos.coords.longitude, locationLabel: prev.locationLabel || 'My location' }))
-                        toast({ title: 'Location captured' })
-                      }, () => {
-                        window.clearTimeout(t)
-                        toast({ title: 'Location error', description: 'Unable to fetch GPS position', variant: 'destructive' })
-                      }, { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 })
+                      requestGeoLocation()
                     }}>Use GPS</Button>
                   </div>
                   {(formData.locationLat != null && formData.locationLng != null) && (
