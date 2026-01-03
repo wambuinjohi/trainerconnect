@@ -84,46 +84,39 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0">
         <DialogTitle className="sr-only">Join the Trainer Waitlist</DialogTitle>
-        {/* Header Section with Logo and Tagline */}
-        <div className="bg-gradient-to-b from-background to-background/50 px-6 py-8 space-y-6 border-b border-border">
-          {/* Tagline */}
-          <div className="space-y-3 text-center">
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight">
-              FIND YOUR COACH.
-              <br />
-              FIND YOUR FREEDOM.
-            </h2>
+        <form onSubmit={handleSubmit} className="flex flex-col">
+          {/* Header Section with Logo and Tagline */}
+          <div className="bg-gradient-to-b from-background to-background/50 px-6 py-8 space-y-6 border-b border-border">
+            {/* Tagline */}
+            <div className="space-y-3 text-center">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight leading-tight">
+                FIND YOUR COACH.
+                <br />
+                FIND YOUR FREEDOM.
+              </h2>
+            </div>
+
+            {/* Logo and Arrow */}
+            <div className="flex flex-col items-center gap-4">
+              <AuthLogo compact containerClassName="h-48 w-48" className="h-36" />
+              <ArrowUp className="w-8 h-8 text-trainer-primary animate-bounce" />
+            </div>
+
+            {/* TRAINER Text */}
+            <div className="space-y-3 text-center">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                TRAINER
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Launching April 2026 in Nairobi.
+              </p>
+            </div>
           </div>
 
-          {/* Logo and Arrow */}
-          <div className="flex flex-col items-center gap-4">
-            <AuthLogo compact containerClassName="h-48 w-48" className="h-36" />
-            <ArrowUp className="w-8 h-8 text-trainer-primary animate-bounce" />
-          </div>
-
-          {/* TRAINER Text */}
-          <div className="space-y-3 text-center">
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              TRAINER
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Launching April 2026 in Nairobi.
-            </p>
-          </div>
-
-          {/* CTA Button */}
-          <Button
-            disabled={isSubmitting}
-            className="w-full bg-trainer-primary hover:bg-trainer-primary/90 text-white font-bold py-3 text-base rounded"
-          >
-            {isSubmitting ? 'Joining...' : 'JOIN THE WAITLIST'}
-          </Button>
-        </div>
-
-        {/* Form Section */}
-        <form onSubmit={handleSubmit} className="px-6 py-8 space-y-5">
+          {/* Form Section */}
+          <div className="px-6 py-8 space-y-5 flex-1">
           {/* Name Input */}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-foreground font-medium">
@@ -175,22 +168,32 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
             />
           </div>
 
-          {/* Coach Checkbox */}
-          <div className="flex items-center gap-3 pt-2">
-            <Checkbox
-              id="isCoach"
-              checked={formData.isCoach}
-              onCheckedChange={handleCheckboxChange}
-            />
-            <Label htmlFor="isCoach" className="text-foreground font-normal cursor-pointer text-sm">
-              I am a coach
-            </Label>
-          </div>
+            {/* Coach Checkbox */}
+            <div className="flex items-center gap-3 pt-2">
+              <Checkbox
+                id="isCoach"
+                checked={formData.isCoach}
+                onCheckedChange={handleCheckboxChange}
+              />
+              <Label htmlFor="isCoach" className="text-foreground font-normal cursor-pointer text-sm">
+                I am a coach
+              </Label>
+            </div>
 
-          {/* Footer Text */}
-          <div className="text-center pt-6 border-t border-border">
-            <p className="text-xs text-muted-foreground">@trainerapp.ke</p>
-            <p className="text-xs text-muted-foreground pt-3 font-medium">YOUR GROWTH, YOUR CHOICE.</p>
+            {/* CTA Submit Button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-trainer-primary hover:bg-trainer-primary/90 text-white font-bold py-3 text-base rounded mt-6"
+            >
+              {isSubmitting ? 'Joining...' : 'JOIN THE WAITLIST'}
+            </Button>
+
+            {/* Footer Text */}
+            <div className="text-center pt-6 border-t border-border">
+              <p className="text-xs text-muted-foreground">@trainerapp.ke</p>
+              <p className="text-xs text-muted-foreground pt-3 font-medium">YOUR GROWTH, YOUR CHOICE.</p>
+            </div>
           </div>
         </form>
       </DialogContent>
