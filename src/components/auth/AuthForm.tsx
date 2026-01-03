@@ -21,7 +21,6 @@ interface AuthFormProps {
 export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'signin' }) => {
   const { signIn, signUp } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
-  const [isSyncing, setIsSyncing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
@@ -34,7 +33,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     locationLat: null as number | null,
     locationLng: null as number | null,
   })
-  const [dbDiag, setDbDiag] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
@@ -90,29 +88,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onSuccess, initialTab = 'sig
     }
   }
 
-  // Fallback for DB check (removed Supabase)
-  const handleSyncConnection = async () => {
-    setIsSyncing(true)
-    setDbDiag(null)
-    toast({ title: 'Database check skipped', description: 'Supabase references removed, using local fallback.' })
-    try {
-      const { cleared } = await clearAppCache()
-      toast({ title: 'Cache cleared', description: cleared.join(', ') })
-      setTimeout(() => { try { window.location.reload() } catch {} }, 300)
-    } catch (e:any) {
-      console.error('Clear cache failed:', e)
-    }
-    setIsSyncing(false)
-  }
-
-  const handleClearCacheOnly = async () => {
-    try {
-      const { cleared } = await clearAppCache()
-      toast({ title: 'Cache cleared', description: cleared.join(', ') })
-    } catch (e: any) {
-      toast({ title: 'Cache error', description: e?.message || 'Failed to clear cache.' })
-    }
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
