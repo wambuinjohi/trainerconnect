@@ -20,7 +20,7 @@ const Header: React.FC = () => {
       <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-6 lg:gap-8">
-            <AuthLogo compact containerClassName="h-24 w-24 sm:h-32 sm:w-32 lg:h-40 lg:w-40" className="h-24 sm:h-32 lg:h-40" />
+            <AuthLogo compact containerClassName="h-48 w-48 sm:h-64 sm:w-64 lg:h-80 lg:w-80" className="h-48 sm:h-64 lg:h-80" />
             <nav className="hidden md:flex items-center gap-8">
               <NavLink to="/">Home</NavLink>
               <NavLink to="/explore">Explore</NavLink>
