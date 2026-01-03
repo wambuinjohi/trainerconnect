@@ -52,11 +52,13 @@ export const WaitingListManager: React.FC = () => {
       const result = await response.json()
 
       if (result.status === 'success') {
-        setEntries(result.data || [])
+        const data = Array.isArray(result.data) ? result.data : []
+        setEntries(data)
         setTotalCount(result.total || 0)
         setCurrentPage(page)
       } else {
         setError(result.message || 'Failed to fetch waiting list')
+        setEntries([])
       }
     } catch (err) {
       setError('Network error: Unable to fetch waiting list')
