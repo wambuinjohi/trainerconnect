@@ -201,7 +201,7 @@ export default function AdminSetup() {
             {/* Waitlist Alter Section */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">4. Add Category to Waitlist</h3>
+                <h3 className="text-lg font-semibold">5. Add Category to Waitlist</h3>
                 {waitlistMigrationDone && <CheckCircle2 className="w-5 h-5 text-green-500" />}
               </div>
               <p className="text-sm text-muted-foreground">
