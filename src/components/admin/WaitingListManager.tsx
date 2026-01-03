@@ -348,8 +348,8 @@ export const WaitingListManager: React.FC = () => {
                         <td className="py-3 px-4 text-muted-foreground">{entry.email}</td>
                         <td className="py-3 px-4 font-mono text-sm">{entry.telephone}</td>
                         <td className="py-3 px-4 text-center">
-                          <Badge variant={entry.is_coach ? 'default' : 'secondary'}>
-                            {entry.is_coach ? 'Coach' : 'Client'}
+                          <Badge variant={entry.is_coach === 1 ? 'default' : 'secondary'}>
+                            {entry.is_coach === 1 ? 'Coach' : 'Client'}
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-center">
