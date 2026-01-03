@@ -124,7 +124,7 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
 
     // Use default C2B callback URL if not provided (for STK Push payments)
     if (empty($callback_url)) {
-        $callback_url = 'https://trainer.skatryk.co.ke/c2b_callback.php';
+        $callback_url = 'https://trainercoachconnect.com/c2b_callback.php';
     }
 
     $stk_url = ($environment === 'production')
@@ -265,10 +265,10 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
 
     // Use default B2C callback URLs if not provided (for payouts)
     if (empty($queue_timeout_url)) {
-        $queue_timeout_url = 'https://trainer.skatryk.co.ke/b2c_callback.php';
+        $queue_timeout_url = 'https://trainercoachconnect.com/b2c_callback.php';
     }
     if (empty($result_url)) {
-        $result_url = 'https://trainer.skatryk.co.ke/b2c_callback.php';
+        $result_url = 'https://trainercoachconnect.com/b2c_callback.php';
     }
 
     $b2c_url = ($environment === 'production')
