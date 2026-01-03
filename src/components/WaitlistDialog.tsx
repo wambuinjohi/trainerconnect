@@ -45,18 +45,34 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
     setIsSubmitting(true)
 
     try {
-      // Add your API call here
-      console.log('Waitlist submission:', formData)
-
-      // Reset form
-      setFormData({
-        name: '',
-        email: '',
-        telephone: '',
-        isCoach: false,
+      const response = await fetch('http://localhost/api.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'waitlist_submit',
+          name: formData.name,
+          email: formData.email,
+          telephone: formData.telephone,
+          is_coach: formData.isCoach ? 1 : 0,
+        }),
       })
 
-      onOpenChange(false)
+      const result = await response.json()
+
+      if (result.status === 'success') {
+        // Reset form and close dialog on success
+        setFormData({
+          name: '',
+          email: '',
+          telephone: '',
+          isCoach: false,
+        })
+        onOpenChange(false)
+      } else {
+        console.error('API Error:', result.message)
+      }
     } catch (error) {
       console.error('Error submitting waitlist form:', error)
     } finally {
