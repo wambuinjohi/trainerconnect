@@ -72,7 +72,8 @@ export const WaitingListManager: React.FC = () => {
 
   const handleDelete = async (entryId: string) => {
     try {
-      const response = await fetch('http://localhost/api.php', {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
