@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, MessageCircle, Calendar } from 'lucide-react'
+import { Star, MapPin, MessageCircle, Calendar, Users } from 'lucide-react'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { BookingForm } from './BookingForm'
 import { Chat } from './Chat'
 import * as apiService from '@/lib/api-service'
+import { formatGroupPricingDisplay, type GroupPricingConfig } from '@/lib/group-pricing-utils'
 
 // Helper function for formatting trainer hourly rate
 function formatHourlyRate(rate: number | null | undefined): string {
