@@ -235,7 +235,15 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     loadProfile()
   }, [userId])
 
-  const handleChange = (field: string, value: any) => setProfile(prev => ({ ...prev, [field]: value }))
+  const handleChange = (field: string, value: any) => {
+    console.log(`[Profile Change] Field "${field}" changing:`, { from: profile[field], to: value })
+    setProfile(prev => ({ ...prev, [field]: value }))
+  }
+
+  // Log profile state changes
+  useEffect(() => {
+    console.log('[Profile State] Current profile_image:', profile.profile_image)
+  }, [profile.profile_image])
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
