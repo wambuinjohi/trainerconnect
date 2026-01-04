@@ -371,10 +371,11 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
           hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
         }
-        console.log('Saving profile with userId:', userId)
-        console.log('Update payload:', updatePayload)
+        console.log('[Profile Save] Saving profile with userId:', userId)
+        console.log('[Profile Save] Current state profile.profile_image:', profile.profile_image)
+        console.log('[Profile Save] Update payload being sent:', updatePayload)
         const response = await apiService.updateUserProfile(userId, updatePayload)
-        console.log('Profile updated successfully:', response)
+        console.log('[Profile Save] API response:', response)
       } catch (apiErr) {
         console.error('API save failed:', apiErr)
         toast({
