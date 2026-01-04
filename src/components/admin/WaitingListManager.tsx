@@ -124,6 +124,7 @@ export const WaitingListManager: React.FC = () => {
   }
 
   useEffect(() => {
+    fetchCategories()
     fetchWaitlist(0)
   }, [])
 
