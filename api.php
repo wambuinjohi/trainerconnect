@@ -3182,14 +3182,15 @@ switch ($action) {
         $bookingId = 'booking_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        // Prepare statement with all fee breakdown columns
+        // Prepare statement with all fee breakdown columns and group training fields
         $stmt = $conn->prepare("
             INSERT INTO bookings (
                 id, client_id, trainer_id, category_id, session_date, session_time, duration_hours,
                 total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
                 vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
-                client_location_lat, client_location_lng, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                client_location_lat, client_location_lng, is_group_training, group_size_tier_name,
+                pricing_model_used, group_rate_per_unit, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         // For backward compatibility, use the new fee breakdown values
@@ -3197,11 +3198,12 @@ switch ($action) {
         $vatAmountForDb = 0; // No VAT in new calculation
 
         $stmt->bind_param(
-            "sssisiiidddddddsddss",
+            "sssisiiidddddddsddissdds",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
             $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
             $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
-            $clientLocationLat, $clientLocationLng, $now, $now
+            $clientLocationLat, $clientLocationLng, $isGroupTraining, $groupSizeTierName,
+            $pricingModelUsed, $groupRatePerUnit, $now, $now
         );
 
         if ($stmt->execute()) {
