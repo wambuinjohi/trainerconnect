@@ -20,88 +20,88 @@ function adminApiPlugin() {
         const url = req.url?.split('?')[0] || "";
         if (!url.startsWith("/__admin/")) return next();
 
-          try {
-            const adminTokenHeader = req.headers["x-admin-token"] as string | undefined;
-            const expectedToken = process.env.ADMIN_TOKEN;
-            const isListReq = url.startsWith("/__admin/list-users");
+        try {
+        const adminTokenHeader = req.headers["x-admin-token"] as string | undefined;
+        const expectedToken = process.env.ADMIN_TOKEN;
+        const isListReq = url.startsWith("/__admin/list-users");
 
-            if (!(isListReq && process.env.NODE_ENV !== "production")) {
-              if (!expectedToken || adminTokenHeader !== expectedToken) {
-                res.statusCode = 401;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
-                return;
-              }
-            }
+        if (!(isListReq && process.env.NODE_ENV !== "production")) {
+        if (!expectedToken || adminTokenHeader !== expectedToken) {
+          res.statusCode = 401;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: "Unauthorized" }));
+          return;
+        }
+        }
 
-            // Example local DB connection or any custom backend API call
-            const db = {
-              query: async (q: string, params?: any[]) => {
-                console.log("Mock DB query:", q, params);
-                return [];
-              },
+        // Example local DB connection or any custom backend API call
+        const db = {
+        query: async (q: string, params?: any[]) => {
+          console.log("Mock DB query:", q, params);
+          return [];
+        },
             };
 
-            let body = {};
-            if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(chunk as Buffer);
-              }
-              const raw = Buffer.concat(chunks).toString('utf8');
-              if (raw) {
-                body = JSON.parse(raw);
-              }
-            }
+        let body = {};
+        if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer);
+        }
+        const raw = Buffer.concat(chunks).toString('utf8');
+        if (raw) {
+          body = JSON.parse(raw);
+        }
+        }
 
-            // Example: handle M-Pesa credential storage (replace with your local DB)
-            if (url.startsWith("/__admin/set-mpesa-credentials")) {
-              try {
-                const creds = body.credentials || null;
-                if (!creds) throw new Error("Missing credentials in body");
-                await db.query("UPSERT INTO platform_secrets (key, value) VALUES (?, ?)", [
-                  "mpesa",
-                  JSON.stringify(creds),
-                ]);
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: true }));
-              } catch (e: any) {
-                res.statusCode = 500;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: false, error: e.message }));
-              }
-              return;
-            }
+        // Example: handle M-Pesa credential storage (replace with your local DB)
+        if (url.startsWith("/__admin/set-mpesa-credentials")) {
+        try {
+          const creds = body.credentials || null;
+          if (!creds) throw new Error("Missing credentials in body");
+          await db.query("UPSERT INTO platform_secrets (key, value) VALUES (?, ?)", [
+            "mpesa",
+            JSON.stringify(creds),
+          ]);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+        return;
+        }
 
-            if (url.startsWith("/__admin/get-mpesa-credentials")) {
-              try {
-                const rows = await db.query("SELECT value FROM platform_secrets WHERE key = ?", ["mpesa"]);
-                const value = rows.length ? JSON.parse((rows as any)[0].value) : null;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: true, credentials: value }));
-              } catch (e: any) {
-                res.statusCode = 500;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: false, error: e.message }));
-              }
-              return;
-            }
+        if (url.startsWith("/__admin/get-mpesa-credentials")) {
+        try {
+          const rows = await db.query("SELECT value FROM platform_secrets WHERE key = ?", ["mpesa"]);
+          const value = rows.length ? JSON.parse((rows as any)[0].value) : null;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true, credentials: value }));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+        return;
+        }
 
-            // Settings endpoints
-            if (url.startsWith("/__admin/get-settings")) {
-              try {
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({
-                  ok: true,
-                  message: "Settings managed via localStorage on client. Use admin dashboard to configure M-Pesa."
-                }));
-              } catch (e: any) {
-                res.statusCode = 500;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ ok: false, error: e.message }));
-              }
-              return;
-            }
+        // Settings endpoints
+        if (url.startsWith("/__admin/get-settings")) {
+        try {
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({
+            ok: true,
+            message: "Settings managed via localStorage on client. Use admin dashboard to configure M-Pesa."
+          }));
+        } catch (e: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+        return;
+        }
 
             res.statusCode = 404;
             res.setHeader("Content-Type", "application/json");
@@ -127,163 +127,163 @@ function devApiPlugin() {
         const url = req.url?.split('?')[0] || "";
         if (url !== "/api.php") return next();
 
+        try {
+        let body = {};
+
+        // Handle request body parsing for POST
+        if (req.method === "POST" && req.headers['content-length'] && req.headers['content-length'] !== '0') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer);
+        }
+        const raw = Buffer.concat(chunks).toString('utf8');
+        if (raw) {
           try {
-            let body = {};
-
-            // Handle request body parsing for POST
-            if (req.method === "POST" && req.headers['content-length'] && req.headers['content-length'] !== '0') {
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(chunk as Buffer);
-              }
-              const raw = Buffer.concat(chunks).toString('utf8');
-              if (raw) {
-                try {
-                  body = JSON.parse(raw);
-                } catch {
-                  res.statusCode = 400;
-                  res.setHeader("Content-Type", "application/json");
-                  res.end(JSON.stringify({ status: "error", message: "Invalid JSON in request body." }));
-                  return;
-                }
-              }
+            body = JSON.parse(raw);
+          } catch {
+            res.statusCode = 400;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ status: "error", message: "Invalid JSON in request body." }));
+            return;
+          }
+        }
             } else if (req.method === "GET") {
-              body = req.url?.includes('?') ? Object.fromEntries(new URLSearchParams(req.url?.split('?')[1])) : {};
-            }
+        body = req.url?.includes('?') ? Object.fromEntries(new URLSearchParams(req.url?.split('?')[1])) : {};
+        }
 
-            const action = (body.action || "").toLowerCase().trim();
+        const action = (body.action || "").toLowerCase().trim();
 
-            // Always set JSON content type first
+        // Always set JSON content type first
             res.setHeader("Content-Type", "application/json; charset=utf-8");
 
-            // Log the API call for debugging
+        // Log the API call for debugging
             console.log(`[Dev API] ${req.method} ${action}`, { body });
 
-            // Handle missing action
-            if (!action) {
-              res.statusCode = 400;
-              res.end(JSON.stringify({ status: "error", message: "Missing action parameter.", data: null }));
-              return;
-            }
+        // Handle missing action
+        if (!action) {
+        res.statusCode = 400;
+        res.end(JSON.stringify({ status: "error", message: "Missing action parameter.", data: null }));
+        return;
+        }
 
-            // Mock responses for development
+        // Mock responses for development
             switch (action) {
-              case "health_check":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Server is running",
-                  data: { timestamp: new Date().toISOString() }
-                }));
-                return;
+        case "health_check":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Server is running",
+            data: { timestamp: new Date().toISOString() }
+          }));
+          return;
 
-              case "login":
-                const email = body.email || "";
-                if (!email || !body.password) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ status: "error", message: "Missing email or password." }));
-                  return;
-                }
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Login successful",
-                  data: {
-                    user: {
-                      id: "dev-user-" + email.substring(0, 3),
-                      email: email
-                    },
-                    profile: {
-                      user_type: "client"
-                    },
-                    session: {
-                      access_token: "dev-token-" + Math.random().toString(36).substring(7)
-                    }
-                  }
-                }));
-                return;
-
-              case "signup":
-                const signupEmail = body.email || "";
-                const userType = body.user_type || "client";
-                if (!signupEmail || !body.password) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ status: "error", message: "Missing required fields." }));
-                  return;
-                }
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Signup successful",
-                  data: {
-                    user: {
-                      id: "dev-user-" + signupEmail.substring(0, 3),
-                      email: signupEmail
-                    },
-                    profile: {
-                      user_type: userType
-                    },
-                    session: {
-                      access_token: "dev-token-" + Math.random().toString(36).substring(7)
-                    }
-                  }
-                }));
-                return;
-
-              case "get_users":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Users retrieved",
-                  data: []
-                }));
-                return;
-
-              case "get_categories":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Categories retrieved",
-                  data: [
-                    { id: 1, name: "Strength Training", icon: "💪", description: "Build muscle and increase strength" },
-                    { id: 2, name: "Cardio", icon: "🏃", description: "Improve cardiovascular fitness" },
-                    { id: 3, name: "Yoga", icon: "🧘", description: "Flexibility and mindfulness" },
-                    { id: 4, name: "HIIT", icon: "⚡", description: "High-intensity interval training" }
-                  ]
-                }));
-                return;
-
-              case "migrate":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Migration completed"
-                }));
-                return;
-
-              case "seed_all_users":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Users seeded successfully",
-                  data: []
-                }));
-                return;
-
-              case "select":
-              case "insert":
-              case "update":
-              case "delete":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Database operation completed",
-                  data: []
-                }));
-                return;
-
-              // Default: return success for any unknown action
-              default:
-                console.warn(`[Dev API] Unknown action: ${action}`);
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: `Action '${action}' processed (mocked in development)`,
-                  data: []
-                }));
-                return;
+        case "login":
+          const email = body.email || "";
+          if (!email || !body.password) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ status: "error", message: "Missing email or password." }));
+            return;
+          }
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Login successful",
+            data: {
+              user: {
+                id: "dev-user-" + email.substring(0, 3),
+                email: email
+              },
+              profile: {
+                user_type: "client"
+              },
+              session: {
+                access_token: "dev-token-" + Math.random().toString(36).substring(7)
+              }
             }
+          }));
+          return;
+
+        case "signup":
+          const signupEmail = body.email || "";
+          const userType = body.user_type || "client";
+          if (!signupEmail || !body.password) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ status: "error", message: "Missing required fields." }));
+            return;
+          }
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Signup successful",
+            data: {
+              user: {
+                id: "dev-user-" + signupEmail.substring(0, 3),
+                email: signupEmail
+              },
+              profile: {
+                user_type: userType
+              },
+              session: {
+                access_token: "dev-token-" + Math.random().toString(36).substring(7)
+              }
+            }
+          }));
+          return;
+
+        case "get_users":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Users retrieved",
+            data: []
+          }));
+          return;
+
+        case "get_categories":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Categories retrieved",
+            data: [
+              { id: 1, name: "Strength Training", icon: "💪", description: "Build muscle and increase strength" },
+              { id: 2, name: "Cardio", icon: "🏃", description: "Improve cardiovascular fitness" },
+              { id: 3, name: "Yoga", icon: "🧘", description: "Flexibility and mindfulness" },
+              { id: 4, name: "HIIT", icon: "⚡", description: "High-intensity interval training" }
+            ]
+          }));
+          return;
+
+        case "migrate":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Migration completed"
+          }));
+          return;
+
+        case "seed_all_users":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Users seeded successfully",
+            data: []
+          }));
+          return;
+
+        case "select":
+        case "insert":
+        case "update":
+        case "delete":
+          res.end(JSON.stringify({
+            status: "success",
+            message: "Database operation completed",
+            data: []
+          }));
+          return;
+
+        // Default: return success for any unknown action
+        default:
+          console.warn(`[Dev API] Unknown action: ${action}`);
+          res.end(JSON.stringify({
+            status: "success",
+            message: `Action '${action}' processed (mocked in development)`,
+            data: []
+          }));
+          return;
+        }
           } catch (e: any) {
             console.error("Dev API error:", e);
             res.statusCode = 500;
@@ -304,101 +304,101 @@ function paymentsApiPlugin() {
         const url = req.url?.split('?')[0] || "";
         if (!url.startsWith("/payments/mpesa/")) return next();
 
-          try {
-            let body = {};
-            if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(chunk as Buffer);
-              }
-              const raw = Buffer.concat(chunks).toString('utf8');
-              if (raw) {
-                body = JSON.parse(raw);
-              }
-            }
+        try {
+        let body = {};
+        if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(chunk as Buffer);
+        }
+        const raw = Buffer.concat(chunks).toString('utf8');
+        if (raw) {
+          body = JSON.parse(raw);
+        }
+        }
 
-            // Get M-Pesa credentials from request body (passed by frontend) or environment variables
-            const clientCreds = body.mpesa_creds || {};
+        // Get M-Pesa credentials from request body (passed by frontend) or environment variables
+        const clientCreds = body.mpesa_creds || {};
 
-            const creds = {
-              consumer_key: clientCreds.consumerKey || process.env.MPESA_CONSUMER_KEY,
-              consumer_secret: clientCreds.consumerSecret || process.env.MPESA_CONSUMER_SECRET,
-              shortcode: clientCreds.shortcode || process.env.MPESA_SHORTCODE,
-              passkey: clientCreds.passkey || process.env.MPESA_PASSKEY,
-              environment: clientCreds.environment || process.env.MPESA_ENVIRONMENT || "sandbox",
-              result_url: clientCreds.resultUrl || process.env.MPESA_RESULT_URL,
+        const creds = {
+        consumer_key: clientCreds.consumerKey || process.env.MPESA_CONSUMER_KEY,
+        consumer_secret: clientCreds.consumerSecret || process.env.MPESA_CONSUMER_SECRET,
+        shortcode: clientCreds.shortcode || process.env.MPESA_SHORTCODE,
+        passkey: clientCreds.passkey || process.env.MPESA_PASSKEY,
+        environment: clientCreds.environment || process.env.MPESA_ENVIRONMENT || "sandbox",
+        result_url: clientCreds.resultUrl || process.env.MPESA_RESULT_URL,
             };
 
-            // Validate that credentials are present
-            if (!creds.consumer_key || !creds.consumer_secret) {
-              res.statusCode = 400;
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: false, error: "M-Pesa credentials not configured. Please check admin settings." }));
-              return;
-            }
+        // Validate that credentials are present
+        if (!creds.consumer_key || !creds.consumer_secret) {
+        res.statusCode = 400;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: false, error: "M-Pesa credentials not configured. Please check admin settings." }));
+        return;
+        }
 
-            const envMode = creds.environment;
-            const tokenUrl =
-              envMode === "production"
-                ? "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-                : "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+        const envMode = creds.environment;
+        const tokenUrl =
+        envMode === "production"
+          ? "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+          : "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
 
-            const basic = Buffer.from(
-              `${creds.consumer_key}:${creds.consumer_secret}`
+        const basic = Buffer.from(
+        `${creds.consumer_key}:${creds.consumer_secret}`
             ).toString("base64");
 
-            const tokenRes = await fetch(tokenUrl, {
-              headers: { Authorization: `Basic ${basic}` },
+        const tokenRes = await fetch(tokenUrl, {
+        headers: { Authorization: `Basic ${basic}` },
             });
-            const tokenJson = await tokenRes.json() as any;
-            const accessToken = tokenJson?.access_token;
-            if (!accessToken) throw new Error("Failed to obtain access token");
+        const tokenJson = await tokenRes.json() as any;
+        const accessToken = tokenJson?.access_token;
+        if (!accessToken) throw new Error("Failed to obtain access token");
 
-            if (url.startsWith("/payments/mpesa/stk-initiate")) {
-              const phone = String(body.phone || "").trim();
-              const amount = Math.round(Number(body.amount || 0));
-              const shortcode = creds.shortcode!;
-              const passkey = creds.passkey!;
-              const callback = creds.result_url || "https://example.com/mpesa/callback";
-              const timestamp = new Date()
-                .toISOString()
-                .replace(/[-:.TZ]/g, "")
-                .slice(0, 14);
-              const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
+        if (url.startsWith("/payments/mpesa/stk-initiate")) {
+        const phone = String(body.phone || "").trim();
+        const amount = Math.round(Number(body.amount || 0));
+        const shortcode = creds.shortcode!;
+        const passkey = creds.passkey!;
+        const callback = creds.result_url || "https://example.com/mpesa/callback";
+        const timestamp = new Date()
+          .toISOString()
+          .replace(/[-:.TZ]/g, "")
+          .slice(0, 14);
+        const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 
-              const stkUrl =
-                envMode === "production"
-                  ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-                  : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+        const stkUrl =
+          envMode === "production"
+            ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+            : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
 
-              const payload = {
-                BusinessShortCode: shortcode,
-                Password: password,
-                Timestamp: timestamp,
-                TransactionType: "CustomerPayBillOnline",
-                Amount: amount,
-                PartyA: phone,
-                PartyB: shortcode,
-                PhoneNumber: phone,
-                CallBackURL: callback,
-                AccountReference: "OrderRef",
-                TransactionDesc: "Payment",
-              };
+        const payload = {
+          BusinessShortCode: shortcode,
+          Password: password,
+          Timestamp: timestamp,
+          TransactionType: "CustomerPayBillOnline",
+          Amount: amount,
+          PartyA: phone,
+          PartyB: shortcode,
+          PhoneNumber: phone,
+          CallBackURL: callback,
+          AccountReference: "OrderRef",
+          TransactionDesc: "Payment",
+        };
 
-              const stkRes = await fetch(stkUrl, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-              });
+        const stkRes = await fetch(stkUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
-              const stkJson = await stkRes.json();
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: true, result: stkJson }));
-              return;
-            }
+        const stkJson = await stkRes.json();
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: true, result: stkJson }));
+        return;
+        }
 
             res.statusCode = 404;
             res.setHeader("Content-Type", "application/json");
