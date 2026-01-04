@@ -213,7 +213,7 @@ function getTrainerGroupPricing($conn, $trainerId, $categoryId) {
 }
 
 // Calculate base amount for group training
-function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
+function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel, $groupSize = 1) {
     if (!$groupPricing || !isset($groupPricing['tiers']) || !is_array($groupPricing['tiers'])) {
         return null;
     }
@@ -230,9 +230,16 @@ function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
         return null;
     }
 
-    // For both fixed and per_person, the rate in the tier is the base amount
-    // (For per_person, the rate is already per person)
-    return floatval($tier['rate']);
+    $tierRate = floatval($tier['rate']);
+
+    // Calculate base amount based on pricing model
+    if ($pricingModel === 'per_person') {
+        // Per-person pricing: multiply rate by group size
+        return $tierRate * intval($groupSize);
+    } else {
+        // Fixed rate: use the tier rate as is
+        return $tierRate;
+    }
 }
 
 // Calculate distance between two coordinates using Haversine formula
@@ -3059,6 +3066,7 @@ switch ($action) {
 
         // Group training parameters
         $isGroupTraining = isset($input['is_group_training']) && $input['is_group_training'] === true;
+        $groupSize = isset($input['group_size']) ? intval($input['group_size']) : 1;
         $groupSizeTierName = isset($input['group_size_tier_name']) ? $conn->real_escape_string($input['group_size_tier_name']) : NULL;
         $pricingModelUsed = NULL;
         $groupRatePerUnit = NULL;
@@ -3138,16 +3146,25 @@ switch ($action) {
             }
 
             // Validate that the tier exists and get the rate
-            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model']);
+            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model'], $groupSize);
 
             if ($groupBaseAmount === null) {
                 respond("error", "Invalid group size tier selected.", null, 400);
             }
 
+            // Find the tier to get the per-unit rate
+            $tierRate = null;
+            foreach ($groupPricing['tiers'] as $tier) {
+                if (isset($tier['group_size_name']) && $tier['group_size_name'] === $groupSizeTierName) {
+                    $tierRate = floatval($tier['rate']);
+                    break;
+                }
+            }
+
             // Set base service amount from group pricing
             $baseServiceAmount = $groupBaseAmount;
             $pricingModelUsed = $groupPricing['pricing_model'];
-            $groupRatePerUnit = $groupBaseAmount;
+            $groupRatePerUnit = $tierRate;
         }
 
         // Calculate transport fee

@@ -4,10 +4,12 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import { Loader2, Plus, Save, Trash2, Users } from 'lucide-react'
 import * as apiService from '@/lib/api-service'
+import { GroupTrainingManager } from './GroupTrainingManager'
 
 type TierRow = { id: string; radius: string; rate: string }
 type ServiceCategory = { id: number; name: string; icon?: string; description?: string }
@@ -27,6 +29,9 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [categoryPricing, setCategoryPricing] = useState<Record<number, string>>({})
   const [tiers, setTiers] = useState<TierRow[]>([])
+  const [groupTrainingModalOpen, setGroupTrainingModalOpen] = useState(false)
+  const [selectedCategoryForGroupTraining, setSelectedCategoryForGroupTraining] = useState<{ id: number; name: string } | null>(null)
+  const [groupTrainingEnabledByCategory, setGroupTrainingEnabledByCategory] = useState<Record<number, boolean>>({})
 
   // Load available data
   useEffect(() => {
@@ -90,6 +95,20 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
             }
           })
           setCategoryPricing(pricing)
+
+          // Load group training status for each category
+          const groupTrainingStatus: Record<number, boolean> = {}
+          for (const catId of catIds) {
+            try {
+              const groupPricingData = await apiService.getTrainerGroupPricing(userId, catId)
+              groupTrainingStatus[catId] = !!(groupPricingData?.data && groupPricingData.data.length > 0)
+            } catch {
+              groupTrainingStatus[catId] = false
+            }
+          }
+          if (active) {
+            setGroupTrainingEnabledByCategory(groupTrainingStatus)
+          }
         }
       } catch (err) {
         console.warn('Failed to load data', err)
@@ -124,6 +143,33 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
 
   const updateCategoryPrice = (categoryId: number, price: string) => {
     setCategoryPricing(prev => ({ ...prev, [categoryId]: price }))
+  }
+
+  const openGroupTrainingManager = (categoryId: number, categoryName: string) => {
+    setSelectedCategoryForGroupTraining({ id: categoryId, name: categoryName })
+    setGroupTrainingModalOpen(true)
+  }
+
+  const closeGroupTrainingManager = () => {
+    setGroupTrainingModalOpen(false)
+    setSelectedCategoryForGroupTraining(null)
+  }
+
+  const handleGroupTrainingModalSave = async () => {
+    // Refresh group training status for the updated category
+    if (selectedCategoryForGroupTraining && userId) {
+      try {
+        const groupPricingData = await apiService.getTrainerGroupPricing(userId, selectedCategoryForGroupTraining.id)
+        const isEnabled = !!(groupPricingData?.data && groupPricingData.data.length > 0)
+        setGroupTrainingEnabledByCategory(prev => ({
+          ...prev,
+          [selectedCategoryForGroupTraining.id]: isEnabled
+        }))
+      } catch {
+        // Ignore errors
+      }
+    }
+    closeGroupTrainingManager()
   }
 
   const savePricing = async () => {
@@ -282,29 +328,56 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
               </section>
 
               {/* Per-Category Pricing (if multiple categories selected) */}
-              {selectedCategories.length > 1 && (
+              {selectedCategories.length > 0 && (
                 <section className="space-y-4">
                   <h3 className="text-lg font-semibold text-foreground">Category-Specific Pricing</h3>
                   <p className="text-sm text-muted-foreground">
-                    Optionally set different rates for specific categories. Leave empty to use base rate.
+                    Optionally set different rates for specific categories or manage group training. Leave empty to use base rate.
                   </p>
-                  
+
                   <div className="space-y-3">
                     {selectedCategories.map(category => (
-                      <div key={category.id} className="flex items-end gap-3 rounded-md border border-border bg-card p-3">
-                        <div className="flex-1">
-                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                            {category.icon && <span className="mr-2">{category.icon}</span>}
-                            {category.name} hourly rate (Ksh)
-                          </Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={categoryPricing[category.id] || ''}
-                            onChange={event => updateCategoryPrice(category.id, event.target.value)}
-                            placeholder={`Leave empty for base rate (Ksh ${baseRate})`}
-                          />
+                      <div key={category.id} className="rounded-md border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm font-semibold">
+                              {category.icon && <span className="mr-2">{category.icon}</span>}
+                              {category.name}
+                            </Label>
+                            {groupTrainingEnabledByCategory[category.id] && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Users className="h-3 w-3 mr-1" />
+                                Group Training
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-1">
+                            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Hourly rate (Ksh)
+                            </Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={categoryPricing[category.id] || ''}
+                              onChange={event => updateCategoryPrice(category.id, event.target.value)}
+                              placeholder={`Leave empty for base rate (Ksh ${baseRate})`}
+                              className="text-sm mt-1"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openGroupTrainingManager(category.id, category.name)}
+                              className="gap-2"
+                            >
+                              <Users className="h-4 w-4" />
+                              Group Training
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -372,6 +445,21 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Group Training Manager Modal */}
+      {groupTrainingModalOpen && selectedCategoryForGroupTraining && userId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={event => event.stopPropagation()}>
+            <GroupTrainingManager
+              trainerId={userId}
+              categoryId={selectedCategoryForGroupTraining.id}
+              categoryName={selectedCategoryForGroupTraining.name}
+              onClose={closeGroupTrainingManager}
+              onSave={handleGroupTrainingModalSave}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

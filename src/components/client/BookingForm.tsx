@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { loadSettings } from '@/lib/settings'
 import { toast } from '@/hooks/use-toast'
 import { calculateFeeBreakdown } from '@/lib/fee-calculations'
 import * as apiService from '@/lib/api-service'
+import { getGroupTierByName, formatGroupPricingDisplay, type GroupPricingConfig, type GroupTier } from '@/lib/group-pricing-utils'
 
 export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?: () => void }> = ({ trainer, trainerProfile, onDone }) => {
   const { user } = useAuth()
@@ -21,8 +24,29 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
   const [payMethod, setPayMethod] = useState<'mpesa' | 'mock'>('mpesa')
   const [mpesaPhone, setMpesaPhone] = useState('')
   const [availabilityError, setAvailabilityError] = useState<string>('')
+  const [isGroupTraining, setIsGroupTraining] = useState(false)
+  const [groupSize, setGroupSize] = useState<number>(1)
+  const [groupTrainingData, setGroupTrainingData] = useState<GroupPricingConfig | null>(null)
+  const [selectedGroupTierName, setSelectedGroupTierName] = useState<string>('')
+  const [trainerCategoryId, setTrainerCategoryId] = useState<number | null>(null)
 
-  const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
+  const computeBaseAmount = () => {
+    if (isGroupTraining && selectedGroupTierName && groupTrainingData) {
+      const tier = getGroupTierByName(groupTrainingData, selectedGroupTierName)
+      if (tier) {
+        const tierRate = tier.rate
+        // Calculate based on pricing model
+        if (groupTrainingData.pricing_model === 'per_person') {
+          return tierRate * groupSize * Number(sessions || 1)
+        } else {
+          // fixed rate
+          return tierRate * Number(sessions || 1)
+        }
+      }
+    }
+    return Number(trainer.hourlyRate || 0) * Number(sessions || 1)
+  }
+
   const settings = loadSettings()
 
   // Validate availability when date or time changes
@@ -61,6 +85,28 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
       setAvailabilityError(`Time not available. Available slots: ${availableTimes}`)
     }
   }, [date, time, trainerProfile?.availability])
+
+  // Load group training data for the trainer
+  useEffect(() => {
+    const loadGroupTrainingData = async () => {
+      if (!trainer?.id) return
+      try {
+        const response = await apiService.getTrainerGroupPricing(trainer.id)
+        if (response?.data && response.data.length > 0) {
+          const firstGroupPricing = response.data[0]
+          setGroupTrainingData(firstGroupPricing)
+          setTrainerCategoryId(firstGroupPricing.category_id)
+          // Auto-select first tier for convenience
+          if (firstGroupPricing.tiers && firstGroupPricing.tiers.length > 0) {
+            setSelectedGroupTierName(firstGroupPricing.tiers[0].group_size_name)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load group training data:', err)
+      }
+    }
+    loadGroupTrainingData()
+  }, [trainer?.id])
 
   // Get fee breakdown using new calculation utility
   const baseAmount = computeBaseAmount() - appliedDiscount
@@ -130,6 +176,15 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
       client_location_label: (clientLocation.label || null),
       client_location_lat: (clientLocation.lat != null ? clientLocation.lat : null),
       client_location_lng: (clientLocation.lng != null ? clientLocation.lng : null),
+    }
+
+    // Add group training data if applicable
+    if (isGroupTraining && groupTrainingData) {
+      payload.is_group_training = true
+      payload.group_size = groupSize
+      payload.group_size_tier_name = selectedGroupTierName
+      payload.category_id = trainerCategoryId
+      payload.pricing_model_used = groupTrainingData.pricing_model
     }
 
     try {
@@ -256,6 +311,61 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
           <Label>Number of Sessions</Label>
           <Input type="number" min={1} value={String(sessions)} onChange={(e) => setSessions(Number(e.target.value))} />
         </div>
+
+        {/* Group Training Section */}
+        {groupTrainingData && groupTrainingData.tiers && groupTrainingData.tiers.length > 0 && (
+          <div className="space-y-3 border border-border rounded-md p-3 bg-muted/5">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Book as group training</Label>
+              <Switch checked={isGroupTraining} onCheckedChange={setIsGroupTraining} />
+            </div>
+
+            {isGroupTraining && (
+              <>
+                <div>
+                  <Label className="text-xs">Group size</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={String(groupSize)}
+                    onChange={(e) => setGroupSize(Math.max(1, Number(e.target.value)))}
+                    placeholder="Enter group size"
+                    className="mt-1"
+                  />
+                </div>
+
+                {selectedGroupTierName && (
+                  <div>
+                    <Label className="text-xs">Select group tier</Label>
+                    <Select value={selectedGroupTierName} onValueChange={setSelectedGroupTierName}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groupTrainingData.tiers.map((tier) => (
+                          <SelectItem key={tier.group_size_name} value={tier.group_size_name}>
+                            <div className="flex flex-col">
+                              <span>{tier.group_size_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatGroupPricingDisplay(tier.rate, groupTrainingData.pricing_model)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedGroupTierName && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Rate: {groupTrainingData && getGroupTierByName(groupTrainingData, selectedGroupTierName) && formatGroupPricingDisplay(getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate, groupTrainingData.pricing_model)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div>
           <Label>Referral Code (optional)</Label>
           <Input value={referralCode} onChange={(e)=>setReferralCode(e.target.value)} placeholder="Enter code" />
@@ -281,7 +391,19 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         )}
 
         <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
-          <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
+          {isGroupTraining && groupTrainingData ? (
+            <>
+              <div className="flex justify-between"><span>Group tier</span><span className="font-semibold">{selectedGroupTierName}</span></div>
+              <div className="flex justify-between"><span>Group size</span><span className="font-semibold">{groupSize} people</span></div>
+              <div className="flex justify-between"><span>Rate per {groupTrainingData.pricing_model === 'per_person' ? 'person' : 'group'}</span>
+                <span className="font-semibold">Ksh {groupTrainingData && selectedGroupTierName && getGroupTierByName(groupTrainingData, selectedGroupTierName) ? getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate : 0}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
+            </>
+          )}
           <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{sessions}</span></div>
           <div className="flex justify-between"><span>Base Service Amount</span><span className="font-semibold">Ksh {baseAmount}</span></div>
           {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Referral Discount</span><span>−Ksh {appliedDiscount}</span></div>}

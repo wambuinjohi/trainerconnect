@@ -2,13 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Star, MapPin, MessageCircle, Calendar } from 'lucide-react'
+import { Star, MapPin, MessageCircle, Calendar, Users } from 'lucide-react'
 import { apiRequest, withAuth } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { BookingForm } from './BookingForm'
 import { Chat } from './Chat'
 import * as apiService from '@/lib/api-service'
+import { formatGroupPricingDisplay, type GroupPricingConfig } from '@/lib/group-pricing-utils'
 
 // Helper function for formatting trainer hourly rate
 function formatHourlyRate(rate: number | null | undefined): string {
@@ -25,6 +26,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [categories, setCategories] = useState<any[]>([])
+  const [groupTrainingData, setGroupTrainingData] = useState<GroupPricingConfig[]>([])
   const [showBooking, setShowBooking] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
@@ -54,6 +56,21 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
       }
     }
     fetchCategories()
+  }, [trainer.id])
+
+  useEffect(() => {
+    // Fetch trainer's group training pricing
+    const fetchGroupTrainingData = async () => {
+      try {
+        const data = await apiService.getTrainerGroupPricing(trainer.id)
+        if (data?.data && Array.isArray(data.data)) {
+          setGroupTrainingData(data.data)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch group training data', err)
+      }
+    }
+    fetchGroupTrainingData()
   }, [trainer.id])
 
   const openBooking = () => setShowBooking(true)
@@ -127,6 +144,38 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                   <div className="text-sm text-muted-foreground">Ksh {formatHourlyRate(profile?.hourly_rate || trainer.hourlyRate)}/hour</div>
                 )}
               </div>
+
+              {groupTrainingData && groupTrainingData.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Group Training
+                  </h4>
+                  <div className="space-y-4">
+                    {groupTrainingData.map((groupPricing: GroupPricingConfig, idx: number) => (
+                      <div key={idx} className="border border-border rounded-lg p-3 bg-muted/5">
+                        <div className="font-medium text-sm mb-2">
+                          {groupPricing.tiers && groupPricing.tiers.length > 0 ? (
+                            <>Available Group Tiers ({groupPricing.pricing_model === 'per_person' ? 'per person' : 'fixed rate'})</>
+                          ) : (
+                            <>No group tiers configured</>
+                          )}
+                        </div>
+                        {groupPricing.tiers && groupPricing.tiers.length > 0 && (
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            {groupPricing.tiers.map((tier: any, tierIdx: number) => (
+                              <div key={tierIdx} className="flex justify-between">
+                                <span>{tier.group_size_name}</span>
+                                <span className="font-medium">{formatGroupPricingDisplay(tier.rate, groupPricing.pricing_model)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {Array.isArray(profile?.pricing_packages) && profile.pricing_packages.length > 0 && (
                 <div>
