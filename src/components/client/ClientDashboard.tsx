@@ -114,6 +114,30 @@ export const ClientDashboard: React.FC = () => {
     }
   }, [geoLocation])
 
+  // Reverse geocode GPS coordinates to get location name
+  useEffect(() => {
+    if (!userLocation) {
+      setLocationName(null)
+      return
+    }
+
+    const geocode = async () => {
+      setReverseGeocodeLoading(true)
+      try {
+        const result = await reverseGeocode(userLocation.lat, userLocation.lng)
+        if (result?.label) {
+          setLocationName(result.label)
+        }
+      } catch (err) {
+        console.warn('Failed to reverse geocode location', err)
+      } finally {
+        setReverseGeocodeLoading(false)
+      }
+    }
+
+    geocode()
+  }, [userLocation])
+
   // Generate suggestions from trainer names
   const suggestions = useMemo(() => {
     if (!searchQuery.trim()) return []
