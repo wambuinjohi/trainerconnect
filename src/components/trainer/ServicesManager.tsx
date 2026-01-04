@@ -29,6 +29,9 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [categoryPricing, setCategoryPricing] = useState<Record<number, string>>({})
   const [tiers, setTiers] = useState<TierRow[]>([])
+  const [groupTrainingModalOpen, setGroupTrainingModalOpen] = useState(false)
+  const [selectedCategoryForGroupTraining, setSelectedCategoryForGroupTraining] = useState<{ id: number; name: string } | null>(null)
+  const [groupTrainingEnabledByCategory, setGroupTrainingEnabledByCategory] = useState<Record<number, boolean>>({})
 
   // Load available data
   useEffect(() => {
