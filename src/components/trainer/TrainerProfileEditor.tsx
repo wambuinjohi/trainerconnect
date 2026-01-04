@@ -231,7 +231,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
   // Log profile state changes
   useEffect(() => {
-    console.log('[Profile State] Current profile_image:', profile.profile_image)
+    console.log('[Profile State Updated] profile_image is now:', profile.profile_image)
   }, [profile.profile_image])
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
