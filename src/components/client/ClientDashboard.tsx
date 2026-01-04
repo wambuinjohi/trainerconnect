@@ -408,8 +408,6 @@ export const ClientDashboard: React.FC = () => {
         popularSearches={popularSearches}
       />
 
-        <LocationSelector />
-
       <Card className="bg-gradient-primary border-0 text-white">
         <CardContent className="p-6 flex justify-between items-center">
           <div>
