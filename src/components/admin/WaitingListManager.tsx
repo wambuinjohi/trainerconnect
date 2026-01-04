@@ -558,6 +558,25 @@ export const WaitingListManager: React.FC = () => {
               />
             </div>
 
+            {/* Category Select */}
+            <div className="space-y-2">
+              <Label htmlFor="add-category">Category (Optional)</Label>
+              <select
+                id="add-category"
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-trainer-primary"
+              >
+                <option value="">Select a category</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* User Type Checkbox */}
             <div className="flex items-center gap-3">
               <Checkbox
