@@ -70,6 +70,28 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
     }
   }, [date, time, trainerProfile?.availability])
 
+  // Load group training data for the trainer
+  useEffect(() => {
+    const loadGroupTrainingData = async () => {
+      if (!trainer?.id) return
+      try {
+        const response = await apiService.getTrainerGroupPricing(trainer.id)
+        if (response?.data && response.data.length > 0) {
+          const firstGroupPricing = response.data[0]
+          setGroupTrainingData(firstGroupPricing)
+          setTrainerCategoryId(firstGroupPricing.category_id)
+          // Auto-select first tier for convenience
+          if (firstGroupPricing.tiers && firstGroupPricing.tiers.length > 0) {
+            setSelectedGroupTierName(firstGroupPricing.tiers[0].group_size_name)
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load group training data:', err)
+      }
+    }
+    loadGroupTrainingData()
+  }, [trainer?.id])
+
   // Get fee breakdown using new calculation utility
   const baseAmount = computeBaseAmount() - appliedDiscount
   const feeBreakdown = calculateFeeBreakdown(baseAmount, {
