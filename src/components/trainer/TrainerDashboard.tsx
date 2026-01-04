@@ -409,12 +409,32 @@ export const TrainerDashboard: React.FC = () => {
         bookings.map(b => (
           <Card key={b.id || b.user_id} className="bg-card border-border">
             <CardContent className="p-4">
-              <div className="flex justify-between">
-                <div>{b.client_name || 'Client'}</div>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="font-semibold text-foreground">{b.client_name || 'Client'}</div>
+                  {b.is_group_training && (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-xs">
+                        <Users className="h-3 w-3 mr-1" />
+                        Group Training
+                      </Badge>
+                      {b.group_size_tier_name && (
+                        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-xs">
+                          {b.group_size_tier_name}
+                        </Badge>
+                      )}
+                      {b.pricing_model_used && (
+                        <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800">
+                          {b.pricing_model_used === 'per_person' ? 'Per Person' : 'Fixed Rate'}
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+                </div>
                 <Badge variant={b.status === 'confirmed' ? 'default' : 'secondary'}>{b.status || 'pending'}</Badge>
               </div>
               <div className="text-sm text-muted-foreground mt-2">{b.session_date || 'TBD'} at {b.session_time || ''}</div>
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-2 mt-3">
                 <Button size="sm" onClick={() => openChat(b)}>Chat</Button>
                 {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => acceptBooking(b.id)}>Accept</Button>}
                 {(b.status === 'pending' || !b.status) && <Button size="sm" onClick={() => declineBooking(b.id)}>Decline</Button>}
