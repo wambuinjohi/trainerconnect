@@ -350,7 +350,7 @@ const Home: React.FC = () => {
         <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div className="space-y-4">
-              <AuthLogo compact containerClassName="h-8 w-8" className="h-8" />
+              <AuthLogo compact containerClassName="h-32 w-32" className="h-32" />
               <p className="text-sm text-muted-foreground">
                 Connecting fitness enthusiasts with certified trainers for personalized training experiences.
               </p>
