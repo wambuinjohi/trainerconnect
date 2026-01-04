@@ -3152,12 +3152,23 @@ switch ($action) {
                 respond("error", "Invalid group size tier selected.", null, 400);
             }
 
-            // Find the tier to get the per-unit rate
+            // Find the tier to get the per-unit rate and validate group size matches tier range
             $tierRate = null;
+            $selectedTier = null;
             foreach ($groupPricing['tiers'] as $tier) {
                 if (isset($tier['group_size_name']) && $tier['group_size_name'] === $groupSizeTierName) {
                     $tierRate = floatval($tier['rate']);
+                    $selectedTier = $tier;
                     break;
+                }
+            }
+
+            // Validate that the provided group size falls within the selected tier's range
+            if ($selectedTier) {
+                $tierMinSize = intval($selectedTier['min_size'] ?? 1);
+                $tierMaxSize = intval($selectedTier['max_size'] ?? 999999);
+                if ($groupSize < $tierMinSize || $groupSize > $tierMaxSize) {
+                    respond("error", "Group size {$groupSize} does not match selected tier '{$groupSizeTierName}' (valid range: {$tierMinSize}-{$tierMaxSize})", null, 400);
                 }
             }
 
