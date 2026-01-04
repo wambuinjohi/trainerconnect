@@ -80,6 +80,7 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
   const [profile, setProfile] = useState<Partial<TrainerProfile>>({})
   const [name, setName] = useState('')
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([])
   const [categoryPricing, setCategoryPricing] = useState<Record<number, number>>({})
@@ -94,11 +95,16 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
         handleChange('profile_image', uploadedFile.url)
         toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
         setUploadingImage(false)
+        setUploadProgress(0)
       }
     },
     onError: (error) => {
       toast({ title: 'Upload failed', description: error, variant: 'destructive' })
       setUploadingImage(false)
+      setUploadProgress(0)
+    },
+    onProgress: (progress) => {
+      setUploadProgress(progress)
     }
   })
 
