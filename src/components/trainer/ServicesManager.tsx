@@ -145,6 +145,33 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
     setCategoryPricing(prev => ({ ...prev, [categoryId]: price }))
   }
 
+  const openGroupTrainingManager = (categoryId: number, categoryName: string) => {
+    setSelectedCategoryForGroupTraining({ id: categoryId, name: categoryName })
+    setGroupTrainingModalOpen(true)
+  }
+
+  const closeGroupTrainingManager = () => {
+    setGroupTrainingModalOpen(false)
+    setSelectedCategoryForGroupTraining(null)
+  }
+
+  const handleGroupTrainingModalSave = async () => {
+    // Refresh group training status for the updated category
+    if (selectedCategoryForGroupTraining && userId) {
+      try {
+        const groupPricingData = await apiService.getTrainerGroupPricing(userId, selectedCategoryForGroupTraining.id)
+        const isEnabled = !!(groupPricingData?.data && groupPricingData.data.length > 0)
+        setGroupTrainingEnabledByCategory(prev => ({
+          ...prev,
+          [selectedCategoryForGroupTraining.id]: isEnabled
+        }))
+      } catch {
+        // Ignore errors
+      }
+    }
+    closeGroupTrainingManager()
+  }
+
   const savePricing = async () => {
     if (!userId) return
     setSaving(true)
