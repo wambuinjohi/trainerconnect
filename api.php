@@ -179,6 +179,62 @@ function buildWhereClause($conditions) {
     return "WHERE " . implode(" AND ", $parts);
 }
 
+// Get trainer group pricing for a specific category
+function getTrainerGroupPricing($conn, $trainerId, $categoryId) {
+    $trainerId = $conn->real_escape_string($trainerId);
+    $categoryId = intval($categoryId);
+
+    $stmt = $conn->prepare("
+        SELECT id, trainer_id, category_id, pricing_model, tiers, created_at, updated_at
+        FROM trainer_group_pricing
+        WHERE trainer_id = ? AND category_id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param("si", $trainerId, $categoryId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+
+    if ($result->num_rows === 0) {
+        return null;
+    }
+
+    $row = $result->fetch_assoc();
+
+    // Parse tiers JSON
+    if (isset($row['tiers']) && is_string($row['tiers'])) {
+        $parsed = json_decode($row['tiers'], true);
+        if ($parsed !== null) {
+            $row['tiers'] = $parsed;
+        }
+    }
+
+    return $row;
+}
+
+// Calculate base amount for group training
+function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
+    if (!$groupPricing || !isset($groupPricing['tiers']) || !is_array($groupPricing['tiers'])) {
+        return null;
+    }
+
+    $tier = null;
+    foreach ($groupPricing['tiers'] as $t) {
+        if (isset($t['group_size_name']) && $t['group_size_name'] === $tierName) {
+            $tier = $t;
+            break;
+        }
+    }
+
+    if (!$tier) {
+        return null;
+    }
+
+    // For both fixed and per_person, the rate in the tier is the base amount
+    // (For per_person, the rate is already per person)
+    return floatval($tier['rate']);
+}
+
 // Calculate distance between two coordinates using Haversine formula
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     $lat1 = floatval($lat1);
@@ -1150,6 +1206,27 @@ switch ($action) {
                   INDEX `idx_category_id` (`category_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ",
+            'trainer_category_pricing' => "
+                CREATE TABLE IF NOT EXISTS `trainer_category_pricing` (
+                  `id` VARCHAR(36) PRIMARY KEY,
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `category_id` INT NOT NULL,
+                  `hourly_rate` DECIMAL(10, 2) NOT NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_trainer_category_pricing_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  CONSTRAINT `fk_trainer_category_pricing_category_id`
+                    FOREIGN KEY (`category_id`)
+                    REFERENCES `categories`(`id`)
+                    ON DELETE CASCADE,
+                  UNIQUE KEY `uq_trainer_category_pricing` (`trainer_id`, `category_id`),
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_category_id` (`category_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
             'categories' => "
                 CREATE TABLE IF NOT EXISTS `categories` (
                   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -2019,6 +2096,146 @@ switch ($action) {
         break;
 
     // =============================
+    // GROUP TRAINING PRICING SERVICES
+    // =============================
+
+    // SET TRAINER GROUP PRICING
+    case 'trainer_group_pricing_set':
+        if (!isset($input['trainer_id']) || !isset($input['category_id']) || !isset($input['pricing_model']) || !isset($input['tiers'])) {
+            respond("error", "Missing trainer_id, category_id, pricing_model, or tiers.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+        $pricingModel = $conn->real_escape_string($input['pricing_model']);
+
+        // Validate pricing model
+        if (!in_array($pricingModel, ['fixed', 'per_person'])) {
+            respond("error", "Invalid pricing_model. Must be 'fixed' or 'per_person'.", null, 400);
+        }
+
+        // Parse tiers - can be JSON string or array
+        $tiers = $input['tiers'];
+        if (is_string($tiers)) {
+            $tiersDecoded = json_decode($tiers, true);
+            if ($tiersDecoded === null) {
+                respond("error", "Invalid tiers JSON.", null, 400);
+            }
+            $tiers = $tiersDecoded;
+        }
+
+        // Validate tiers structure
+        if (!is_array($tiers) || empty($tiers)) {
+            respond("error", "Tiers must be a non-empty array.", null, 400);
+        }
+
+        // Validate each tier
+        foreach ($tiers as $tier) {
+            if (!isset($tier['group_size_name']) || !isset($tier['min_size']) || !isset($tier['max_size']) || !isset($tier['rate'])) {
+                respond("error", "Each tier must have group_size_name, min_size, max_size, and rate.", null, 400);
+            }
+            if (floatval($tier['rate']) < 0) {
+                respond("error", "Tier rates cannot be negative.", null, 400);
+            }
+        }
+
+        $pricingId = 'gp_' . bin2hex(random_bytes(18));
+        $now = date('Y-m-d H:i:s');
+        $tiersJson = json_encode($tiers);
+
+        $stmt = $conn->prepare("
+            INSERT INTO trainer_group_pricing (id, trainer_id, category_id, pricing_model, tiers, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE pricing_model = ?, tiers = ?, updated_at = NOW()
+        ");
+        $stmt->bind_param("ssisssss", $pricingId, $trainerId, $categoryId, $pricingModel, $tiersJson, $now, $now, $pricingModel, $tiersJson);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_group_pricing_set', ['trainer_id' => $trainerId, 'category_id' => $categoryId, 'pricing_model' => $pricingModel]);
+            respond("success", "Group training pricing updated successfully.", ["trainer_id" => $trainerId, "category_id" => $categoryId, "pricing_model" => $pricingModel]);
+        } else {
+            $stmt->close();
+            respond("error", "Failed to update group training pricing: " . $conn->error, null, 500);
+        }
+        break;
+
+    // GET TRAINER GROUP PRICING
+    case 'trainer_group_pricing_get':
+        if (!isset($input['trainer_id'])) {
+            respond("error", "Missing trainer_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = isset($input['category_id']) ? intval($input['category_id']) : null;
+
+        if ($categoryId) {
+            $stmt = $conn->prepare("
+                SELECT id, trainer_id, category_id, pricing_model, tiers, created_at, updated_at
+                FROM trainer_group_pricing
+                WHERE trainer_id = ? AND category_id = ?
+                LIMIT 1
+            ");
+            $stmt->bind_param("si", $trainerId, $categoryId);
+        } else {
+            $stmt = $conn->prepare("
+                SELECT id, trainer_id, category_id, pricing_model, tiers, created_at, updated_at
+                FROM trainer_group_pricing
+                WHERE trainer_id = ?
+                ORDER BY category_id ASC
+            ");
+            $stmt->bind_param("s", $trainerId);
+        }
+
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        $rows = [];
+        while ($row = $result->fetch_assoc()) {
+            // Parse tiers JSON
+            if (isset($row['tiers']) && is_string($row['tiers'])) {
+                $parsed = json_decode($row['tiers'], true);
+                if ($parsed !== null) {
+                    $row['tiers'] = $parsed;
+                }
+            }
+            $rows[] = $row;
+        }
+
+        if ($categoryId && empty($rows)) {
+            respond("success", "No group training pricing found for this category.", ["data" => null]);
+        } else {
+            respond("success", "Group training pricing fetched successfully.", ["data" => $rows]);
+        }
+        break;
+
+    // DELETE TRAINER GROUP PRICING
+    case 'trainer_group_pricing_delete':
+        if (!isset($input['trainer_id']) || !isset($input['category_id'])) {
+            respond("error", "Missing trainer_id or category_id.", null, 400);
+        }
+
+        $trainerId = $conn->real_escape_string($input['trainer_id']);
+        $categoryId = intval($input['category_id']);
+
+        $stmt = $conn->prepare("
+            DELETE FROM trainer_group_pricing
+            WHERE trainer_id = ? AND category_id = ?
+        ");
+        $stmt->bind_param("si", $trainerId, $categoryId);
+
+        if ($stmt->execute()) {
+            $stmt->close();
+            logEvent('trainer_group_pricing_delete', ['trainer_id' => $trainerId, 'category_id' => $categoryId]);
+            respond("success", "Group training pricing deleted successfully.");
+        } else {
+            $stmt->close();
+            respond("error", "Failed to delete group training pricing: " . $conn->error, null, 500);
+        }
+        break;
+
+    // =============================
     // CUSTOM ACTIONS: Client Portal
     // =============================
 
@@ -2840,6 +3057,12 @@ switch ($action) {
         $categoryId = isset($input['category_id']) ? intval($input['category_id']) : NULL;
         $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
 
+        // Group training parameters
+        $isGroupTraining = isset($input['is_group_training']) && $input['is_group_training'] === true;
+        $groupSizeTierName = isset($input['group_size_tier_name']) ? $conn->real_escape_string($input['group_size_tier_name']) : NULL;
+        $pricingModelUsed = NULL;
+        $groupRatePerUnit = NULL;
+
         // Client location
         $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
         $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
@@ -2897,6 +3120,36 @@ switch ($action) {
             }
         }
 
+        // Handle group training pricing
+        if ($isGroupTraining) {
+            if (!$categoryId) {
+                respond("error", "Category ID is required for group training bookings.", null, 400);
+            }
+
+            if (!$groupSizeTierName) {
+                respond("error", "Group size tier name is required for group training bookings.", null, 400);
+            }
+
+            // Load group pricing for this trainer and category
+            $groupPricing = getTrainerGroupPricing($conn, $trainerId, $categoryId);
+
+            if (!$groupPricing) {
+                respond("error", "This trainer does not offer group training for this category.", null, 400);
+            }
+
+            // Validate that the tier exists and get the rate
+            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model']);
+
+            if ($groupBaseAmount === null) {
+                respond("error", "Invalid group size tier selected.", null, 400);
+            }
+
+            // Set base service amount from group pricing
+            $baseServiceAmount = $groupBaseAmount;
+            $pricingModelUsed = $groupPricing['pricing_model'];
+            $groupRatePerUnit = $groupBaseAmount;
+        }
+
         // Calculate transport fee
         $transportFee = 0;
         if ($clientLocationLat !== null && $clientLocationLng !== null && $trainerLat !== 0 && $trainerLng !== 0) {
@@ -2929,14 +3182,15 @@ switch ($action) {
         $bookingId = 'booking_' . uniqid();
         $now = date('Y-m-d H:i:s');
 
-        // Prepare statement with all fee breakdown columns
+        // Prepare statement with all fee breakdown columns and group training fields
         $stmt = $conn->prepare("
             INSERT INTO bookings (
                 id, client_id, trainer_id, category_id, session_date, session_time, duration_hours,
                 total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
                 vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
-                client_location_lat, client_location_lng, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                client_location_lat, client_location_lng, is_group_training, group_size_tier_name,
+                pricing_model_used, group_rate_per_unit, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         // For backward compatibility, use the new fee breakdown values
@@ -2944,11 +3198,12 @@ switch ($action) {
         $vatAmountForDb = 0; // No VAT in new calculation
 
         $stmt->bind_param(
-            "sssisiiidddddddsddss",
+            "sssisiiidddddddsddissdds",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
             $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
             $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
-            $clientLocationLat, $clientLocationLng, $now, $now
+            $clientLocationLat, $clientLocationLng, $isGroupTraining, $groupSizeTierName,
+            $pricingModelUsed, $groupRatePerUnit, $now, $now
         );
 
         if ($stmt->execute()) {
@@ -2965,6 +3220,11 @@ switch ($action) {
             ];
             if ($categoryId) {
                 $eventData['category_id'] = $categoryId;
+            }
+            if ($isGroupTraining) {
+                $eventData['is_group_training'] = true;
+                $eventData['group_size_tier'] = $groupSizeTierName;
+                $eventData['pricing_model'] = $pricingModelUsed;
             }
             logEvent('booking_created_with_fees', $eventData);
 

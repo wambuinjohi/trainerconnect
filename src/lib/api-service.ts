@@ -140,6 +140,38 @@ export async function getTrainersByCategory(categoryId: number) {
 }
 
 // ============================================================================
+// GROUP TRAINING PRICING SERVICES
+// ============================================================================
+
+export async function setTrainerGroupPricing(
+  trainerId: string,
+  categoryId: number,
+  pricingModel: 'fixed' | 'per_person',
+  tiers: Array<{ group_size_name: string; min_size: number; max_size: number; rate: number }>
+) {
+  return apiRequest('trainer_group_pricing_set', {
+    trainer_id: trainerId,
+    category_id: categoryId,
+    pricing_model: pricingModel,
+    tiers: JSON.stringify(tiers),
+  })
+}
+
+export async function getTrainerGroupPricing(trainerId: string, categoryId?: number) {
+  return apiRequest('trainer_group_pricing_get', {
+    trainer_id: trainerId,
+    ...(categoryId && { category_id: categoryId }),
+  })
+}
+
+export async function deleteTrainerGroupPricing(trainerId: string, categoryId: number) {
+  return apiRequest('trainer_group_pricing_delete', {
+    trainer_id: trainerId,
+    category_id: categoryId,
+  })
+}
+
+// ============================================================================
 // BOOKING SERVICES
 // ============================================================================
 

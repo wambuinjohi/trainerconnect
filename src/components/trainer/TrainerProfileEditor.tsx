@@ -92,22 +92,11 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     onSuccess: (files) => {
       if (files.length > 0) {
         const uploadedFile = files[0]
-        console.log('[Image Upload] Success:', {
-          fileName: uploadedFile.fileName,
-          newUrl: uploadedFile.url,
-          currentProfileImage: profile.profile_image
-        })
+        console.log('[Image Upload] Success - updating profile_image to:', uploadedFile.url)
         handleChange('profile_image', uploadedFile.url)
         toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
         setUploadingImage(false)
         setUploadProgress(0)
-        // Verify state was updated
-        setTimeout(() => {
-          console.log('[Image Upload] State after update:', {
-            profileImage: profile.profile_image,
-            newUploadedUrl: uploadedFile.url
-          })
-        }, 100)
       }
     },
     onError: (error) => {
@@ -157,9 +146,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       try {
         // Load profile from API
         let profileData: any = null
+        console.log('[Profile Load] Fetching profile for userId:', userId)
         const response = await apiService.getUserProfile(userId)
+        console.log('[Profile Load] API response:', response)
         if (response?.data && response.data.length > 0) {
           profileData = response.data[0]
+          console.log('[Profile Load] Loaded profile_image from API:', profileData.profile_image)
           setProfile(profileData)
           setName(String(profileData.full_name || profileData.name || ''))
         } else {
@@ -237,13 +229,24 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
   const handleChange = (field: string, value: any) => {
     console.log(`[Profile Change] Field "${field}" changing:`, { from: profile[field], to: value })
-    setProfile(prev => ({ ...prev, [field]: value }))
+    setProfile(prev => {
+      const updated = { ...prev, [field]: value }
+      console.log(`[Profile Change] New state for "${field}":`, updated[field])
+      return updated
+    })
   }
 
-  // Log profile state changes
+  // Log profile state changes (runs AFTER state update completes)
   useEffect(() => {
-    console.log('[Profile State] Current profile_image:', profile.profile_image)
+    console.log('[Profile State Updated] profile_image is now:', profile.profile_image)
   }, [profile.profile_image])
+
+  // Track when profile data is loaded from API
+  useEffect(() => {
+    if (profile.profile_image) {
+      console.log('[Profile Loaded] Profile image from API:', profile.profile_image)
+    }
+  }, [profile])
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
@@ -379,11 +382,13 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
           payout_details: payoutDetails ? JSON.stringify(payoutDetails) : null,
           hourly_rate_by_radius: cleanedTiers.length ? JSON.stringify(cleanedTiers) : null,
         }
-        console.log('[Profile Save] Saving profile with userId:', userId)
-        console.log('[Profile Save] Current state profile.profile_image:', profile.profile_image)
-        console.log('[Profile Save] Update payload being sent:', updatePayload)
+        console.log('[Profile Save] ========== SAVING PROFILE ==========')
+        console.log('[Profile Save] User ID:', userId)
+        console.log('[Profile Save] Profile image being saved:', profile.profile_image)
+        console.log('[Profile Save] Full payload:', updatePayload)
         const response = await apiService.updateUserProfile(userId, updatePayload)
         console.log('[Profile Save] API response:', response)
+        console.log('[Profile Save] ========== SAVE COMPLETE ==========')
       } catch (apiErr) {
         console.error('API save failed:', apiErr)
         toast({
