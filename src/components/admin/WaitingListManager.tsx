@@ -31,9 +31,11 @@ interface Category {
 
 export const WaitingListManager: React.FC = () => {
   const [entries, setEntries] = useState<WaitlistEntry[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
@@ -44,9 +46,28 @@ export const WaitingListManager: React.FC = () => {
     email: '',
     telephone: '',
     isCoach: false,
+    categoryId: '',
   })
 
   const pageSize = 10
+
+  const fetchCategories = async () => {
+    try {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_categories' }),
+      })
+
+      const result = await response.json()
+      if (result.status === 'success' && result.data) {
+        setCategories(Array.isArray(result.data) ? result.data : [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error)
+    }
+  }
 
   // Helper function to get user type display - handles both string and numeric values
   const getUserTypeDisplay = (isCoach: number | string) => {
