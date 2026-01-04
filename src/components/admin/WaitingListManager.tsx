@@ -82,10 +82,16 @@ export const WaitingListManager: React.FC = () => {
   }
 
   // Helper function to get category name from ID
-  const getCategoryName = (categoryId?: number) => {
+  const getCategoryName = (categoryId?: number | string) => {
     if (!categoryId) return '-'
-    const category = categories.find(c => c.id === categoryId)
-    return category?.name || '-'
+    // Convert to number for comparison since database might return string
+    const numericId = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId
+    const category = categories.find(c => c.id === numericId)
+    if (category) {
+      return category.name
+    }
+    console.warn(`Category not found for ID: ${categoryId}, available categories:`, categories)
+    return '-'
   }
 
   const fetchWaitlist = async (page = 0) => {
