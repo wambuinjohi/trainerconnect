@@ -407,6 +407,7 @@ export const WaitingListManager: React.FC = () => {
                       <th className="text-left py-3 px-4 font-semibold">Name</th>
                       <th className="text-left py-3 px-4 font-semibold">Email</th>
                       <th className="text-left py-3 px-4 font-semibold">Phone</th>
+                      <th className="text-left py-3 px-4 font-semibold">Category</th>
                       <th className="text-center py-3 px-4 font-semibold">Type</th>
                       <th className="text-center py-3 px-4 font-semibold">Status</th>
                       <th className="text-left py-3 px-4 font-semibold">Joined</th>
