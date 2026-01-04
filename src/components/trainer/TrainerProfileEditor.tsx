@@ -226,13 +226,24 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
 
   const handleChange = (field: string, value: any) => {
     console.log(`[Profile Change] Field "${field}" changing:`, { from: profile[field], to: value })
-    setProfile(prev => ({ ...prev, [field]: value }))
+    setProfile(prev => {
+      const updated = { ...prev, [field]: value }
+      console.log(`[Profile Change] New state for "${field}":`, updated[field])
+      return updated
+    })
   }
 
-  // Log profile state changes
+  // Log profile state changes (runs AFTER state update completes)
   useEffect(() => {
     console.log('[Profile State Updated] profile_image is now:', profile.profile_image)
   }, [profile.profile_image])
+
+  // Track when profile data is loaded from API
+  useEffect(() => {
+    if (profile.profile_image) {
+      console.log('[Profile Loaded] Profile image from API:', profile.profile_image)
+    }
+  }, [profile])
 
   const handleCategoryChange = (categoryId: number, checked: boolean) => {
     if (checked) {
