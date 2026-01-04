@@ -85,6 +85,8 @@ export const ClientDashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<any>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationName, setLocationName] = useState<string | null>(null)
+  const [reverseGeocodeLoading, setReverseGeocodeLoading] = useState(false)
   const [selectedTrainer, setSelectedTrainer] = useState<any | null>(null)
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
