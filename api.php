@@ -3057,6 +3057,12 @@ switch ($action) {
         $categoryId = isset($input['category_id']) ? intval($input['category_id']) : NULL;
         $skipValidation = isset($input['skip_availability_validation']) && $input['skip_availability_validation'];
 
+        // Group training parameters
+        $isGroupTraining = isset($input['is_group_training']) && $input['is_group_training'] === true;
+        $groupSizeTierName = isset($input['group_size_tier_name']) ? $conn->real_escape_string($input['group_size_tier_name']) : NULL;
+        $pricingModelUsed = NULL;
+        $groupRatePerUnit = NULL;
+
         // Client location
         $clientLocationLabel = isset($input['client_location_label']) ? $conn->real_escape_string($input['client_location_label']) : NULL;
         $clientLocationLat = isset($input['client_location_lat']) ? floatval($input['client_location_lat']) : NULL;
