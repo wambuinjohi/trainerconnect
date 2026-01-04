@@ -22,7 +22,8 @@ import {
   ArrowLeft,
   LogOut,
   DollarSign,
-  Bell
+  Bell,
+  RefreshCw
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
