@@ -420,6 +420,7 @@ export const WaitingListManager: React.FC = () => {
                         <td className="py-3 px-4">{entry.name}</td>
                         <td className="py-3 px-4 text-muted-foreground">{entry.email}</td>
                         <td className="py-3 px-4 font-mono text-sm">{entry.telephone}</td>
+                        <td className="py-3 px-4 text-sm">{getCategoryName(entry.category_id)}</td>
                         <td className="py-3 px-4 text-center">
                           <Badge variant={isCoachValue(entry.is_coach) ? 'default' : 'secondary'}>
                             {getUserTypeDisplay(entry.is_coach)}
