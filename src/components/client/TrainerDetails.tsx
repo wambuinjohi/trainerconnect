@@ -145,6 +145,38 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
                 )}
               </div>
 
+              {groupTrainingData && groupTrainingData.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Group Training
+                  </h4>
+                  <div className="space-y-4">
+                    {groupTrainingData.map((groupPricing: GroupPricingConfig, idx: number) => (
+                      <div key={idx} className="border border-border rounded-lg p-3 bg-muted/5">
+                        <div className="font-medium text-sm mb-2">
+                          {groupPricing.tiers && groupPricing.tiers.length > 0 ? (
+                            <>Available Group Tiers ({groupPricing.pricing_model === 'per_person' ? 'per person' : 'fixed rate'})</>
+                          ) : (
+                            <>No group tiers configured</>
+                          )}
+                        </div>
+                        {groupPricing.tiers && groupPricing.tiers.length > 0 && (
+                          <div className="space-y-1 text-sm text-muted-foreground">
+                            {groupPricing.tiers.map((tier: any, tierIdx: number) => (
+                              <div key={tierIdx} className="flex justify-between">
+                                <span>{tier.group_size_name}</span>
+                                <span className="font-medium">{formatGroupPricingDisplay(tier.rate, groupPricing.pricing_model)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {Array.isArray(profile?.pricing_packages) && profile.pricing_packages.length > 0 && (
                 <div>
                   <h4 className="font-semibold mb-2">Packages</h4>
