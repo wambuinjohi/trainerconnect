@@ -58,6 +58,21 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
     fetchCategories()
   }, [trainer.id])
 
+  useEffect(() => {
+    // Fetch trainer's group training pricing
+    const fetchGroupTrainingData = async () => {
+      try {
+        const data = await apiService.getTrainerGroupPricing(trainer.id)
+        if (data?.data && Array.isArray(data.data)) {
+          setGroupTrainingData(data.data)
+        }
+      } catch (err) {
+        console.warn('Failed to fetch group training data', err)
+      }
+    }
+    fetchGroupTrainingData()
+  }, [trainer.id])
+
   const openBooking = () => setShowBooking(true)
   const openChat = () => setShowChat(true)
 
