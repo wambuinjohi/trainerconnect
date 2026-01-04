@@ -1150,6 +1150,27 @@ switch ($action) {
                   INDEX `idx_category_id` (`category_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ",
+            'trainer_category_pricing' => "
+                CREATE TABLE IF NOT EXISTS `trainer_category_pricing` (
+                  `id` VARCHAR(36) PRIMARY KEY,
+                  `trainer_id` VARCHAR(36) NOT NULL,
+                  `category_id` INT NOT NULL,
+                  `hourly_rate` DECIMAL(10, 2) NOT NULL,
+                  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                  CONSTRAINT `fk_trainer_category_pricing_trainer_id`
+                    FOREIGN KEY (`trainer_id`)
+                    REFERENCES `users`(`id`)
+                    ON DELETE CASCADE,
+                  CONSTRAINT `fk_trainer_category_pricing_category_id`
+                    FOREIGN KEY (`category_id`)
+                    REFERENCES `categories`(`id`)
+                    ON DELETE CASCADE,
+                  UNIQUE KEY `uq_trainer_category_pricing` (`trainer_id`, `category_id`),
+                  INDEX `idx_trainer_id` (`trainer_id`),
+                  INDEX `idx_category_id` (`category_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ",
             'categories' => "
                 CREATE TABLE IF NOT EXISTS `categories` (
                   `id` INT AUTO_INCREMENT PRIMARY KEY,
