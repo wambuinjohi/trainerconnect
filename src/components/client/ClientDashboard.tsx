@@ -74,6 +74,7 @@ import { useGeolocation } from '@/hooks/use-geolocation'
 import * as apiService from '@/lib/api-service'
 import { enrichTrainersWithDistance } from '@/lib/distance-utils'
 import { apiRequest, withAuth } from '@/lib/api'
+import { reverseGeocode } from '@/lib/location'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
