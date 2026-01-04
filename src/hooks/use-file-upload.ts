@@ -26,6 +26,7 @@ interface UseFileUploadOptions {
   allowedExtensions?: string[];
   onSuccess?: (files: UploadedFile[]) => void;
   onError?: (error: string) => void;
+  onProgress?: (progress: number) => void; // 0-100
 }
 
 export function useFileUpload(options: UseFileUploadOptions = {}) {
