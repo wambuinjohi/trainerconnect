@@ -4472,7 +4472,8 @@ switch ($action) {
         $sortBy = isset($input['sort_by']) ? $conn->real_escape_string($input['sort_by']) : 'created_at';
         $sortOrder = isset($input['sort_order']) && strtoupper($input['sort_order']) === 'ASC' ? 'ASC' : 'DESC';
 
-        $sql = "SELECT * FROM waiting_list ORDER BY $sortBy $sortOrder LIMIT $limit OFFSET $offset";
+        // Select all columns including category_id to ensure it's in the response
+        $sql = "SELECT id, name, email, telephone, is_coach, category_id, status, created_at, updated_at FROM waiting_list ORDER BY $sortBy $sortOrder LIMIT $limit OFFSET $offset";
         $result = $conn->query($sql);
 
         if (!$result) {
@@ -4481,6 +4482,8 @@ switch ($action) {
 
         $entries = [];
         while ($row = $result->fetch_assoc()) {
+            // Ensure category_id is properly typed (null if not set)
+            $row['category_id'] = $row['category_id'] ? intval($row['category_id']) : null;
             $entries[] = $row;
         }
 
@@ -4490,13 +4493,8 @@ switch ($action) {
         $countRow = $countResult->fetch_assoc();
         $totalCount = intval($countRow['total']);
 
-        respond("success", "Waiting list entries fetched successfully.", [
-            "data" => $entries,
-            "count" => count($entries),
-            "total" => $totalCount,
-            "page" => intval($offset / $limit) + 1,
-            "limit" => $limit
-        ]);
+        respond("success", "Waiting list entries fetched successfully.", $entries, 200);
+        logEvent('waitlist_get_success', ['count' => count($entries), 'total' => $totalCount]);
         break;
 
     // WAITING LIST: DELETE ENTRY
