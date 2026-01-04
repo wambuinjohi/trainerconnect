@@ -213,7 +213,7 @@ function getTrainerGroupPricing($conn, $trainerId, $categoryId) {
 }
 
 // Calculate base amount for group training
-function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
+function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel, $groupSize = 1) {
     if (!$groupPricing || !isset($groupPricing['tiers']) || !is_array($groupPricing['tiers'])) {
         return null;
     }
@@ -230,9 +230,16 @@ function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
         return null;
     }
 
-    // For both fixed and per_person, the rate in the tier is the base amount
-    // (For per_person, the rate is already per person)
-    return floatval($tier['rate']);
+    $tierRate = floatval($tier['rate']);
+
+    // Calculate base amount based on pricing model
+    if ($pricingModel === 'per_person') {
+        // Per-person pricing: multiply rate by group size
+        return $tierRate * intval($groupSize);
+    } else {
+        // Fixed rate: use the tier rate as is
+        return $tierRate;
+    }
 }
 
 // Calculate distance between two coordinates using Haversine formula
