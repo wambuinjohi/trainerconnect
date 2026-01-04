@@ -34,7 +34,8 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     maxFileSize = 50 * 1024 * 1024, // 50MB
     allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4', 'avi', 'mov', 'webm', 'zip', 'rar'],
     onSuccess,
-    onError
+    onError,
+    onProgress
   } = options;
 
   const [isLoading, setIsLoading] = useState(false);
