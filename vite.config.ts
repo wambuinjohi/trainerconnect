@@ -304,8 +304,8 @@ function paymentsApiPlugin() {
         const url = req.url?.split('?')[0] || "";
         if (!url.startsWith("/payments/mpesa/")) return next();
 
-          try {
-            let body = {};
+        try {
+          let body = {};
             if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
               const chunks: Buffer[] = [];
               for await (const chunk of req) {
