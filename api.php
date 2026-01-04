@@ -179,6 +179,62 @@ function buildWhereClause($conditions) {
     return "WHERE " . implode(" AND ", $parts);
 }
 
+// Get trainer group pricing for a specific category
+function getTrainerGroupPricing($conn, $trainerId, $categoryId) {
+    $trainerId = $conn->real_escape_string($trainerId);
+    $categoryId = intval($categoryId);
+
+    $stmt = $conn->prepare("
+        SELECT id, trainer_id, category_id, pricing_model, tiers, created_at, updated_at
+        FROM trainer_group_pricing
+        WHERE trainer_id = ? AND category_id = ?
+        LIMIT 1
+    ");
+    $stmt->bind_param("si", $trainerId, $categoryId);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+
+    if ($result->num_rows === 0) {
+        return null;
+    }
+
+    $row = $result->fetch_assoc();
+
+    // Parse tiers JSON
+    if (isset($row['tiers']) && is_string($row['tiers'])) {
+        $parsed = json_decode($row['tiers'], true);
+        if ($parsed !== null) {
+            $row['tiers'] = $parsed;
+        }
+    }
+
+    return $row;
+}
+
+// Calculate base amount for group training
+function calculateGroupTrainingBase($groupPricing, $tierName, $pricingModel) {
+    if (!$groupPricing || !isset($groupPricing['tiers']) || !is_array($groupPricing['tiers'])) {
+        return null;
+    }
+
+    $tier = null;
+    foreach ($groupPricing['tiers'] as $t) {
+        if (isset($t['group_size_name']) && $t['group_size_name'] === $tierName) {
+            $tier = $t;
+            break;
+        }
+    }
+
+    if (!$tier) {
+        return null;
+    }
+
+    // For both fixed and per_person, the rate in the tier is the base amount
+    // (For per_person, the rate is already per person)
+    return floatval($tier['rate']);
+}
+
 // Calculate distance between two coordinates using Haversine formula
 function calculateDistance($lat1, $lon1, $lat2, $lon2) {
     $lat1 = floatval($lat1);
