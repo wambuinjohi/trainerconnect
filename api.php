@@ -155,7 +155,7 @@ function normalizeImageUrl($imageUrl) {
     }
 
     // If relative, prepend the upload base URL
-    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://trainercoachconnect.com/uploads';
     $uploadBaseUrl = rtrim($uploadBaseUrl, '/');
 
     // Handle paths like /uploads/file.jpg or uploads/file.jpg
@@ -349,8 +349,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         'application/zip', 'application/x-rar-compressed'
     ];
 
-    // Get the upload base URL (default to https://skatryk.co.ke/uploads)
-    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    // Get the upload base URL (default to https://trainercoachconnect.com/uploads)
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://trainercoachconnect.com/uploads';
 
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
@@ -426,7 +426,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
             chmod($uploadPath, 0644);
 
             // Construct full URL for uploaded file
-            $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
             $fileUrl = rtrim($uploadBaseUrl, '/') . '/' . $uniqueFileName;
 
             $uploadedFiles[] = [

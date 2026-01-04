@@ -26,6 +26,7 @@ interface UseFileUploadOptions {
   allowedExtensions?: string[];
   onSuccess?: (files: UploadedFile[]) => void;
   onError?: (error: string) => void;
+  onProgress?: (progress: number) => void; // 0-100
 }
 
 export function useFileUpload(options: UseFileUploadOptions = {}) {
@@ -33,7 +34,8 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
     maxFileSize = 50 * 1024 * 1024, // 50MB
     allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp4', 'avi', 'mov', 'webm', 'zip', 'rar'],
     onSuccess,
-    onError
+    onError,
+    onProgress
   } = options;
 
   const [isLoading, setIsLoading] = useState(false);
@@ -96,19 +98,46 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         formData.append('files[]', file);
       });
 
-      // Upload files
+      // Upload files using XMLHttpRequest for progress tracking
       const apiBaseUrl = getApiBaseUrl();
       const apiUrl = apiBaseUrl.endsWith('/api.php') ? apiBaseUrl : (apiBaseUrl.endsWith('/') ? apiBaseUrl + 'api.php' : apiBaseUrl + '/api.php');
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        body: formData
+
+      // Wrap XMLHttpRequest in Promise
+      const data = await new Promise<UploadResponse>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            onProgress?.(Math.round(percentComplete));
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const responseData = JSON.parse(xhr.responseText) as UploadResponse;
+              resolve(responseData);
+            } catch (error) {
+              reject(new Error('Failed to parse response'));
+            }
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload aborted'));
+        });
+
+        xhr.open('POST', apiUrl);
+        xhr.send(formData);
       });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-
-      const data: UploadResponse = await response.json();
 
       if (data.status === 'error') {
         const errorMsg = data.message;
@@ -147,6 +176,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
+      onProgress?.(0); // Reset progress
     }
   }, [validateFiles, onSuccess, onError]);
 
