@@ -3139,7 +3139,7 @@ switch ($action) {
             }
 
             // Validate that the tier exists and get the rate
-            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model']);
+            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model'], $groupSize);
 
             if ($groupBaseAmount === null) {
                 respond("error", "Invalid group size tier selected.", null, 400);
