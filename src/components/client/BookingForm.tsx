@@ -30,7 +30,23 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
   const [selectedGroupTierName, setSelectedGroupTierName] = useState<string>('')
   const [trainerCategoryId, setTrainerCategoryId] = useState<number | null>(null)
 
-  const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
+  const computeBaseAmount = () => {
+    if (isGroupTraining && selectedGroupTierName && groupTrainingData) {
+      const tier = getGroupTierByName(groupTrainingData, selectedGroupTierName)
+      if (tier) {
+        const tierRate = tier.rate
+        // Calculate based on pricing model
+        if (groupTrainingData.pricing_model === 'per_person') {
+          return tierRate * groupSize * Number(sessions || 1)
+        } else {
+          // fixed rate
+          return tierRate * Number(sessions || 1)
+        }
+      }
+    }
+    return Number(trainer.hourlyRate || 0) * Number(sessions || 1)
+  }
+
   const settings = loadSettings()
 
   // Validate availability when date or time changes
