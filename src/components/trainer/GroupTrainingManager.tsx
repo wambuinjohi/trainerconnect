@@ -189,39 +189,33 @@ export const GroupTrainingManager: React.FC<GroupTrainingManagerProps> = ({
                 Choose how you want to charge for group training
               </p>
 
-              <div className="space-y-3 border border-border rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <Radio
-                    id="fixed"
-                    checked={pricingModel === 'fixed'}
-                    onChange={() => setPricingModel('fixed')}
-                  />
-                  <div className="flex-1">
-                    <Label htmlFor="fixed" className="font-medium cursor-pointer">
-                      Fixed rate per group
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Charge a flat rate regardless of group size within the tier
-                    </p>
+              <RadioGroup value={pricingModel} onValueChange={(val) => setPricingModel(val as 'fixed' | 'per_person')}>
+                <div className="space-y-3 border border-border rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="fixed" id="fixed" />
+                    <div className="flex-1">
+                      <Label htmlFor="fixed" className="font-medium cursor-pointer">
+                        Fixed rate per group
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Charge a flat rate regardless of group size within the tier
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-start gap-3">
-                  <Radio
-                    id="per_person"
-                    checked={pricingModel === 'per_person'}
-                    onChange={() => setPricingModel('per_person')}
-                  />
-                  <div className="flex-1">
-                    <Label htmlFor="per_person" className="font-medium cursor-pointer">
-                      Per-person rate
-                    </Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Charge per person (e.g., Ksh 1,500 per person for 2-20 group)
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <RadioGroupItem value="per_person" id="per_person" />
+                    <div className="flex-1">
+                      <Label htmlFor="per_person" className="font-medium cursor-pointer">
+                        Per-person rate
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Charge per person (e.g., Ksh 1,500 per person for 2-20 group)
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </RadioGroup>
             </div>
 
             {/* Tiers Configuration */}
