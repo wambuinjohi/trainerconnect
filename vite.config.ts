@@ -168,122 +168,122 @@ function devApiPlugin() {
 
           // Mock responses for development
           switch (action) {
-              case "health_check":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Server is running",
-                  data: { timestamp: new Date().toISOString() }
-                }));
-                return;
+            case "health_check":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Server is running",
+                data: { timestamp: new Date().toISOString() }
+              }));
+              return;
 
-              case "login":
-                const email = body.email || "";
-                if (!email || !body.password) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ status: "error", message: "Missing email or password." }));
-                  return;
-                }
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Login successful",
-                  data: {
-                    user: {
-                      id: "dev-user-" + email.substring(0, 3),
-                      email: email
-                    },
-                    profile: {
-                      user_type: "client"
-                    },
-                    session: {
-                      access_token: "dev-token-" + Math.random().toString(36).substring(7)
-                    }
+            case "login":
+              const email = body.email || "";
+              if (!email || !body.password) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ status: "error", message: "Missing email or password." }));
+                return;
+              }
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Login successful",
+                data: {
+                  user: {
+                    id: "dev-user-" + email.substring(0, 3),
+                    email: email
+                  },
+                  profile: {
+                    user_type: "client"
+                  },
+                  session: {
+                    access_token: "dev-token-" + Math.random().toString(36).substring(7)
                   }
-                }));
-                return;
-
-              case "signup":
-                const signupEmail = body.email || "";
-                const userType = body.user_type || "client";
-                if (!signupEmail || !body.password) {
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ status: "error", message: "Missing required fields." }));
-                  return;
                 }
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Signup successful",
-                  data: {
-                    user: {
-                      id: "dev-user-" + signupEmail.substring(0, 3),
-                      email: signupEmail
-                    },
-                    profile: {
-                      user_type: userType
-                    },
-                    session: {
-                      access_token: "dev-token-" + Math.random().toString(36).substring(7)
-                    }
+              }));
+              return;
+
+            case "signup":
+              const signupEmail = body.email || "";
+              const userType = body.user_type || "client";
+              if (!signupEmail || !body.password) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ status: "error", message: "Missing required fields." }));
+                return;
+              }
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Signup successful",
+                data: {
+                  user: {
+                    id: "dev-user-" + signupEmail.substring(0, 3),
+                    email: signupEmail
+                  },
+                  profile: {
+                    user_type: userType
+                  },
+                  session: {
+                    access_token: "dev-token-" + Math.random().toString(36).substring(7)
                   }
-                }));
-                return;
+                }
+              }));
+              return;
 
-              case "get_users":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Users retrieved",
-                  data: []
-                }));
-                return;
+            case "get_users":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Users retrieved",
+                data: []
+              }));
+              return;
 
-              case "get_categories":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Categories retrieved",
-                  data: [
-                    { id: 1, name: "Strength Training", icon: "💪", description: "Build muscle and increase strength" },
-                    { id: 2, name: "Cardio", icon: "🏃", description: "Improve cardiovascular fitness" },
-                    { id: 3, name: "Yoga", icon: "🧘", description: "Flexibility and mindfulness" },
-                    { id: 4, name: "HIIT", icon: "⚡", description: "High-intensity interval training" }
-                  ]
-                }));
-                return;
+            case "get_categories":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Categories retrieved",
+                data: [
+                  { id: 1, name: "Strength Training", icon: "💪", description: "Build muscle and increase strength" },
+                  { id: 2, name: "Cardio", icon: "🏃", description: "Improve cardiovascular fitness" },
+                  { id: 3, name: "Yoga", icon: "🧘", description: "Flexibility and mindfulness" },
+                  { id: 4, name: "HIIT", icon: "⚡", description: "High-intensity interval training" }
+                ]
+              }));
+              return;
 
-              case "migrate":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Migration completed"
-                }));
-                return;
+            case "migrate":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Migration completed"
+              }));
+              return;
 
-              case "seed_all_users":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Users seeded successfully",
-                  data: []
-                }));
-                return;
+            case "seed_all_users":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Users seeded successfully",
+                data: []
+              }));
+              return;
 
-              case "select":
-              case "insert":
-              case "update":
-              case "delete":
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: "Database operation completed",
-                  data: []
-                }));
-                return;
+            case "select":
+            case "insert":
+            case "update":
+            case "delete":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Database operation completed",
+                data: []
+              }));
+              return;
 
-              // Default: return success for any unknown action
-              default:
-                console.warn(`[Dev API] Unknown action: ${action}`);
-                res.end(JSON.stringify({
-                  status: "success",
-                  message: `Action '${action}' processed (mocked in development)`,
-                  data: []
-                }));
-                return;
-            }
+            // Default: return success for any unknown action
+            default:
+              console.warn(`[Dev API] Unknown action: ${action}`);
+              res.end(JSON.stringify({
+                status: "success",
+                message: `Action '${action}' processed (mocked in development)`,
+                data: []
+              }));
+              return;
+          }
         } catch (e: any) {
           console.error("Dev API error:", e);
           res.statusCode = 500;
