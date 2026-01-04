@@ -15,6 +15,7 @@ import {
   Compass,
   Clock,
   User,
+  Users,
   Plus,
   ChevronRight,
   ArrowLeft,
