@@ -4628,24 +4628,73 @@ switch ($action) {
 
     // WAITING LIST: ALTER TABLE TO ADD CATEGORY
     case 'waitlist_alter_table':
-        $alterSql = "
-            ALTER TABLE `waiting_list`
-            ADD COLUMN IF NOT EXISTS `category_id` INT NULL,
-            ADD FOREIGN KEY IF NOT EXISTS `fk_waiting_list_category_id` (`category_id`)
-                REFERENCES `categories`(`id`)
-                ON DELETE SET NULL,
-            ADD INDEX IF NOT EXISTS `idx_category_id` (`category_id`)
-        ";
+        $errors = [];
 
-        if ($conn->query($alterSql)) {
+        // 1️⃣ Add column if it does not exist
+        $checkColumn = "
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'waiting_list'
+              AND COLUMN_NAME = 'category_id'
+        ";
+        $result = $conn->query($checkColumn)->fetch_assoc();
+
+        if ($result['cnt'] == 0) {
+            if (!$conn->query("ALTER TABLE waiting_list ADD COLUMN category_id INT NULL")) {
+                $errors[] = $conn->error;
+            }
+        }
+
+        // 2️⃣ Add index if it does not exist
+        $checkIndex = "
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'waiting_list'
+              AND INDEX_NAME = 'idx_category_id'
+        ";
+        $result = $conn->query($checkIndex)->fetch_assoc();
+
+        if ($result['cnt'] == 0) {
+            if (!$conn->query("CREATE INDEX idx_category_id ON waiting_list (category_id)")) {
+                $errors[] = $conn->error;
+            }
+        }
+
+        // 3️⃣ Add foreign key if it does not exist
+        $checkFK = "
+            SELECT COUNT(*) AS cnt
+            FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'waiting_list'
+              AND CONSTRAINT_NAME = 'fk_waiting_list_category_id'
+        ";
+        $result = $conn->query($checkFK)->fetch_assoc();
+
+        if ($result['cnt'] == 0) {
+            $fkSql = "
+                ALTER TABLE waiting_list
+                ADD CONSTRAINT fk_waiting_list_category_id
+                FOREIGN KEY (category_id)
+                REFERENCES categories(id)
+                ON DELETE SET NULL
+            ";
+            if (!$conn->query($fkSql)) {
+                $errors[] = $conn->error;
+            }
+        }
+
+        // ✅ Final response
+        if (empty($errors)) {
             logEvent('waitlist_alter_table_success');
             respond("success", "Waiting list table altered successfully.", [
                 "table" => "waiting_list",
-                "message" => "Category column added to waiting_list table"
+                "message" => "Category column, index, and foreign key ensured"
             ]);
         } else {
-            logEvent('waitlist_alter_table_failed', ['error' => $conn->error]);
-            respond("error", "Failed to alter waiting list table: " . $conn->error, null, 500);
+            logEvent('waitlist_alter_table_failed', ['errors' => $errors]);
+            respond("error", "Failed to alter waiting list table.", $errors, 500);
         }
         break;
 
