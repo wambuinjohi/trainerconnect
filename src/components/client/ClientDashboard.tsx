@@ -341,14 +341,25 @@ export const ClientDashboard: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold">Enable Location</h2>
               <p className="text-white/90">We need your location to find trainers near you and calculate distances accurately.</p>
-              <Button
-                size="lg"
-                onClick={requestLocation}
-                className="bg-white text-trainer-accent hover:bg-gray-100 w-full font-semibold"
-              >
-                Enable GPS Now
-              </Button>
-              <p className="text-sm text-white/70">Your location is only used to show nearby trainers. We never share your data.</p>
+
+              {geoLoading ? (
+                <div className="space-y-3 pt-2">
+                  <p className="text-white font-semibold">Acquiring your location...</p>
+                  <Progress value={undefined} className="bg-white/30" />
+                  <p className="text-sm text-white/70">Please allow location access and wait for GPS signal</p>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    onClick={requestLocation}
+                    className="bg-white text-trainer-accent hover:bg-gray-100 w-full font-semibold"
+                  >
+                    Enable GPS Now
+                  </Button>
+                  <p className="text-sm text-white/70">Your location is only used to show nearby trainers. We never share your data.</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
