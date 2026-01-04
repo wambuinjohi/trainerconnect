@@ -49,6 +49,11 @@ async function checkLocationPermission(): Promise<boolean> {
 }
 
 async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation | null> {
+  // Skip Capacitor if not running in native app
+  if (!isCapacitorApp()) {
+    return null;
+  }
+
   try {
     // Check and request permissions
     let hasPermission = await checkLocationPermission();
@@ -57,7 +62,6 @@ async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation
     }
 
     if (!hasPermission) {
-      console.warn('Location permission not granted');
       return null;
     }
 
@@ -79,8 +83,7 @@ async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation
       };
     }
   } catch (err) {
-    console.error('Capacitor geolocation error:', err);
-    // Fall through to browser geolocation
+    // Silent fail - we'll fall back to browser geolocation
   }
 
   return null;
