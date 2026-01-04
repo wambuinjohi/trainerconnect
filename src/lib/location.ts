@@ -1,5 +1,14 @@
 import { Geolocation } from '@capacitor/geolocation';
 
+// Check if running in Capacitor (native app)
+function isCapacitorApp(): boolean {
+  try {
+    return typeof (window as any).Capacitor !== 'undefined';
+  } catch {
+    return false;
+  }
+}
+
 export type ApproxLocation = {
   label?: string | null;
   lat?: number | null;
@@ -24,7 +33,6 @@ async function requestLocationPermission(): Promise<boolean> {
     const permission = await Geolocation.requestPermissions();
     return permission.location === 'granted';
   } catch (err) {
-    console.warn('Permission request failed:', err);
     return false;
   }
 }
@@ -34,12 +42,16 @@ async function checkLocationPermission(): Promise<boolean> {
     const permission = await Geolocation.checkPermissions();
     return permission.location === 'granted';
   } catch (err) {
-    console.warn('Permission check failed:', err);
     return false;
   }
 }
 
 async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation | null> {
+  // Skip Capacitor if not running in native app
+  if (!isCapacitorApp()) {
+    return null;
+  }
+
   try {
     // Check and request permissions
     let hasPermission = await checkLocationPermission();
@@ -48,7 +60,6 @@ async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation
     }
 
     if (!hasPermission) {
-      console.warn('Location permission not granted');
       return null;
     }
 
@@ -70,8 +81,7 @@ async function getLocationViaCapacitor(timeoutMs = 4000): Promise<ApproxLocation
       };
     }
   } catch (err) {
-    console.error('Capacitor geolocation error:', err);
-    // Fall through to browser geolocation
+    // Silent fail - we'll fall back to browser geolocation
   }
 
   return null;
@@ -105,10 +115,17 @@ async function getLocationViaIPAPI(timeoutMs = 4000): Promise<ApproxLocation | n
   try {
     const ctrl = new AbortController();
     const abortT = window.setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+
+    const res = await fetch('https://ipapi.co/json/', {
+      signal: ctrl.signal,
+      mode: 'cors',
+    });
+
     window.clearTimeout(abortT);
 
-    if (!res.ok) throw new Error('ipapi failed');
+    if (!res.ok) {
+      return null;
+    }
 
     const j = await res.json();
     const city = (j.city as string) || null;
@@ -121,7 +138,8 @@ async function getLocationViaIPAPI(timeoutMs = 4000): Promise<ApproxLocation | n
     const label = parts.join(', ') || null;
 
     return { city, region, country, ip, lat, lng, label, source: 'ipapi' };
-  } catch {
+  } catch (err) {
+    // Silently fail - IP-based geolocation is optional fallback
     return null;
   }
 }
@@ -131,20 +149,39 @@ export async function getApproxLocation(timeoutMs = 4000): Promise<ApproxLocatio
     if (typeof window === 'undefined') return null;
 
     // Try Capacitor geolocation first (native, more accurate)
-    const capacitorLoc = await getLocationViaCapacitor(timeoutMs);
-    if (capacitorLoc && capacitorLoc.lat != null && capacitorLoc.lng != null) {
-      return capacitorLoc;
+    try {
+      const capacitorLoc = await getLocationViaCapacitor(timeoutMs);
+      if (capacitorLoc && capacitorLoc.lat != null && capacitorLoc.lng != null) {
+        return capacitorLoc;
+      }
+    } catch (err) {
+      // Continue to next method
     }
 
     // Fall back to browser geolocation
-    const browserLoc = await getLocationViaBrowser(timeoutMs);
-    if (browserLoc && browserLoc.lat != null && browserLoc.lng != null) {
-      return browserLoc;
+    try {
+      const browserLoc = await getLocationViaBrowser(timeoutMs);
+      if (browserLoc && browserLoc.lat != null && browserLoc.lng != null) {
+        return browserLoc;
+      }
+    } catch (err) {
+      // Continue to next method
     }
 
-    // Final fallback to IP-based lookup
-    return await getLocationViaIPAPI(timeoutMs);
-  } catch {
+    // Final fallback to IP-based lookup (optional, may fail due to CORS)
+    try {
+      const ipLoc = await getLocationViaIPAPI(timeoutMs);
+      if (ipLoc && ipLoc.lat != null && ipLoc.lng != null) {
+        return ipLoc;
+      }
+    } catch (err) {
+      // Silently ignore IP API errors
+    }
+
+    // No location available
+    return null;
+  } catch (err) {
+    // Final safety catch to prevent unhandled errors
     return null;
   }
 }

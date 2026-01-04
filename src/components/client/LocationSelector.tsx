@@ -91,9 +91,9 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     setSaving(true)
     try {
       await requestLocation()
+      // After location is obtained, show a toast so user knows to click Save
       if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
-        setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
-        await save({ lat: geoLocation.lat, lng: geoLocation.lng }, location || 'My location')
+        toast({ title: 'Location obtained', description: 'Click Save to confirm your location', })
       }
     } finally {
       setSaving(false)
@@ -105,8 +105,12 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
   useEffect(() => {
     if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
       setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
+      // Auto-populate location label from geolocation result
+      if (geoLocation.label && !location) {
+        setLocation(geoLocation.label)
+      }
     }
-  }, [geoLocation])
+  }, [geoLocation, location])
 
   const canSave = useMemo(() => (location || '').trim().length > 0, [location])
 
