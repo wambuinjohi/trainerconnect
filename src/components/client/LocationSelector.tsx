@@ -102,7 +102,6 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
   }
 
   const disabled = saving || loading || geoLoading
-  const [hasAutoSaved, setHasAutoSaved] = useState(false)
 
   useEffect(() => {
     if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
