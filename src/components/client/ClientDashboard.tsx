@@ -446,9 +446,12 @@ export const ClientDashboard: React.FC = () => {
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Using your location</p>
                 {reverseGeocodeLoading ? (
-                  <p className="text-xs text-muted-foreground animate-pulse">Loading location name...</p>
+                  <p className="text-xs text-muted-foreground animate-pulse">Loading location details...</p>
                 ) : (
-                  <p className="text-xs text-muted-foreground truncate">{locationName || `${userLocation.lat.toFixed(4)}°, ${userLocation.lng.toFixed(4)}°`}</p>
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {locationName && <p className="truncate">{locationName}</p>}
+                    <p className="text-muted-foreground/80">{userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°</p>
+                  </div>
                 )}
               </div>
             </div>
