@@ -284,7 +284,7 @@ const WaitlistDialog: React.FC<WaitlistDialogProps> = ({ open, onOpenChange }) =
 
             {/* Footer Text */}
             <div className="text-center pt-6 border-t border-border">
-              <p className="text-xs text-muted-foreground">@trainerapp.ke</p>
+              <p className="text-xs text-muted-foreground">trainercoachconnect.com @trainerapp.ke</p>
               <p className="text-xs text-muted-foreground pt-3 font-medium">YOUR GROWTH, YOUR CHOICE.</p>
             </div>
           </div>
