@@ -91,14 +91,18 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     setSaving(true)
     try {
       await requestLocation()
-      if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
-        setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
-        await save({ lat: geoLocation.lat, lng: geoLocation.lng }, location || 'My location')
-      }
     } finally {
       setSaving(false)
     }
   }
+
+  // Auto-save location when GPS is obtained
+  useEffect(() => {
+    if (geoLocation && geoLocation.lat != null && geoLocation.lng != null && !coords.lat && !coords.lng) {
+      const label = geoLocation.label || location || 'My location'
+      save({ lat: geoLocation.lat, lng: geoLocation.lng }, label)
+    }
+  }, [geoLocation?.lat, geoLocation?.lng])
 
   const disabled = saving || loading || geoLoading
 
