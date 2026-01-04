@@ -124,7 +124,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
           ...file,
           url: file.url.startsWith('http')
             ? file.url
-            : `https://skatryk.co.ke/uploads/${file.url.split('/').pop()}`
+            : `https://trainercoachconnect.com/uploads/${file.url.split('/').pop()}`
         }));
 
         setUploadedFiles(prev => [...prev, ...normalizedUploaded]);
