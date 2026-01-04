@@ -24,6 +24,11 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
   const [payMethod, setPayMethod] = useState<'mpesa' | 'mock'>('mpesa')
   const [mpesaPhone, setMpesaPhone] = useState('')
   const [availabilityError, setAvailabilityError] = useState<string>('')
+  const [isGroupTraining, setIsGroupTraining] = useState(false)
+  const [groupSize, setGroupSize] = useState<number>(1)
+  const [groupTrainingData, setGroupTrainingData] = useState<GroupPricingConfig | null>(null)
+  const [selectedGroupTierName, setSelectedGroupTierName] = useState<string>('')
+  const [trainerCategoryId, setTrainerCategoryId] = useState<number | null>(null)
 
   const computeBaseAmount = () => (Number(trainer.hourlyRate || 0) * Number(sessions || 1))
   const settings = loadSettings()
