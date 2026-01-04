@@ -36,6 +36,7 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
   const [location, setLocation] = useState('')
   const [coords, setCoords] = useState<{ lat?: number; lng?: number }>({})
   const [recents, setRecents] = useState<string[]>([])
+  const [hasAutoSaved, setHasAutoSaved] = useState(false)
 
   useEffect(() => { setRecents(readRecents()) }, [])
 
@@ -91,10 +92,6 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     setSaving(true)
     try {
       await requestLocation()
-      // After location is obtained, show a toast so user knows to click Save
-      if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
-        toast({ title: 'Location obtained', description: 'Click Save to confirm your location', })
-      }
     } finally {
       setSaving(false)
     }
@@ -111,6 +108,21 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
       }
     }
   }, [geoLocation, location])
+
+  // Auto-save GPS location once coordinates are obtained and label is populated
+  useEffect(() => {
+    if (
+      !hasAutoSaved &&
+      !saving &&
+      geoLocation &&
+      geoLocation.lat != null &&
+      geoLocation.lng != null &&
+      location.trim().length > 0
+    ) {
+      setHasAutoSaved(true)
+      save({ lat: geoLocation.lat, lng: geoLocation.lng }, location)
+    }
+  }, [geoLocation, location, hasAutoSaved, saving])
 
   const canSave = useMemo(() => (location || '').trim().length > 0, [location])
 

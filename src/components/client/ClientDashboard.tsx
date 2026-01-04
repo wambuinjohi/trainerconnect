@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Progress } from '@/components/ui/progress'
 import {
   Search,
   MapPin,
@@ -21,7 +22,8 @@ import {
   ArrowLeft,
   LogOut,
   DollarSign,
-  Bell
+  Bell,
+  RefreshCw
 } from 'lucide-react'
 import { TrainerDetails } from './TrainerDetails'
 import { ClientProfileEditor } from './ClientProfileEditor'
@@ -72,6 +74,7 @@ import { useGeolocation } from '@/hooks/use-geolocation'
 import * as apiService from '@/lib/api-service'
 import { enrichTrainersWithDistance } from '@/lib/distance-utils'
 import { apiRequest, withAuth } from '@/lib/api'
+import { reverseGeocode } from '@/lib/location'
 
 export const ClientDashboard: React.FC = () => {
   const { user, signOut } = useAuth()
@@ -82,6 +85,8 @@ export const ClientDashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<any>({})
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationName, setLocationName] = useState<string | null>(null)
+  const [reverseGeocodeLoading, setReverseGeocodeLoading] = useState(false)
   const [selectedTrainer, setSelectedTrainer] = useState<any | null>(null)
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [showPaymentMethods, setShowPaymentMethods] = useState(false)
@@ -108,6 +113,53 @@ export const ClientDashboard: React.FC = () => {
       setUserLocation({ lat: geoLocation.lat, lng: geoLocation.lng })
     }
   }, [geoLocation])
+
+  // Reverse geocode GPS coordinates to get location name
+  useEffect(() => {
+    if (!userLocation) {
+      setLocationName(null)
+      return
+    }
+
+    const geocode = async () => {
+      setReverseGeocodeLoading(true)
+      try {
+        const result = await reverseGeocode(userLocation.lat, userLocation.lng)
+        if (result?.label) {
+          setLocationName(result.label)
+        }
+      } catch (err) {
+        console.warn('Failed to reverse geocode location', err)
+      } finally {
+        setReverseGeocodeLoading(false)
+      }
+    }
+
+    geocode()
+  }, [userLocation])
+
+  // Auto-save GPS location to database
+  useEffect(() => {
+    if (!user?.id || !userLocation || !locationName) return
+
+    const saveLocation = async () => {
+      try {
+        const payload = {
+          user_id: user.id,
+          location: locationName,
+          location_label: locationName,
+          location_lat: userLocation.lat,
+          location_lng: userLocation.lng,
+        }
+        await apiRequest('profile_update', payload, { headers: withAuth() })
+        console.debug('Client location saved to database', { locationName, ...userLocation })
+      } catch (err) {
+        console.warn('Failed to save location to database', err)
+      }
+    }
+
+    saveLocation()
+  }, [user?.id, userLocation, locationName])
 
   // Generate suggestions from trainer names
   const suggestions = useMemo(() => {
@@ -340,14 +392,25 @@ export const ClientDashboard: React.FC = () => {
               </div>
               <h2 className="text-2xl font-bold">Enable Location</h2>
               <p className="text-white/90">We need your location to find trainers near you and calculate distances accurately.</p>
-              <Button
-                size="lg"
-                onClick={requestLocation}
-                className="bg-white text-trainer-accent hover:bg-gray-100 w-full font-semibold"
-              >
-                Enable GPS Now
-              </Button>
-              <p className="text-sm text-white/70">Your location is only used to show nearby trainers. We never share your data.</p>
+
+              {geoLoading ? (
+                <div className="space-y-3 pt-2">
+                  <p className="text-white font-semibold">Acquiring your location...</p>
+                  <Progress value={undefined} className="bg-white/30" />
+                  <p className="text-sm text-white/70">Please allow location access and wait for GPS signal</p>
+                </div>
+              ) : (
+                <>
+                  <Button
+                    size="lg"
+                    onClick={requestLocation}
+                    className="bg-white text-trainer-accent hover:bg-gray-100 w-full font-semibold"
+                  >
+                    Enable GPS Now
+                  </Button>
+                  <p className="text-sm text-white/70">Your location is only used to show nearby trainers. We never share your data.</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -396,7 +459,38 @@ export const ClientDashboard: React.FC = () => {
         popularSearches={popularSearches}
       />
 
-        <LocationSelector />
+      {userLocation && (
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="bg-trainer-accent/20 rounded-full p-2 flex-shrink-0">
+                <MapPin className="h-5 w-5 text-trainer-accent" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">Using your location</p>
+                {reverseGeocodeLoading ? (
+                  <p className="text-xs text-muted-foreground animate-pulse">Loading location details...</p>
+                ) : (
+                  <div className="text-xs text-muted-foreground space-y-0.5">
+                    {locationName && <p className="truncate">{locationName}</p>}
+                    <p className="text-muted-foreground/80">{userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={requestGeoLocation}
+              disabled={geoLoading}
+              className="flex-shrink-0"
+              title="Refresh GPS location"
+            >
+              <RefreshCw className={`h-4 w-4 ${geoLoading ? 'animate-spin' : ''}`} />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-gradient-primary border-0 text-white">
         <CardContent className="p-6 flex justify-between items-center">
