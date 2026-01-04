@@ -112,6 +112,20 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
     }
   }, [geoLocation, location])
 
+  // Auto-save GPS location once coordinates are obtained
+  useEffect(() => {
+    if (
+      !saving &&
+      !loading &&
+      geoLocation &&
+      geoLocation.lat != null &&
+      geoLocation.lng != null &&
+      location.trim().length > 0
+    ) {
+      save({ lat: geoLocation.lat, lng: geoLocation.lng }, location)
+    }
+  }, [geoLocation, location, saving, loading])
+
   const canSave = useMemo(() => (location || '').trim().length > 0, [location])
 
   return (
