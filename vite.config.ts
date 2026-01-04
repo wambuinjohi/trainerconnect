@@ -284,12 +284,12 @@ function devApiPlugin() {
                 }));
                 return;
             }
-          } catch (e: any) {
-            console.error("Dev API error:", e);
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ status: "error", message: "Internal server error: " + e.message }));
-          }
+        } catch (e: any) {
+          console.error("Dev API error:", e);
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ status: "error", message: "Internal server error: " + e.message }));
+        }
       });
     },
   };
