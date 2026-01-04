@@ -178,6 +178,15 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
       client_location_lng: (clientLocation.lng != null ? clientLocation.lng : null),
     }
 
+    // Add group training data if applicable
+    if (isGroupTraining && groupTrainingData) {
+      payload.is_group_training = true
+      payload.group_size = groupSize
+      payload.group_size_tier_name = selectedGroupTierName
+      payload.category_id = trainerCategoryId
+      payload.pricing_model_used = groupTrainingData.pricing_model
+    }
+
     try {
       // create booking using new booking_create action with server-side fee calculation
       const bookingResponse = await apiRequest('booking_create', payload, { headers: withAuth() })
