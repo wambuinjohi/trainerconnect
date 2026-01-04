@@ -33,7 +33,6 @@ async function requestLocationPermission(): Promise<boolean> {
     const permission = await Geolocation.requestPermissions();
     return permission.location === 'granted';
   } catch (err) {
-    console.warn('Permission request failed:', err);
     return false;
   }
 }
@@ -43,7 +42,6 @@ async function checkLocationPermission(): Promise<boolean> {
     const permission = await Geolocation.checkPermissions();
     return permission.location === 'granted';
   } catch (err) {
-    console.warn('Permission check failed:', err);
     return false;
   }
 }
