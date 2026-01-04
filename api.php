@@ -3221,6 +3221,11 @@ switch ($action) {
             if ($categoryId) {
                 $eventData['category_id'] = $categoryId;
             }
+            if ($isGroupTraining) {
+                $eventData['is_group_training'] = true;
+                $eventData['group_size_tier'] = $groupSizeTierName;
+                $eventData['pricing_model'] = $pricingModelUsed;
+            }
             logEvent('booking_created_with_fees', $eventData);
 
             respond("success", "Booking created successfully with fee breakdown.", [
