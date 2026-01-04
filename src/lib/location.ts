@@ -144,6 +144,44 @@ async function getLocationViaIPAPI(timeoutMs = 4000): Promise<ApproxLocation | n
   }
 }
 
+export async function reverseGeocode(lat: number, lng: number, timeoutMs = 3000): Promise<{ city?: string; region?: string; country?: string; label?: string } | null> {
+  try {
+    if (typeof window === 'undefined') return null;
+
+    const ctrl = new AbortController();
+    const abortT = window.setTimeout(() => ctrl.abort(), timeoutMs);
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+      {
+        signal: ctrl.signal,
+        headers: { 'Accept-Language': 'en' },
+      }
+    );
+
+    window.clearTimeout(abortT);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+    const address = data.address || {};
+
+    const city = address.city || address.town || address.village || null;
+    const region = address.state || address.region || null;
+    const country = address.country || null;
+
+    const parts = [city, region, country].filter(Boolean) as string[];
+    const label = parts.join(', ') || null;
+
+    return { city, region, country, label };
+  } catch (err) {
+    // Silently fail - reverse geocoding is optional
+    return null;
+  }
+}
+
 export async function getApproxLocation(timeoutMs = 4000): Promise<ApproxLocation | null> {
   try {
     if (typeof window === 'undefined') return null;
