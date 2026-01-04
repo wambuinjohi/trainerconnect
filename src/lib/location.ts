@@ -117,10 +117,17 @@ async function getLocationViaIPAPI(timeoutMs = 4000): Promise<ApproxLocation | n
   try {
     const ctrl = new AbortController();
     const abortT = window.setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch('https://ipapi.co/json/', { signal: ctrl.signal });
+
+    const res = await fetch('https://ipapi.co/json/', {
+      signal: ctrl.signal,
+      mode: 'cors',
+    });
+
     window.clearTimeout(abortT);
 
-    if (!res.ok) throw new Error('ipapi failed');
+    if (!res.ok) {
+      return null;
+    }
 
     const j = await res.json();
     const city = (j.city as string) || null;
@@ -133,7 +140,8 @@ async function getLocationViaIPAPI(timeoutMs = 4000): Promise<ApproxLocation | n
     const label = parts.join(', ') || null;
 
     return { city, region, country, ip, lat, lng, label, source: 'ipapi' };
-  } catch {
+  } catch (err) {
+    // Silently fail - IP-based geolocation is optional fallback
     return null;
   }
 }
