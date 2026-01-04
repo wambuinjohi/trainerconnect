@@ -146,9 +146,12 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
       try {
         // Load profile from API
         let profileData: any = null
+        console.log('[Profile Load] Fetching profile for userId:', userId)
         const response = await apiService.getUserProfile(userId)
+        console.log('[Profile Load] API response:', response)
         if (response?.data && response.data.length > 0) {
           profileData = response.data[0]
+          console.log('[Profile Load] Loaded profile_image from API:', profileData.profile_image)
           setProfile(profileData)
           setName(String(profileData.full_name || profileData.name || ''))
         } else {
