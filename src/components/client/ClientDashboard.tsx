@@ -577,6 +577,25 @@ export const ClientDashboard: React.FC = () => {
             </Badge>
           </div>
 
+          {booking.is_group_training && (
+            <div className="flex gap-2 mb-3">
+              <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800">
+                <Users className="h-3 w-3 mr-1" />
+                Group Training
+              </Badge>
+              {booking.group_size_tier_name && (
+                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                  {booking.group_size_tier_name}
+                </Badge>
+              )}
+              {booking.pricing_model_used && (
+                <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-800">
+                  {booking.pricing_model_used === 'per_person' ? 'Per Person' : 'Fixed Rate'}
+                </Badge>
+              )}
+            </div>
+          )}
+
           <div className="space-y-2 mb-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4" />
