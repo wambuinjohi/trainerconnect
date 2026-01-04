@@ -311,6 +311,61 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
           <Label>Number of Sessions</Label>
           <Input type="number" min={1} value={String(sessions)} onChange={(e) => setSessions(Number(e.target.value))} />
         </div>
+
+        {/* Group Training Section */}
+        {groupTrainingData && groupTrainingData.tiers && groupTrainingData.tiers.length > 0 && (
+          <div className="space-y-3 border border-border rounded-md p-3 bg-muted/5">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Book as group training</Label>
+              <Switch checked={isGroupTraining} onCheckedChange={setIsGroupTraining} />
+            </div>
+
+            {isGroupTraining && (
+              <>
+                <div>
+                  <Label className="text-xs">Group size</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={String(groupSize)}
+                    onChange={(e) => setGroupSize(Math.max(1, Number(e.target.value)))}
+                    placeholder="Enter group size"
+                    className="mt-1"
+                  />
+                </div>
+
+                {selectedGroupTierName && (
+                  <div>
+                    <Label className="text-xs">Select group tier</Label>
+                    <Select value={selectedGroupTierName} onValueChange={setSelectedGroupTierName}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {groupTrainingData.tiers.map((tier) => (
+                          <SelectItem key={tier.group_size_name} value={tier.group_size_name}>
+                            <div className="flex flex-col">
+                              <span>{tier.group_size_name}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {formatGroupPricingDisplay(tier.rate, groupTrainingData.pricing_model)}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedGroupTierName && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Rate: {groupTrainingData && getGroupTierByName(groupTrainingData, selectedGroupTierName) && formatGroupPricingDisplay(getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate, groupTrainingData.pricing_model)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         <div>
           <Label>Referral Code (optional)</Label>
           <Input value={referralCode} onChange={(e)=>setReferralCode(e.target.value)} placeholder="Enter code" />
