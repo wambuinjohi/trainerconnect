@@ -241,11 +241,12 @@ export const WaitingListManager: React.FC = () => {
   }
 
   const handleDownloadCSV = () => {
-    const headers = ['Name', 'Email', 'Telephone', 'Is Coach', 'Status', 'Joined Date']
+    const headers = ['Name', 'Email', 'Telephone', 'Category', 'Is Coach', 'Status', 'Joined Date']
     const rows = entries.map(entry => [
       entry.name,
       entry.email,
       entry.telephone,
+      getCategoryName(entry.category_id),
       entry.is_coach ? 'Yes' : 'No',
       entry.status,
       new Date(entry.created_at).toLocaleDateString(),
