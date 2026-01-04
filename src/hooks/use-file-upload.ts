@@ -148,16 +148,9 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
         // Use the URLs returned by the API (they should be full URLs now)
         const uploaded = (data.data?.uploaded || []);
 
-        // Fallback: if URLs are relative, prepend the upload base URL
-        const normalizedUploaded = uploaded.map((file: UploadedFile) => ({
-          ...file,
-          url: file.url.startsWith('http')
-            ? file.url
-            : `https://trainercoachconnect.com/uploads/${file.url.split('/').pop()}`
-        }));
-
-        setUploadedFiles(prev => [...prev, ...normalizedUploaded]);
-        onSuccess?.(normalizedUploaded);
+        // The API already returns full URLs with the correct base URL, so use them as-is
+        setUploadedFiles(prev => [...prev, ...uploaded]);
+        onSuccess?.(uploaded);
         
         const successMsg = data.data?.count === 1 
           ? '1 file uploaded successfully'
