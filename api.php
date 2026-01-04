@@ -4493,7 +4493,7 @@ switch ($action) {
         $countRow = $countResult->fetch_assoc();
         $totalCount = intval($countRow['total']);
 
-        respond("success", "Waiting list entries fetched successfully.", $entries, 200);
+        respond("success", "Waiting list entries fetched successfully.", $entries);
         logEvent('waitlist_get_success', ['count' => count($entries), 'total' => $totalCount]);
         break;
 
