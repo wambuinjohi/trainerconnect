@@ -408,6 +408,22 @@ export const ClientDashboard: React.FC = () => {
         popularSearches={popularSearches}
       />
 
+      {userLocation && (
+        <Card className="border-0 bg-muted/30">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-trainer-accent/20 rounded-full p-2">
+                <MapPin className="h-5 w-5 text-trainer-accent" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Using your location</p>
+                <p className="text-xs text-muted-foreground">{userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="bg-gradient-primary border-0 text-white">
         <CardContent className="p-6 flex justify-between items-center">
           <div>
