@@ -438,16 +438,30 @@ export const ClientDashboard: React.FC = () => {
 
       {userLocation && (
         <Card className="border-0 bg-muted/30">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="bg-trainer-accent/20 rounded-full p-2">
+          <CardContent className="p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="bg-trainer-accent/20 rounded-full p-2 flex-shrink-0">
                 <MapPin className="h-5 w-5 text-trainer-accent" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Using your location</p>
-                <p className="text-xs text-muted-foreground">{userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}°</p>
+                {reverseGeocodeLoading ? (
+                  <p className="text-xs text-muted-foreground animate-pulse">Loading location name...</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground truncate">{locationName || `${userLocation.lat.toFixed(4)}°, ${userLocation.lng.toFixed(4)}°`}</p>
+                )}
               </div>
             </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={requestGeoLocation}
+              disabled={geoLoading}
+              className="flex-shrink-0"
+              title="Refresh GPS location"
+            >
+              <RefreshCw className={`h-4 w-4 ${geoLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </CardContent>
         </Card>
       )}
