@@ -349,8 +349,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_FILES)) {
         'application/zip', 'application/x-rar-compressed'
     ];
 
-    // Get the upload base URL (default to https://skatryk.co.ke/uploads)
-    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    // Get the upload base URL (default to https://trainercoachconnect.com/uploads)
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://trainercoachconnect.com/uploads';
 
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
