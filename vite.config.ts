@@ -15,11 +15,10 @@ function adminApiPlugin() {
   return {
     name: "admin-api",
     configureServer(server: any) {
-      return () => {
-        server.middlewares.use(async (req: any, res: any, next: any) => {
-          if (req.method !== "POST") return next();
-          const url = req.url?.split('?')[0] || "";
-          if (!url.startsWith("/__admin/")) return next();
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.method !== "POST") return next();
+        const url = req.url?.split('?')[0] || "";
+        if (!url.startsWith("/__admin/")) return next();
 
           try {
             const adminTokenHeader = req.headers["x-admin-token"] as string | undefined;
@@ -112,8 +111,7 @@ function adminApiPlugin() {
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ ok: false, error: err.message }));
           }
-        });
-      };
+      });
     },
   };
 }
@@ -124,11 +122,10 @@ function devApiPlugin() {
   return {
     name: "dev-api",
     configureServer(server: any) {
-      return () => {
-        server.middlewares.use(async (req: any, res: any, next: any) => {
-          if (req.method !== "POST" && req.method !== "GET") return next();
-          const url = req.url?.split('?')[0] || "";
-          if (url !== "/api.php") return next();
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.method !== "POST" && req.method !== "GET") return next();
+        const url = req.url?.split('?')[0] || "";
+        if (url !== "/api.php") return next();
 
           try {
             let body = {};
@@ -293,8 +290,7 @@ function devApiPlugin() {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(JSON.stringify({ status: "error", message: "Internal server error: " + e.message }));
           }
-        });
-      };
+      });
     },
   };
 }
@@ -303,11 +299,10 @@ function paymentsApiPlugin() {
   return {
     name: "payments-api",
     configureServer(server: any) {
-      return () => {
-        server.middlewares.use(async (req: any, res: any, next: any) => {
-          if (req.method !== "POST") return next();
-          const url = req.url?.split('?')[0] || "";
-          if (!url.startsWith("/payments/mpesa/")) return next();
+      server.middlewares.use(async (req: any, res: any, next: any) => {
+        if (req.method !== "POST") return next();
+        const url = req.url?.split('?')[0] || "";
+        if (!url.startsWith("/payments/mpesa/")) return next();
 
           try {
             let body = {};
@@ -414,8 +409,7 @@ function paymentsApiPlugin() {
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ ok: false, error: e.message }));
           }
-        });
-      };
+      });
     },
   };
 }
