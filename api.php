@@ -2137,12 +2137,22 @@ switch ($action) {
         }
 
         // Validate each tier
-        foreach ($tiers as $tier) {
+        foreach ($tiers as $idx => $tier) {
             if (!isset($tier['group_size_name']) || !isset($tier['min_size']) || !isset($tier['max_size']) || !isset($tier['rate'])) {
                 respond("error", "Each tier must have group_size_name, min_size, max_size, and rate.", null, 400);
             }
             if (floatval($tier['rate']) < 0) {
                 respond("error", "Tier rates cannot be negative.", null, 400);
+            }
+
+            // Validate numeric bounds for tier ranges
+            $minSize = intval($tier['min_size']);
+            $maxSize = intval($tier['max_size']);
+            if ($minSize < 1) {
+                respond("error", "Tier " . ($idx + 1) . " '" . $tier['group_size_name'] . "': min_size must be >= 1.", null, 400);
+            }
+            if ($maxSize < $minSize) {
+                respond("error", "Tier " . ($idx + 1) . " '" . $tier['group_size_name'] . "': max_size must be >= min_size.", null, 400);
             }
         }
 
@@ -3152,12 +3162,23 @@ switch ($action) {
                 respond("error", "Invalid group size tier selected.", null, 400);
             }
 
-            // Find the tier to get the per-unit rate
+            // Find the tier to get the per-unit rate and validate group size matches tier range
             $tierRate = null;
+            $selectedTier = null;
             foreach ($groupPricing['tiers'] as $tier) {
                 if (isset($tier['group_size_name']) && $tier['group_size_name'] === $groupSizeTierName) {
                     $tierRate = floatval($tier['rate']);
+                    $selectedTier = $tier;
                     break;
+                }
+            }
+
+            // Validate that the provided group size falls within the selected tier's range
+            if ($selectedTier) {
+                $tierMinSize = intval($selectedTier['min_size'] ?? 1);
+                $tierMaxSize = intval($selectedTier['max_size'] ?? 999999);
+                if ($groupSize < $tierMinSize || $groupSize > $tierMaxSize) {
+                    respond("error", "Group size {$groupSize} does not match selected tier '{$groupSizeTierName}' (valid range: {$tierMinSize}-{$tierMaxSize})", null, 400);
                 }
             }
 

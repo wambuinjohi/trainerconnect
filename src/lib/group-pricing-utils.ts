@@ -23,12 +23,14 @@ export interface GroupPricingConfig {
 
 /**
  * Get default group training tiers
- * Returns the standard tier structure: 1 Person, 2-20, 21-50, 51-100, 100+
+ * Returns the standard tier structure: 1 Person, 1-20, 21-50, 51-100, 100+
+ * Note: "1 Person" and "1-20" tiers overlap at group size 1. This allows trainers to set different rates
+ * for solo training vs small group training. The tier selected by the client determines which rate applies.
  */
 export function getDefaultGroupTiers(): GroupTier[] {
   return [
     { group_size_name: '1 Person', min_size: 1, max_size: 1, rate: 0 },
-    { group_size_name: '2-20', min_size: 2, max_size: 20, rate: 0 },
+    { group_size_name: '1-20', min_size: 1, max_size: 20, rate: 0 },
     { group_size_name: '21-50', min_size: 21, max_size: 50, rate: 0 },
     { group_size_name: '51-100', min_size: 51, max_size: 100, rate: 0 },
     { group_size_name: '100+', min_size: 101, max_size: 999999, rate: 0 }

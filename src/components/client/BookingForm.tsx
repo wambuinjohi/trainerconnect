@@ -355,9 +355,22 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
                       </SelectContent>
                     </Select>
                     {selectedGroupTierName && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Rate: {groupTrainingData && getGroupTierByName(groupTrainingData, selectedGroupTierName) && formatGroupPricingDisplay(getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate, groupTrainingData.pricing_model)}
-                      </p>
+                      <>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Rate: {groupTrainingData && getGroupTierByName(groupTrainingData, selectedGroupTierName) && formatGroupPricingDisplay(getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate, groupTrainingData.pricing_model)}
+                        </p>
+                        {(() => {
+                          const selectedTier = getGroupTierByName(groupTrainingData, selectedGroupTierName)
+                          if (selectedTier && (groupSize < selectedTier.min_size || groupSize > selectedTier.max_size)) {
+                            return (
+                              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 bg-amber-50 dark:bg-amber-950/30 p-2 rounded">
+                                ⚠ Group size {groupSize} is outside tier range ({selectedTier.min_size}-{selectedTier.max_size})
+                              </p>
+                            )
+                          }
+                          return null
+                        })()}
+                      </>
                     )}
                   </div>
                 )}
