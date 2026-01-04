@@ -482,6 +482,17 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
                 />
               </div>
 
+              {/* Upload Progress Bar */}
+              {uploadingImage && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">Uploading...</span>
+                    <span className="text-sm text-muted-foreground">{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-2" />
+                </div>
+              )}
+
               {/* Manual URL Input */}
               <div>
                 <Label htmlFor="profile-image-url" className="text-xs text-muted-foreground">Or paste image URL</Label>
