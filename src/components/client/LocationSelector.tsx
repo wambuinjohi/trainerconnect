@@ -36,6 +36,7 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
   const [location, setLocation] = useState('')
   const [coords, setCoords] = useState<{ lat?: number; lng?: number }>({})
   const [recents, setRecents] = useState<string[]>([])
+  const [hasAutoSaved, setHasAutoSaved] = useState(false)
 
   useEffect(() => { setRecents(readRecents()) }, [])
 
