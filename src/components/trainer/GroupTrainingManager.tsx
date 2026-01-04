@@ -171,24 +171,13 @@ export const GroupTrainingManager: React.FC<GroupTrainingManagerProps> = ({
       <CardContent className="space-y-6">
         {/* Enable/Disable Toggle */}
         <div className="space-y-3">
-          <Label>Enable group training for this category</Label>
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setIsEnabled(!isEnabled)}
-              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                isEnabled ? 'bg-green-600' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                  isEnabled ? 'translate-x-7' : 'translate-x-1'
-                }`}
-              />
-            </button>
-            <span className="text-sm text-muted-foreground">
-              {isEnabled ? 'Group training enabled' : 'Group training disabled'}
-            </span>
+          <div className="flex items-center justify-between">
+            <Label>Enable group training for this category</Label>
+            <Switch checked={isEnabled} onCheckedChange={setIsEnabled} />
           </div>
+          <p className="text-sm text-muted-foreground">
+            {isEnabled ? 'Group training enabled' : 'Group training disabled'}
+          </p>
         </div>
 
         {isEnabled && (
