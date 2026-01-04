@@ -306,109 +306,109 @@ function paymentsApiPlugin() {
 
         try {
           let body = {};
-            if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(chunk as Buffer);
-              }
-              const raw = Buffer.concat(chunks).toString('utf8');
-              if (raw) {
-                body = JSON.parse(raw);
-              }
+          if (req.headers['content-length'] && req.headers['content-length'] !== '0') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(chunk as Buffer);
             }
+            const raw = Buffer.concat(chunks).toString('utf8');
+            if (raw) {
+              body = JSON.parse(raw);
+            }
+          }
 
-            // Get M-Pesa credentials from request body (passed by frontend) or environment variables
-            const clientCreds = body.mpesa_creds || {};
+          // Get M-Pesa credentials from request body (passed by frontend) or environment variables
+          const clientCreds = body.mpesa_creds || {};
 
-            const creds = {
-              consumer_key: clientCreds.consumerKey || process.env.MPESA_CONSUMER_KEY,
-              consumer_secret: clientCreds.consumerSecret || process.env.MPESA_CONSUMER_SECRET,
-              shortcode: clientCreds.shortcode || process.env.MPESA_SHORTCODE,
-              passkey: clientCreds.passkey || process.env.MPESA_PASSKEY,
-              environment: clientCreds.environment || process.env.MPESA_ENVIRONMENT || "sandbox",
-              result_url: clientCreds.resultUrl || process.env.MPESA_RESULT_URL,
+          const creds = {
+            consumer_key: clientCreds.consumerKey || process.env.MPESA_CONSUMER_KEY,
+            consumer_secret: clientCreds.consumerSecret || process.env.MPESA_CONSUMER_SECRET,
+            shortcode: clientCreds.shortcode || process.env.MPESA_SHORTCODE,
+            passkey: clientCreds.passkey || process.env.MPESA_PASSKEY,
+            environment: clientCreds.environment || process.env.MPESA_ENVIRONMENT || "sandbox",
+            result_url: clientCreds.resultUrl || process.env.MPESA_RESULT_URL,
+          };
+
+          // Validate that credentials are present
+          if (!creds.consumer_key || !creds.consumer_secret) {
+            res.statusCode = 400;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: false, error: "M-Pesa credentials not configured. Please check admin settings." }));
+            return;
+          }
+
+          const envMode = creds.environment;
+          const tokenUrl =
+            envMode === "production"
+              ? "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+              : "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+
+          const basic = Buffer.from(
+            `${creds.consumer_key}:${creds.consumer_secret}`
+          ).toString("base64");
+
+          const tokenRes = await fetch(tokenUrl, {
+            headers: { Authorization: `Basic ${basic}` },
+          });
+          const tokenJson = await tokenRes.json() as any;
+          const accessToken = tokenJson?.access_token;
+          if (!accessToken) throw new Error("Failed to obtain access token");
+
+          if (url.startsWith("/payments/mpesa/stk-initiate")) {
+            const phone = String(body.phone || "").trim();
+            const amount = Math.round(Number(body.amount || 0));
+            const shortcode = creds.shortcode!;
+            const passkey = creds.passkey!;
+            const callback = creds.result_url || "https://example.com/mpesa/callback";
+            const timestamp = new Date()
+              .toISOString()
+              .replace(/[-:.TZ]/g, "")
+              .slice(0, 14);
+            const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
+
+            const stkUrl =
+              envMode === "production"
+                ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+                : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+
+            const payload = {
+              BusinessShortCode: shortcode,
+              Password: password,
+              Timestamp: timestamp,
+              TransactionType: "CustomerPayBillOnline",
+              Amount: amount,
+              PartyA: phone,
+              PartyB: shortcode,
+              PhoneNumber: phone,
+              CallBackURL: callback,
+              AccountReference: "OrderRef",
+              TransactionDesc: "Payment",
             };
 
-            // Validate that credentials are present
-            if (!creds.consumer_key || !creds.consumer_secret) {
-              res.statusCode = 400;
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: false, error: "M-Pesa credentials not configured. Please check admin settings." }));
-              return;
-            }
-
-            const envMode = creds.environment;
-            const tokenUrl =
-              envMode === "production"
-                ? "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
-                : "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
-
-            const basic = Buffer.from(
-              `${creds.consumer_key}:${creds.consumer_secret}`
-            ).toString("base64");
-
-            const tokenRes = await fetch(tokenUrl, {
-              headers: { Authorization: `Basic ${basic}` },
+            const stkRes = await fetch(stkUrl, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(payload),
             });
-            const tokenJson = await tokenRes.json() as any;
-            const accessToken = tokenJson?.access_token;
-            if (!accessToken) throw new Error("Failed to obtain access token");
 
-            if (url.startsWith("/payments/mpesa/stk-initiate")) {
-              const phone = String(body.phone || "").trim();
-              const amount = Math.round(Number(body.amount || 0));
-              const shortcode = creds.shortcode!;
-              const passkey = creds.passkey!;
-              const callback = creds.result_url || "https://example.com/mpesa/callback";
-              const timestamp = new Date()
-                .toISOString()
-                .replace(/[-:.TZ]/g, "")
-                .slice(0, 14);
-              const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
-
-              const stkUrl =
-                envMode === "production"
-                  ? "https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
-                  : "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
-
-              const payload = {
-                BusinessShortCode: shortcode,
-                Password: password,
-                Timestamp: timestamp,
-                TransactionType: "CustomerPayBillOnline",
-                Amount: amount,
-                PartyA: phone,
-                PartyB: shortcode,
-                PhoneNumber: phone,
-                CallBackURL: callback,
-                AccountReference: "OrderRef",
-                TransactionDesc: "Payment",
-              };
-
-              const stkRes = await fetch(stkUrl, {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-              });
-
-              const stkJson = await stkRes.json();
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ ok: true, result: stkJson }));
-              return;
-            }
-
-            res.statusCode = 404;
+            const stkJson = await stkRes.json();
             res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ ok: false, error: "Unknown payments route" }));
-          } catch (e: any) {
-            console.error("Payments API error:", e);
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ ok: false, error: e.message }));
+            res.end(JSON.stringify({ ok: true, result: stkJson }));
+            return;
           }
+
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: "Unknown payments route" }));
+        } catch (e: any) {
+          console.error("Payments API error:", e);
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
       });
     },
   };
