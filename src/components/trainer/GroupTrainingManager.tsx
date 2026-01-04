@@ -83,10 +83,11 @@ export const GroupTrainingManager: React.FC<GroupTrainingManagerProps> = ({
 
   const handleAddTier = () => {
     // Add a new tier after the last one
+    const minSize = tiers.length > 0 ? tiers[tiers.length - 1].max_size + 1 : 1
     const newTier: GroupTier = {
       group_size_name: 'New Tier',
-      min_size: tiers.length > 0 ? tiers[tiers.length - 1].max_size + 1 : 1,
-      max_size: 999,
+      min_size: minSize,
+      max_size: Math.max(minSize + 99, 999), // Ensure max_size >= min_size, create ~100-person range by default
       rate: 0,
     }
     setTiers([...tiers, newTier])
