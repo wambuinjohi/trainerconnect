@@ -270,11 +270,14 @@ export const WaitingListManager: React.FC = () => {
     document.body.removeChild(link)
   }
 
-  const filteredEntries = entries.filter(entry =>
-    entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.telephone.includes(searchTerm)
-  )
+  const filteredEntries = entries.filter(entry => {
+    const matchesCategory = !selectedCategory || entry.category_id === parseInt(selectedCategory)
+    const matchesSearch = searchTerm === '' ||
+      entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.telephone.includes(searchTerm)
+    return matchesCategory && matchesSearch
+  })
 
   const coachCount = entries.filter(e => isCoachValue(e.is_coach)).length
   const clientCount = entries.filter(e => !isCoachValue(e.is_coach)).length
