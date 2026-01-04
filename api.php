@@ -155,7 +155,7 @@ function normalizeImageUrl($imageUrl) {
     }
 
     // If relative, prepend the upload base URL
-    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://skatryk.co.ke/uploads';
+    $uploadBaseUrl = getenv('UPLOAD_BASE_URL') ?: 'https://trainercoachconnect.com/uploads';
     $uploadBaseUrl = rtrim($uploadBaseUrl, '/');
 
     // Handle paths like /uploads/file.jpg or uploads/file.jpg
