@@ -105,8 +105,12 @@ export const LocationSelector: React.FC<{ className?: string; onSaved?: (loc: { 
   useEffect(() => {
     if (geoLocation && geoLocation.lat != null && geoLocation.lng != null) {
       setCoords({ lat: geoLocation.lat, lng: geoLocation.lng })
+      // Auto-populate location label from geolocation result
+      if (geoLocation.label && !location) {
+        setLocation(geoLocation.label)
+      }
     }
-  }, [geoLocation])
+  }, [geoLocation, location])
 
   const canSave = useMemo(() => (location || '').trim().length > 0, [location])
 
