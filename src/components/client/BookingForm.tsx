@@ -391,7 +391,19 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         )}
 
         <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
-          <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
+          {isGroupTraining && groupTrainingData ? (
+            <>
+              <div className="flex justify-between"><span>Group tier</span><span className="font-semibold">{selectedGroupTierName}</span></div>
+              <div className="flex justify-between"><span>Group size</span><span className="font-semibold">{groupSize} people</span></div>
+              <div className="flex justify-between"><span>Rate per {groupTrainingData.pricing_model === 'per_person' ? 'person' : 'group'}</span>
+                <span className="font-semibold">Ksh {groupTrainingData && selectedGroupTierName && getGroupTierByName(groupTrainingData, selectedGroupTierName) ? getGroupTierByName(groupTrainingData, selectedGroupTierName)!.rate : 0}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between"><span>Rate</span><span className="font-semibold">Ksh {Number(trainer.hourlyRate || 0)}/hr</span></div>
+            </>
+          )}
           <div className="flex justify-between"><span>Sessions</span><span className="font-semibold">{sessions}</span></div>
           <div className="flex justify-between"><span>Base Service Amount</span><span className="font-semibold">Ksh {baseAmount}</span></div>
           {appliedDiscount > 0 && <div className="flex justify-between text-blue-500"><span>Referral Discount</span><span>−Ksh {appliedDiscount}</span></div>}
