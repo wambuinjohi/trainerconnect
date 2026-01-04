@@ -128,46 +128,46 @@ function devApiPlugin() {
         if (url !== "/api.php") return next();
 
         try {
-            let body = {};
+          let body = {};
 
-            // Handle request body parsing for POST
-            if (req.method === "POST" && req.headers['content-length'] && req.headers['content-length'] !== '0') {
-              const chunks: Buffer[] = [];
-              for await (const chunk of req) {
-                chunks.push(chunk as Buffer);
-              }
-              const raw = Buffer.concat(chunks).toString('utf8');
-              if (raw) {
-                try {
-                  body = JSON.parse(raw);
-                } catch {
-                  res.statusCode = 400;
-                  res.setHeader("Content-Type", "application/json");
-                  res.end(JSON.stringify({ status: "error", message: "Invalid JSON in request body." }));
-                  return;
-                }
-              }
-            } else if (req.method === "GET") {
-              body = req.url?.includes('?') ? Object.fromEntries(new URLSearchParams(req.url?.split('?')[1])) : {};
+          // Handle request body parsing for POST
+          if (req.method === "POST" && req.headers['content-length'] && req.headers['content-length'] !== '0') {
+            const chunks: Buffer[] = [];
+            for await (const chunk of req) {
+              chunks.push(chunk as Buffer);
             }
-
-            const action = (body.action || "").toLowerCase().trim();
-
-            // Always set JSON content type first
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-
-            // Log the API call for debugging
-            console.log(`[Dev API] ${req.method} ${action}`, { body });
-
-            // Handle missing action
-            if (!action) {
-              res.statusCode = 400;
-              res.end(JSON.stringify({ status: "error", message: "Missing action parameter.", data: null }));
-              return;
+            const raw = Buffer.concat(chunks).toString('utf8');
+            if (raw) {
+              try {
+                body = JSON.parse(raw);
+              } catch {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ status: "error", message: "Invalid JSON in request body." }));
+                return;
+              }
             }
+          } else if (req.method === "GET") {
+            body = req.url?.includes('?') ? Object.fromEntries(new URLSearchParams(req.url?.split('?')[1])) : {};
+          }
 
-            // Mock responses for development
-            switch (action) {
+          const action = (body.action || "").toLowerCase().trim();
+
+          // Always set JSON content type first
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+
+          // Log the API call for debugging
+          console.log(`[Dev API] ${req.method} ${action}`, { body });
+
+          // Handle missing action
+          if (!action) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ status: "error", message: "Missing action parameter.", data: null }));
+            return;
+          }
+
+          // Mock responses for development
+          switch (action) {
               case "health_check":
                 res.end(JSON.stringify({
                   status: "success",
