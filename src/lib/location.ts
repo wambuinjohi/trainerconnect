@@ -1,5 +1,14 @@
 import { Geolocation } from '@capacitor/geolocation';
 
+// Check if running in Capacitor (native app)
+function isCapacitorApp(): boolean {
+  try {
+    return typeof (window as any).Capacitor !== 'undefined';
+  } catch {
+    return false;
+  }
+}
+
 export type ApproxLocation = {
   label?: string | null;
   lat?: number | null;
