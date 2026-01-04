@@ -81,6 +81,13 @@ export const WaitingListManager: React.FC = () => {
     return coachValue === 1
   }
 
+  // Helper function to get category name from ID
+  const getCategoryName = (categoryId?: number) => {
+    if (!categoryId) return '-'
+    const category = categories.find(c => c.id === categoryId)
+    return category?.name || '-'
+  }
+
   const fetchWaitlist = async (page = 0) => {
     try {
       setLoading(true)
