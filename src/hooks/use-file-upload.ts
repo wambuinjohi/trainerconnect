@@ -176,6 +176,7 @@ export function useFileUpload(options: UseFileUploadOptions = {}) {
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
+      onProgress?.(0); // Reset progress
     }
   }, [validateFiles, onSuccess, onError]);
 
