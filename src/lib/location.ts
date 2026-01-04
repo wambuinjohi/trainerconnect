@@ -151,20 +151,39 @@ export async function getApproxLocation(timeoutMs = 4000): Promise<ApproxLocatio
     if (typeof window === 'undefined') return null;
 
     // Try Capacitor geolocation first (native, more accurate)
-    const capacitorLoc = await getLocationViaCapacitor(timeoutMs);
-    if (capacitorLoc && capacitorLoc.lat != null && capacitorLoc.lng != null) {
-      return capacitorLoc;
+    try {
+      const capacitorLoc = await getLocationViaCapacitor(timeoutMs);
+      if (capacitorLoc && capacitorLoc.lat != null && capacitorLoc.lng != null) {
+        return capacitorLoc;
+      }
+    } catch (err) {
+      // Continue to next method
     }
 
     // Fall back to browser geolocation
-    const browserLoc = await getLocationViaBrowser(timeoutMs);
-    if (browserLoc && browserLoc.lat != null && browserLoc.lng != null) {
-      return browserLoc;
+    try {
+      const browserLoc = await getLocationViaBrowser(timeoutMs);
+      if (browserLoc && browserLoc.lat != null && browserLoc.lng != null) {
+        return browserLoc;
+      }
+    } catch (err) {
+      // Continue to next method
     }
 
-    // Final fallback to IP-based lookup
-    return await getLocationViaIPAPI(timeoutMs);
-  } catch {
+    // Final fallback to IP-based lookup (optional, may fail due to CORS)
+    try {
+      const ipLoc = await getLocationViaIPAPI(timeoutMs);
+      if (ipLoc && ipLoc.lat != null && ipLoc.lng != null) {
+        return ipLoc;
+      }
+    } catch (err) {
+      // Silently ignore IP API errors
+    }
+
+    // No location available
+    return null;
+  } catch (err) {
+    // Final safety catch to prevent unhandled errors
     return null;
   }
 }
