@@ -196,6 +196,7 @@ export const WaitingListManager: React.FC = () => {
           email: formData.email,
           telephone: formData.telephone,
           is_coach: formData.isCoach ? 1 : 0,
+          category_id: formData.categoryId ? parseInt(formData.categoryId) : null,
         }),
       })
 
@@ -213,6 +214,7 @@ export const WaitingListManager: React.FC = () => {
           email: '',
           telephone: '',
           isCoach: false,
+          categoryId: '',
         })
         setAddDialogOpen(false)
 
