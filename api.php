@@ -3152,10 +3152,19 @@ switch ($action) {
                 respond("error", "Invalid group size tier selected.", null, 400);
             }
 
+            // Find the tier to get the per-unit rate
+            $tierRate = null;
+            foreach ($groupPricing['tiers'] as $tier) {
+                if (isset($tier['group_size_name']) && $tier['group_size_name'] === $groupSizeTierName) {
+                    $tierRate = floatval($tier['rate']);
+                    break;
+                }
+            }
+
             // Set base service amount from group pricing
             $baseServiceAmount = $groupBaseAmount;
             $pricingModelUsed = $groupPricing['pricing_model'];
-            $groupRatePerUnit = $groupBaseAmount;
+            $groupRatePerUnit = $tierRate;
         }
 
         // Calculate transport fee
