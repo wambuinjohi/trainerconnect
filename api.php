@@ -1726,7 +1726,7 @@ switch ($action) {
                 $categories[] = $row;
             }
             $stmt->close();
-            respond("success", "Categories fetched successfully.", ["data" => $categories]);
+            respond("success", "Categories fetched successfully.", $categories);
         } else {
             $stmt->close();
             respond("error", "Failed to fetch categories: " . $conn->error, null, 500);
