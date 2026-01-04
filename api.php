@@ -3059,6 +3059,7 @@ switch ($action) {
 
         // Group training parameters
         $isGroupTraining = isset($input['is_group_training']) && $input['is_group_training'] === true;
+        $groupSize = isset($input['group_size']) ? intval($input['group_size']) : 1;
         $groupSizeTierName = isset($input['group_size_tier_name']) ? $conn->real_escape_string($input['group_size_tier_name']) : NULL;
         $pricingModelUsed = NULL;
         $groupRatePerUnit = NULL;
