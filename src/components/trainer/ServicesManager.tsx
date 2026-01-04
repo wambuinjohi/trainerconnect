@@ -445,6 +445,21 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Group Training Manager Modal */}
+      {groupTrainingModalOpen && selectedCategoryForGroupTraining && userId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={event => event.stopPropagation()}>
+            <GroupTrainingManager
+              trainerId={userId}
+              categoryId={selectedCategoryForGroupTraining.id}
+              categoryName={selectedCategoryForGroupTraining.name}
+              onClose={closeGroupTrainingManager}
+              onSave={handleGroupTrainingModalSave}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
