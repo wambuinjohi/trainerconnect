@@ -62,7 +62,11 @@ export const WaitingListManager: React.FC = () => {
 
       const result = await response.json()
       if (result.status === 'success' && result.data) {
-        setCategories(Array.isArray(result.data) ? result.data : [])
+        const cats = Array.isArray(result.data) ? result.data : []
+        setCategories(cats)
+        console.log('Categories loaded:', cats)
+      } else {
+        console.warn('Failed to fetch categories:', result)
       }
     } catch (error) {
       console.error('Failed to fetch categories:', error)
