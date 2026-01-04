@@ -3120,6 +3120,36 @@ switch ($action) {
             }
         }
 
+        // Handle group training pricing
+        if ($isGroupTraining) {
+            if (!$categoryId) {
+                respond("error", "Category ID is required for group training bookings.", null, 400);
+            }
+
+            if (!$groupSizeTierName) {
+                respond("error", "Group size tier name is required for group training bookings.", null, 400);
+            }
+
+            // Load group pricing for this trainer and category
+            $groupPricing = getTrainerGroupPricing($conn, $trainerId, $categoryId);
+
+            if (!$groupPricing) {
+                respond("error", "This trainer does not offer group training for this category.", null, 400);
+            }
+
+            // Validate that the tier exists and get the rate
+            $groupBaseAmount = calculateGroupTrainingBase($groupPricing, $groupSizeTierName, $groupPricing['pricing_model']);
+
+            if ($groupBaseAmount === null) {
+                respond("error", "Invalid group size tier selected.", null, 400);
+            }
+
+            // Set base service amount from group pricing
+            $baseServiceAmount = $groupBaseAmount;
+            $pricingModelUsed = $groupPricing['pricing_model'];
+            $groupRatePerUnit = $groupBaseAmount;
+        }
+
         // Calculate transport fee
         $transportFee = 0;
         if ($clientLocationLat !== null && $clientLocationLng !== null && $trainerLat !== 0 && $trainerLng !== 0) {
