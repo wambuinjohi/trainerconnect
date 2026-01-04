@@ -17,9 +17,16 @@ interface WaitlistEntry {
   email: string
   telephone: string
   is_coach: number
+  category_id?: number
   status: string
   created_at: string
   updated_at: string
+}
+
+interface Category {
+  id: number
+  name: string
+  icon?: string
 }
 
 export const WaitingListManager: React.FC = () => {
