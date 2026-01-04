@@ -328,29 +328,56 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
               </section>
 
               {/* Per-Category Pricing (if multiple categories selected) */}
-              {selectedCategories.length > 1 && (
+              {selectedCategories.length > 0 && (
                 <section className="space-y-4">
                   <h3 className="text-lg font-semibold text-foreground">Category-Specific Pricing</h3>
                   <p className="text-sm text-muted-foreground">
-                    Optionally set different rates for specific categories. Leave empty to use base rate.
+                    Optionally set different rates for specific categories or manage group training. Leave empty to use base rate.
                   </p>
-                  
+
                   <div className="space-y-3">
                     {selectedCategories.map(category => (
-                      <div key={category.id} className="flex items-end gap-3 rounded-md border border-border bg-card p-3">
-                        <div className="flex-1">
-                          <Label className="text-xs uppercase tracking-wide text-muted-foreground">
-                            {category.icon && <span className="mr-2">{category.icon}</span>}
-                            {category.name} hourly rate (Ksh)
-                          </Label>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={categoryPricing[category.id] || ''}
-                            onChange={event => updateCategoryPrice(category.id, event.target.value)}
-                            placeholder={`Leave empty for base rate (Ksh ${baseRate})`}
-                          />
+                      <div key={category.id} className="rounded-md border border-border bg-card p-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-sm font-semibold">
+                              {category.icon && <span className="mr-2">{category.icon}</span>}
+                              {category.name}
+                            </Label>
+                            {groupTrainingEnabledByCategory[category.id] && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Users className="h-3 w-3 mr-1" />
+                                Group Training
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="flex-1">
+                            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                              Hourly rate (Ksh)
+                            </Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={categoryPricing[category.id] || ''}
+                              onChange={event => updateCategoryPrice(category.id, event.target.value)}
+                              placeholder={`Leave empty for base rate (Ksh ${baseRate})`}
+                              className="text-sm mt-1"
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openGroupTrainingManager(category.id, category.name)}
+                              className="gap-2"
+                            >
+                              <Users className="h-4 w-4" />
+                              Group Training
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
