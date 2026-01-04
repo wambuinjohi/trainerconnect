@@ -17,16 +17,25 @@ interface WaitlistEntry {
   email: string
   telephone: string
   is_coach: number
+  category_id?: number
   status: string
   created_at: string
   updated_at: string
 }
 
+interface Category {
+  id: number
+  name: string
+  icon?: string
+}
+
 export const WaitingListManager: React.FC = () => {
   const [entries, setEntries] = useState<WaitlistEntry[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [currentPage, setCurrentPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
@@ -37,9 +46,32 @@ export const WaitingListManager: React.FC = () => {
     email: '',
     telephone: '',
     isCoach: false,
+    categoryId: '',
   })
 
   const pageSize = 10
+
+  const fetchCategories = async () => {
+    try {
+      const apiUrl = getApiUrl()
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_categories' }),
+      })
+
+      const result = await response.json()
+      if (result.status === 'success' && result.data) {
+        const cats = Array.isArray(result.data) ? result.data : []
+        setCategories(cats)
+        console.log('Categories loaded:', cats)
+      } else {
+        console.warn('Failed to fetch categories:', result)
+      }
+    } catch (error) {
+      console.error('Failed to fetch categories:', error)
+    }
+  }
 
   // Helper function to get user type display - handles both string and numeric values
   const getUserTypeDisplay = (isCoach: number | string) => {
@@ -51,6 +83,19 @@ export const WaitingListManager: React.FC = () => {
   const isCoachValue = (isCoach: number | string) => {
     const coachValue = typeof isCoach === 'string' ? parseInt(isCoach, 10) : isCoach
     return coachValue === 1
+  }
+
+  // Helper function to get category name from ID
+  const getCategoryName = (categoryId?: number | string) => {
+    if (!categoryId) return '-'
+    // Convert to number for comparison since database might return string
+    const numericId = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId
+    const category = categories.find(c => c.id === numericId)
+    if (category) {
+      return category.name
+    }
+    console.warn(`Category not found for ID: ${categoryId}, available categories:`, categories)
+    return '-'
   }
 
   const fetchWaitlist = async (page = 0) => {
@@ -96,6 +141,7 @@ export const WaitingListManager: React.FC = () => {
   }
 
   useEffect(() => {
+    fetchCategories()
     fetchWaitlist(0)
   }, [])
 
@@ -128,7 +174,7 @@ export const WaitingListManager: React.FC = () => {
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
@@ -160,6 +206,7 @@ export const WaitingListManager: React.FC = () => {
           email: formData.email,
           telephone: formData.telephone,
           is_coach: formData.isCoach ? 1 : 0,
+          category_id: formData.categoryId ? parseInt(formData.categoryId) : null,
         }),
       })
 
@@ -177,6 +224,7 @@ export const WaitingListManager: React.FC = () => {
           email: '',
           telephone: '',
           isCoach: false,
+          categoryId: '',
         })
         setAddDialogOpen(false)
 
@@ -203,11 +251,12 @@ export const WaitingListManager: React.FC = () => {
   }
 
   const handleDownloadCSV = () => {
-    const headers = ['Name', 'Email', 'Telephone', 'Is Coach', 'Status', 'Joined Date']
+    const headers = ['Name', 'Email', 'Telephone', 'Category', 'Is Coach', 'Status', 'Joined Date']
     const rows = entries.map(entry => [
       entry.name,
       entry.email,
       entry.telephone,
+      getCategoryName(entry.category_id),
       entry.is_coach ? 'Yes' : 'No',
       entry.status,
       new Date(entry.created_at).toLocaleDateString(),
@@ -231,11 +280,14 @@ export const WaitingListManager: React.FC = () => {
     document.body.removeChild(link)
   }
 
-  const filteredEntries = entries.filter(entry =>
-    entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.telephone.includes(searchTerm)
-  )
+  const filteredEntries = entries.filter(entry => {
+    const matchesCategory = !selectedCategory || entry.category_id === parseInt(selectedCategory)
+    const matchesSearch = searchTerm === '' ||
+      entry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      entry.telephone.includes(searchTerm)
+    return matchesCategory && matchesSearch
+  })
 
   const coachCount = entries.filter(e => isCoachValue(e.is_coach)).length
   const clientCount = entries.filter(e => !isCoachValue(e.is_coach)).length
@@ -313,13 +365,31 @@ export const WaitingListManager: React.FC = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Search */}
-          <Input
-            placeholder="Search by name, email, or phone..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-          />
+          {/* Filters */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Input
+                placeholder="Search by name, email, or phone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+            <div>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-trainer-primary"
+              >
+                <option value="">All Categories</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
           {/* Error Message */}
           {error && (
@@ -347,6 +417,7 @@ export const WaitingListManager: React.FC = () => {
                       <th className="text-left py-3 px-4 font-semibold">Name</th>
                       <th className="text-left py-3 px-4 font-semibold">Email</th>
                       <th className="text-left py-3 px-4 font-semibold">Phone</th>
+                      <th className="text-left py-3 px-4 font-semibold">Category</th>
                       <th className="text-center py-3 px-4 font-semibold">Type</th>
                       <th className="text-center py-3 px-4 font-semibold">Status</th>
                       <th className="text-left py-3 px-4 font-semibold">Joined</th>
@@ -359,6 +430,7 @@ export const WaitingListManager: React.FC = () => {
                         <td className="py-3 px-4">{entry.name}</td>
                         <td className="py-3 px-4 text-muted-foreground">{entry.email}</td>
                         <td className="py-3 px-4 font-mono text-sm">{entry.telephone}</td>
+                        <td className="py-3 px-4 text-sm">{getCategoryName(entry.category_id)}</td>
                         <td className="py-3 px-4 text-center">
                           <Badge variant={isCoachValue(entry.is_coach) ? 'default' : 'secondary'}>
                             {getUserTypeDisplay(entry.is_coach)}
@@ -494,6 +566,25 @@ export const WaitingListManager: React.FC = () => {
                 required
                 className="border-input bg-background"
               />
+            </div>
+
+            {/* Category Select */}
+            <div className="space-y-2">
+              <Label htmlFor="add-category">Category (Optional)</Label>
+              <select
+                id="add-category"
+                name="categoryId"
+                value={formData.categoryId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-trainer-primary"
+              >
+                <option value="">Select a category</option>
+                {categories.map(cat => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* User Type Checkbox */}
