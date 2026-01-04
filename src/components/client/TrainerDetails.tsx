@@ -26,6 +26,7 @@ export const TrainerDetails: React.FC<{ trainer: any, onClose: () => void }> = (
   const { user } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [categories, setCategories] = useState<any[]>([])
+  const [groupTrainingData, setGroupTrainingData] = useState<GroupPricingConfig[]>([])
   const [showBooking, setShowBooking] = useState(false)
   const [showChat, setShowChat] = useState(false)
 
