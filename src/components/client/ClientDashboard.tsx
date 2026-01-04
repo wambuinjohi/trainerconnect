@@ -138,6 +138,29 @@ export const ClientDashboard: React.FC = () => {
     geocode()
   }, [userLocation])
 
+  // Auto-save GPS location to database
+  useEffect(() => {
+    if (!user?.id || !userLocation || !locationName) return
+
+    const saveLocation = async () => {
+      try {
+        const payload = {
+          user_id: user.id,
+          location: locationName,
+          location_label: locationName,
+          location_lat: userLocation.lat,
+          location_lng: userLocation.lng,
+        }
+        await apiRequest('profile_update', payload, { headers: withAuth() })
+        console.debug('Client location saved to database', { locationName, ...userLocation })
+      } catch (err) {
+        console.warn('Failed to save location to database', err)
+      }
+    }
+
+    saveLocation()
+  }, [user?.id, userLocation, locationName])
+
   // Generate suggestions from trainer names
   const suggestions = useMemo(() => {
     if (!searchQuery.trim()) return []
