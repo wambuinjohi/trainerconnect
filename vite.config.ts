@@ -127,7 +127,7 @@ function devApiPlugin() {
         const url = req.url?.split('?')[0] || "";
         if (url !== "/api.php") return next();
 
-          try {
+        try {
             let body = {};
 
             // Handle request body parsing for POST
