@@ -92,22 +92,11 @@ export const TrainerProfileEditor: React.FC<{ onClose?: () => void }> = ({ onClo
     onSuccess: (files) => {
       if (files.length > 0) {
         const uploadedFile = files[0]
-        console.log('[Image Upload] Success:', {
-          fileName: uploadedFile.fileName,
-          newUrl: uploadedFile.url,
-          currentProfileImage: profile.profile_image
-        })
+        console.log('[Image Upload] Success - updating profile_image to:', uploadedFile.url)
         handleChange('profile_image', uploadedFile.url)
         toast({ title: 'Image uploaded', description: 'Profile image has been updated' })
         setUploadingImage(false)
         setUploadProgress(0)
-        // Verify state was updated
-        setTimeout(() => {
-          console.log('[Image Upload] State after update:', {
-            profileImage: profile.profile_image,
-            newUploadedUrl: uploadedFile.url
-          })
-        }, 100)
       }
     },
     onError: (error) => {
