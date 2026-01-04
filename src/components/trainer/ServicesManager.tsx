@@ -95,6 +95,20 @@ const ServicesManager = ({ onClose }: ServicesManagerProps) => {
             }
           })
           setCategoryPricing(pricing)
+
+          // Load group training status for each category
+          const groupTrainingStatus: Record<number, boolean> = {}
+          for (const catId of catIds) {
+            try {
+              const groupPricingData = await apiService.getTrainerGroupPricing(userId, catId)
+              groupTrainingStatus[catId] = !!(groupPricingData?.data && groupPricingData.data.length > 0)
+            } catch {
+              groupTrainingStatus[catId] = false
+            }
+          }
+          if (active) {
+            setGroupTrainingEnabledByCategory(groupTrainingStatus)
+          }
         }
       } catch (err) {
         console.warn('Failed to load data', err)
