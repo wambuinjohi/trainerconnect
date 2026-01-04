@@ -4483,7 +4483,11 @@ switch ($action) {
         $entries = [];
         while ($row = $result->fetch_assoc()) {
             // Ensure category_id is properly typed (null if not set)
-            $row['category_id'] = $row['category_id'] ? intval($row['category_id']) : null;
+            if ($row['category_id']) {
+                $row['category_id'] = intval($row['category_id']);
+            } else {
+                $row['category_id'] = null;
+            }
             $entries[] = $row;
         }
 
@@ -4493,7 +4497,13 @@ switch ($action) {
         $countRow = $countResult->fetch_assoc();
         $totalCount = intval($countRow['total']);
 
-        respond("success", "Waiting list entries fetched successfully.", $entries);
+        respond("success", "Waiting list entries fetched successfully.", [
+            "data" => $entries,
+            "total" => $totalCount,
+            "count" => count($entries),
+            "page" => intval($offset / $limit) + 1,
+            "limit" => $limit
+        ]);
         logEvent('waitlist_get_success', ['count' => count($entries), 'total' => $totalCount]);
         break;
 
