@@ -1122,16 +1122,32 @@ export const AdminDashboard: React.FC = () => {
                 <p className="text-sm font-medium text-foreground mb-1">Booking Reference</p>
                 <p className="text-sm text-muted-foreground">{activeIssue.booking_reference || 'Not provided'}</p>
               </div>
-              {(activeIssue.attachments || []).length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {(activeIssue.attachments || []).map((a:any,i:number)=>(
-                      <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
-                    ))}
+              {(() => {
+                const attachments = activeIssue.attachments
+                let attachmentList: string[] = []
+                if (attachments) {
+                  if (typeof attachments === 'string') {
+                    try {
+                      attachmentList = JSON.parse(attachments)
+                      if (!Array.isArray(attachmentList)) attachmentList = [attachments]
+                    } catch {
+                      attachmentList = [attachments]
+                    }
+                  } else if (Array.isArray(attachments)) {
+                    attachmentList = attachments
+                  }
+                }
+                return attachmentList.length > 0 ? (
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {attachmentList.map((a:any,i:number)=>(
+                        <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : null
+              })()}
             </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Close</AlertDialogCancel>
