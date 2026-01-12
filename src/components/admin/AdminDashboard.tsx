@@ -42,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { loadSettings, saveSettings, defaultSettings, defaultMpesaSettings, type PlatformSettings, type MpesaSettings, loadSettingsFromDb, saveSettingsToDb } from '@/lib/settings'
 import { useTheme } from 'next-themes'
 import { apiRequest } from '@/lib/api'
+import { getUploadsBaseUrl } from '@/lib/api-config'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Legend
