@@ -152,6 +152,7 @@ export const AdminDashboard: React.FC = () => {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | DisputeStatus>('all')
   const [activeDispute, setActiveDispute] = useState<Dispute | null>(null)
+  const [displayedDisputeCount, setDisplayedDisputeCount] = useState(10)
   const [analyticsPoints, setAnalyticsPoints] = useState<AnalyticsPoint[]>([])
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([])
   const [adminApiAvailable, setAdminApiAvailable] = useState(false)
@@ -1266,13 +1267,23 @@ export const AdminDashboard: React.FC = () => {
     </div>
   )
 
-  const renderDisputes = () => (
+  const renderDisputes = () => {
+    const sortedDisputes = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.submittedAt).getTime()
+      const dateB = new Date(b.submittedAt).getTime()
+      return dateB - dateA
+    })
+
+    const displayedDisputes = sortedDisputes.slice(0, displayedDisputeCount)
+    const hasMore = sortedDisputes.length > displayedDisputeCount
+
+    return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-foreground">Dispute Management</h1>
         <div className="flex items-center gap-2">
-          <Input placeholder="Search cases, users…" value={query} onChange={(e)=>setQuery(e.target.value)} className="w-52 bg-input border-border" />
-          <Select value={statusFilter} onValueChange={(v)=>setStatusFilter(v as any)}>
+          <Input placeholder="Search cases, users…" value={query} onChange={(e)=>{setQuery(e.target.value); setDisplayedDisputeCount(10)}} className="w-52 bg-input border-border" />
+          <Select value={statusFilter} onValueChange={(v)=>{setStatusFilter(v as any); setDisplayedDisputeCount(10)}}>
             <SelectTrigger className="w-40 bg-input border-border"><SelectValue placeholder="All statuses"/></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
@@ -1296,7 +1307,7 @@ export const AdminDashboard: React.FC = () => {
           <Card className="bg-card border-border">
             <CardContent className="p-6 text-sm text-muted-foreground">No disputes found.</CardContent>
           </Card>
-        ) : filtered.map((dispute) => (
+        ) : displayedDisputes.map((dispute) => (
           <Card key={dispute.id} className="bg-card border-border">
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
@@ -1344,6 +1355,18 @@ export const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         ))}
+
+        {hasMore && (
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={() => setDisplayedDisputeCount(prev => prev + 10)}
+              variant="outline"
+              className="border-border"
+            >
+              Load More Disputes ({displayedDisputeCount} of {sortedDisputes.length})
+            </Button>
+          </div>
+        )}
       </div>
 
       <AlertDialog open={!!activeDispute} onOpenChange={(open) => {
@@ -1408,7 +1431,8 @@ export const AdminDashboard: React.FC = () => {
       )}
 
     </div>
-  )
+    )
+  }
 
   const exportCSV = (filename: string, rows: Record<string, any>[]) => {
     const headers = Object.keys(rows[0] || { month: 'Month', revenue: 0 })
