@@ -152,6 +152,7 @@ export const AdminDashboard: React.FC = () => {
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | DisputeStatus>('all')
   const [activeDispute, setActiveDispute] = useState<Dispute | null>(null)
+  const [displayedDisputeCount, setDisplayedDisputeCount] = useState(10)
   const [analyticsPoints, setAnalyticsPoints] = useState<AnalyticsPoint[]>([])
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([])
   const [adminApiAvailable, setAdminApiAvailable] = useState(false)
