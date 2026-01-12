@@ -30,8 +30,8 @@ const FOREGROUND_SIZES = {
 };
 
 async function generateIcons() {
-  const svgPath = path.join(__dirname, '../public/icons/icon-512x512.svg');
-  
+  const svgPath = path.join(__dirname, '../public/icons/trainer-logo.svg');
+
   if (!fs.existsSync(svgPath)) {
     console.error(`❌ SVG file not found: ${svgPath}`);
     process.exit(1);
