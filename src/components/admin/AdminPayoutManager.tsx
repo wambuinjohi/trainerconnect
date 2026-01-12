@@ -208,13 +208,14 @@ export const AdminPayoutManager: React.FC = () => {
       </Card>
 
       {/* Tabs */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={activeTab === 'pending' ? 'default' : 'outline'}
           onClick={() => {
             setActiveTab('pending')
             setPendingPage(1)
           }}
+          className="flex-1 min-w-0"
         >
           Pending Requests ({pendingTotal})
         </Button>
@@ -224,6 +225,7 @@ export const AdminPayoutManager: React.FC = () => {
             setActiveTab('processed')
             setApprovedPage(1)
           }}
+          className="flex-1 min-w-0"
         >
           Approved Requests ({approvedTotal})
         </Button>
