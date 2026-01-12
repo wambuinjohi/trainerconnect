@@ -1,26 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <defs>
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@700&display=swap');
-    </style>
-  </defs>
-  
   <!-- White background -->
   <rect width="512" height="512" fill="white"/>
   
-  <!-- TRAINER text -->
-  <text x="256" y="280" font-size="140" font-weight="700" font-family="Arial, sans-serif" fill="#1a1a1a" text-anchor="middle" letter-spacing="-2">TRAINER</text>
+  <!-- Main text: TRAINER -->
+  <text x="256" y="290" font-size="160" font-weight="900" font-family="Arial, sans-serif" fill="#000000" text-anchor="middle" letter-spacing="-4">TRAINER</text>
   
-  <!-- Green arrow replacing A -->
-  <!-- Arrow body (upward) -->
-  <g>
-    <!-- Arrow line -->
-    <line x1="120" y1="220" x2="120" y2="120" stroke="#22c55e" stroke-width="24" stroke-linecap="round"/>
+  <!-- Green arrow accent for the A -->
+  <!-- This creates a visual mark in the letter A region -->
+  <g transform="translate(140, 200)">
+    <!-- Arrow stem -->
+    <line x1="0" y1="30" x2="0" y2="-20" stroke="#22c55e" stroke-width="18" stroke-linecap="round"/>
     
-    <!-- Arrow head - top point -->
-    <polygon points="120,100 90,140 150,140" fill="#22c55e"/>
+    <!-- Arrow head -->
+    <polygon points="0,-20 -15,5 15,5" fill="#22c55e"/>
   </g>
   
-  <!-- COACH - CONNECT text -->
-  <text x="256" y="360" font-size="36" font-weight="400" font-family="Arial, sans-serif" fill="#22c55e" text-anchor="middle" letter-spacing="2">COACH - CONNECT</text>
+  <!-- Tagline below -->
+  <text x="256" y="380" font-size="40" font-weight="600" font-family="Arial, sans-serif" fill="#22c55e" text-anchor="middle" letter-spacing="1">COACH</text>
+  <text x="256" y="425" font-size="40" font-weight="600" font-family="Arial, sans-serif" fill="#22c55e" text-anchor="middle" letter-spacing="1">CONNECT</text>
 </svg>
