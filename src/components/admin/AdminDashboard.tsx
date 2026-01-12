@@ -1141,7 +1141,13 @@ export const AdminDashboard: React.FC = () => {
                 const normalizeUrl = (url: string): string => {
                   if (!url) return url
                   const uploadsBase = getUploadsBaseUrl()
-                  return url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, uploadsBase)
+                  // Replace old domain
+                  let normalized = url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, uploadsBase)
+                  // Handle relative paths like /uploads/...
+                  if (normalized.startsWith('/uploads/')) {
+                    normalized = uploadsBase + normalized.substring(8)
+                  }
+                  return normalized
                 }
                 const isImageUrl = (url: string): boolean => {
                   const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
