@@ -1137,14 +1137,37 @@ export const AdminDashboard: React.FC = () => {
                     attachmentList = attachments
                   }
                 }
+                const isImageUrl = (url: string): boolean => {
+                  const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
+                  return imageExtensions.test(url)
+                }
+                const images = attachmentList.filter(isImageUrl)
+                const otherFiles = attachmentList.filter(url => !isImageUrl(url))
                 return attachmentList.length > 0 ? (
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
-                    <div className="grid grid-cols-1 gap-2">
-                      {attachmentList.map((a:any,i:number)=>(
-                        <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
-                      ))}
-                    </div>
+                    {images.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs text-muted-foreground mb-2">Images:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {images.map((img:string, i:number)=>(
+                            <a key={i} href={img} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border border-border bg-muted hover:opacity-80 transition-opacity">
+                              <img src={img} alt={`Attachment ${i+1}`} className="w-full h-32 object-cover" onError={(e)=>{ e.currentTarget.src = '' }} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {otherFiles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">Files:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {otherFiles.map((file:string, i:number)=>(
+                            <a key={i} href={file} target="_blank" rel="noreferrer" className="text-sm text-primary underline break-all">Attachment {images.length > 0 ? i + images.length + 1 : i + 1}</a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : null
               })()}
