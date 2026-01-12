@@ -121,6 +121,7 @@ export function clearApiUrl(): void {
 export const API_CONFIG = {
   getUrl: getApiUrl,
   getBaseUrl: getApiBaseUrl,
+  getUploadsUrl: getUploadsBaseUrl,
   setUrl: setApiUrl,
   clearUrl: clearApiUrl,
   timeout: 30000,
