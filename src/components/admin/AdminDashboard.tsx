@@ -1140,7 +1140,8 @@ export const AdminDashboard: React.FC = () => {
                 }
                 const normalizeUrl = (url: string): string => {
                   if (!url) return url
-                  return url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, 'https://trainercoachconnect.com/uploads')
+                  const uploadsBase = getUploadsBaseUrl()
+                  return url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, uploadsBase)
                 }
                 const isImageUrl = (url: string): boolean => {
                   const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
