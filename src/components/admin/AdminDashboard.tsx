@@ -42,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { loadSettings, saveSettings, defaultSettings, defaultMpesaSettings, type PlatformSettings, type MpesaSettings, loadSettingsFromDb, saveSettingsToDb } from '@/lib/settings'
 import { useTheme } from 'next-themes'
 import { apiRequest } from '@/lib/api'
+import { getUploadsBaseUrl } from '@/lib/api-config'
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Legend
@@ -1103,6 +1104,93 @@ export const AdminDashboard: React.FC = () => {
             )}
           </div>
         )}
+
+      <AlertDialog open={!!activeIssue} onOpenChange={(open) => {
+        if (!open) setActiveIssue(null)
+      }}>
+        {activeIssue && (
+          <AlertDialogContent className="max-w-lg">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Issue {activeIssue.id}</AlertDialogTitle>
+              <AlertDialogDescription>Type: {activeIssue.complaint_type}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-3 py-4">
+              <div>
+                <p className="text-sm font-medium text-foreground mb-2">Description</p>
+                <p className="text-sm text-muted-foreground">{activeIssue.description}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground mb-1">Booking Reference</p>
+                <p className="text-sm text-muted-foreground">{activeIssue.booking_reference || 'Not provided'}</p>
+              </div>
+              {(() => {
+                const attachments = activeIssue.attachments
+                let attachmentList: string[] = []
+                if (attachments) {
+                  if (typeof attachments === 'string') {
+                    try {
+                      attachmentList = JSON.parse(attachments)
+                      if (!Array.isArray(attachmentList)) attachmentList = [attachments]
+                    } catch {
+                      attachmentList = [attachments]
+                    }
+                  } else if (Array.isArray(attachments)) {
+                    attachmentList = attachments
+                  }
+                }
+                const normalizeUrl = (url: string): string => {
+                  if (!url) return url
+                  const uploadsBase = getUploadsBaseUrl()
+                  // Replace old domain
+                  let normalized = url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, uploadsBase)
+                  // Handle relative paths like /uploads/...
+                  if (normalized.startsWith('/uploads/')) {
+                    normalized = uploadsBase + normalized.substring(8)
+                  }
+                  return normalized
+                }
+                const isImageUrl = (url: string): boolean => {
+                  const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
+                  return imageExtensions.test(url)
+                }
+                const images = attachmentList.filter(isImageUrl).map(normalizeUrl)
+                const otherFiles = attachmentList.filter(url => !isImageUrl(url)).map(normalizeUrl)
+                return attachmentList.length > 0 ? (
+                  <div>
+                    <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
+                    {images.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs text-muted-foreground mb-2">Images:</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {images.map((img:string, i:number)=>(
+                            <a key={i} href={img} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-md border border-border bg-muted hover:opacity-80 transition-opacity">
+                              <img src={img} alt={`Attachment ${i+1}`} className="w-full h-32 object-cover" onError={(e)=>{ e.currentTarget.src = '' }} />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {otherFiles.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-2">Files:</p>
+                        <div className="grid grid-cols-1 gap-2">
+                          {otherFiles.map((file:string, i:number)=>(
+                            <a key={i} href={file} target="_blank" rel="noreferrer" className="text-sm text-primary underline break-all">Attachment {images.length > 0 ? i + images.length + 1 : i + 1}</a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null
+              })()}
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button onClick={()=>{ markIssueResolved(activeIssue); setActiveIssue(null) }} className="bg-gradient-primary text-white">Mark Resolved</Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        )}
+      </AlertDialog>
       </div>
     )
   }
@@ -1318,43 +1406,6 @@ export const AdminDashboard: React.FC = () => {
           }}
         />
       )}
-
-      <AlertDialog open={!!activeIssue} onOpenChange={(open) => {
-        if (!open) setActiveIssue(null)
-      }}>
-        {activeIssue && (
-          <AlertDialogContent className="max-w-lg">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Issue {activeIssue.id}</AlertDialogTitle>
-              <AlertDialogDescription>Type: {activeIssue.complaint_type}</AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-3 py-4">
-              <div>
-                <p className="text-sm font-medium text-foreground mb-2">Description</p>
-                <p className="text-sm text-muted-foreground">{activeIssue.description}</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground mb-1">Booking Reference</p>
-                <p className="text-sm text-muted-foreground">{activeIssue.booking_reference || 'Not provided'}</p>
-              </div>
-              {(activeIssue.attachments || []).length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
-                  <div className="grid grid-cols-1 gap-2">
-                    {(activeIssue.attachments || []).map((a:any,i:number)=>(
-                      <a key={i} href={a} target="_blank" rel="noreferrer" className="text-sm text-primary underline">Attachment {i+1}</a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Close</AlertDialogCancel>
-              <Button onClick={()=>{ markIssueResolved(activeIssue); setActiveIssue(null) }} className="bg-gradient-primary text-white">Mark Resolved</Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        )}
-      </AlertDialog>
 
     </div>
   )
