@@ -24,6 +24,14 @@ export function isAndroidApp(): boolean {
 }
 
 /**
+ * Get the uploads base URL
+ * This is used for displaying images and files uploaded to the server
+ */
+export function getUploadsBaseUrl(): string {
+  return 'https://trainercoachconnect.com/uploads';
+}
+
+/**
  * Get the base API URL based on environment
  * Priority order:
  * 1. Stored preference in localStorage
