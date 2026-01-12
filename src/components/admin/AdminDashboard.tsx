@@ -1137,12 +1137,16 @@ export const AdminDashboard: React.FC = () => {
                     attachmentList = attachments
                   }
                 }
+                const normalizeUrl = (url: string): string => {
+                  if (!url) return url
+                  return url.replace(/https?:\/\/skatryk\.co\.ke\/uploads/gi, 'https://trainercoachconnect.com/uploads')
+                }
                 const isImageUrl = (url: string): boolean => {
                   const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i
                   return imageExtensions.test(url)
                 }
-                const images = attachmentList.filter(isImageUrl)
-                const otherFiles = attachmentList.filter(url => !isImageUrl(url))
+                const images = attachmentList.filter(isImageUrl).map(normalizeUrl)
+                const otherFiles = attachmentList.filter(url => !isImageUrl(url)).map(normalizeUrl)
                 return attachmentList.length > 0 ? (
                   <div>
                     <p className="text-sm font-medium text-foreground mb-2">Attachments</p>
