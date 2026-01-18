@@ -160,11 +160,11 @@ export const ServiceAreaEditor: React.FC<{ onClose?: () => void }> = ({ onClose 
                 <Label>Service radius (km)</Label>
                 <Input type="number" value={String(radius)} onChange={(e)=>setRadius(e.target.value ? Number(e.target.value) : '')} />
               </div>
-              <div className="flex justify-between">
-                <Button variant="ghost" onClick={useMyLocation}>Use my current location</Button>
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => onClose?.()} disabled={loading}>Cancel</Button>
-                  <Button onClick={save} disabled={loading}>{loading ? 'Saving...' : 'Save'}</Button>
+              <div className="space-y-2 sm:space-y-0 sm:flex sm:justify-between sm:items-center">
+                <Button variant="ghost" onClick={useMyLocation} className="w-full sm:w-auto">Use my current location</Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={() => onClose?.()} disabled={loading} className="flex-1 sm:flex-none">Cancel</Button>
+                  <Button onClick={save} disabled={loading} className="flex-1 sm:flex-none">{loading ? 'Saving...' : 'Save'}</Button>
                 </div>
               </div>
             </div>
