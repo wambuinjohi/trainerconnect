@@ -208,16 +208,18 @@ export const AdminPayoutManager: React.FC = () => {
       </Card>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Button
           variant={activeTab === 'pending' ? 'default' : 'outline'}
           onClick={() => {
             setActiveTab('pending')
             setPendingPage(1)
           }}
-          className="flex-1 min-w-0"
+          className="w-full sm:flex-1 sm:min-w-0 text-sm sm:text-base"
         >
-          Pending Requests ({pendingTotal})
+          <span className="hidden sm:inline">Pending</span>
+          <span className="sm:hidden">Pending ({pendingTotal})</span>
+          <span className="hidden sm:inline"> ({pendingTotal})</span>
         </Button>
         <Button
           variant={activeTab === 'processed' ? 'default' : 'outline'}
@@ -225,9 +227,11 @@ export const AdminPayoutManager: React.FC = () => {
             setActiveTab('processed')
             setApprovedPage(1)
           }}
-          className="flex-1 min-w-0"
+          className="w-full sm:flex-1 sm:min-w-0 text-sm sm:text-base"
         >
-          Approved Requests ({approvedTotal})
+          <span className="hidden sm:inline">Approved</span>
+          <span className="sm:hidden">Approved ({approvedTotal})</span>
+          <span className="hidden sm:inline"> ({approvedTotal})</span>
         </Button>
       </div>
 
