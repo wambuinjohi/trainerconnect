@@ -400,6 +400,54 @@ function paymentsApiPlugin() {
             return;
           }
 
+          if (url.startsWith("/payments/mpesa/stk-query")) {
+            const checkoutRequestId = String(body.checkout_request_id || "").trim();
+            if (!checkoutRequestId) {
+              res.statusCode = 400;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: false, error: "Missing checkout_request_id" }));
+              return;
+            }
+
+            try {
+              const queryUrl =
+                envMode === "production"
+                  ? "https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query"
+                  : "https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query";
+
+              const timestamp = new Date()
+                .toISOString()
+                .replace(/[-:.TZ]/g, "")
+                .slice(0, 14);
+              const password = Buffer.from(`${creds.shortcode}${creds.passkey}${timestamp}`).toString("base64");
+
+              const queryRes = await fetch(queryUrl, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  BusinessShortCode: creds.shortcode,
+                  Password: password,
+                  Timestamp: timestamp,
+                  CheckoutRequestID: checkoutRequestId,
+                }),
+              });
+
+              const queryJson = await queryRes.json();
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: true, result: queryJson }));
+              return;
+            } catch (e: any) {
+              console.error("STK Query error:", e);
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: false, error: e.message }));
+              return;
+            }
+          }
+
           res.statusCode = 404;
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ ok: false, error: "Unknown payments route" }));

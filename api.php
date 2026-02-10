@@ -4023,14 +4023,19 @@ switch ($action) {
 
     // INITIATE STK PUSH PAYMENT
     case 'stk_push_initiate':
+        error_log("[API STK PUSH] === STK PUSH INITIATE REQUEST START ===");
+        error_log("[API STK PUSH] Request input: phone=" . ($input['phone'] ?? 'N/A') . ", amount=" . ($input['amount'] ?? 'N/A') . ", booking_id=" . ($input['booking_id'] ?? 'none'));
+
         if (!isset($input['phone']) || !isset($input['amount'])) {
             respond("error", "Missing required fields: phone, amount.", null, 400);
         }
 
         $credValidation = validateMpesaCredentialsConfigured();
         if (!$credValidation['valid']) {
+            error_log("[API STK PUSH ERROR] M-Pesa credentials validation failed: " . $credValidation['error']);
             respond("error", $credValidation['error'], null, 500);
         }
+        error_log("[API STK PUSH] Credentials validation passed");
 
         $phone = $conn->real_escape_string($input['phone']);
         $amount = floatval($input['amount']);
@@ -4042,28 +4047,37 @@ switch ($action) {
         if (substr($phone, 0, 1) !== '2') {
             $phone = '254' . substr($phone, -9);
         }
+        error_log("[API STK PUSH] Phone normalized: original=" . $input['phone'] . ", normalized=" . $phone);
 
         if (strlen($phone) !== 12 || !is_numeric($phone)) {
+            error_log("[API STK PUSH ERROR] Invalid phone number format: " . $phone);
             respond("error", "Invalid phone number format.", null, 400);
         }
 
         if ($amount < 5 || $amount > 150000) {
+            error_log("[API STK PUSH ERROR] Amount validation failed: amount=" . $amount);
             respond("error", "Amount must be between 5 and 150000.", null, 400);
         }
+        error_log("[API STK PUSH] Amount validated: " . $amount);
 
         $mpesaCreds = getMpesaCredentials();
         if (!$mpesaCreds) {
+            error_log("[API STK PUSH ERROR] Failed to retrieve M-Pesa credentials from database");
             respond("error", "M-Pesa credentials not properly configured.", null, 500);
         }
+        error_log("[API STK PUSH] M-Pesa credentials retrieved, environment: " . ($mpesaCreds['environment'] ?? 'sandbox') . ", shortcode: " . ($mpesaCreds['shortcode'] ?? 'N/A'));
 
         $callbackUrl = null;
         if (!empty($mpesaCreds['result_url'])) {
             $callbackUrl = $mpesaCreds['result_url'];
         }
+        error_log("[API STK PUSH] Callback URL configured: " . ($callbackUrl ?? 'default'));
 
+        error_log("[API STK PUSH] Calling initiateSTKPush() with: phone=" . $phone . ", amount=" . $amount . ", reference=" . $accountReference);
         $stkResult = initiateSTKPush($mpesaCreds, $phone, $amount, $accountReference, $callbackUrl);
 
         if (!$stkResult['success']) {
+            error_log("[API STK PUSH ERROR] STK push failed: " . $stkResult['error']);
             logPaymentEvent('stk_push_failed', [
                 'phone' => $phone,
                 'amount' => $amount,
@@ -4071,6 +4085,7 @@ switch ($action) {
             ]);
             respond("error", $stkResult['error'], null, 500);
         }
+        error_log("[API STK PUSH] STK push succeeded, CheckoutRequestID: " . ($stkResult['checkout_request_id'] ?? 'N/A') . ", MerchantRequestID: " . ($stkResult['merchant_request_id'] ?? 'N/A'));
 
         $sessionId = 'stk_' . uniqid();
         $now = date('Y-m-d H:i:s');
@@ -4119,6 +4134,7 @@ switch ($action) {
             respond("error", "Failed to save session: " . $conn->error, null, 500);
         }
         $stmt->close();
+        error_log("[API STK PUSH] Session created: session_id=" . $sessionId . ", checkout_request_id=" . $checkoutRequestId);
 
         logPaymentEvent('stk_push_initiated', [
             'session_id' => $sessionId,
@@ -4127,10 +4143,14 @@ switch ($action) {
             'checkout_request_id' => $checkoutRequestId,
             'credentials_source' => $mpesaCreds['source']
         ]);
+        error_log("[API STK PUSH] === STK PUSH INITIATE REQUEST END - SUCCESS ===");
 
         respond("success", "STK push initiated successfully.", [
             "session_id" => $sessionId,
-            "CheckoutRequestID" => $checkoutRequestId,
+            "checkout_request_id" => $checkoutRequestId,
+            "merchant_request_id" => $stkResult['merchant_request_id'] ?? '',
+            "response_code" => $stkResult['response_code'] ?? '',
+            "response_description" => $stkResult['response_description'] ?? '',
             "phone" => $phone,
             "amount" => $amount
         ]);
@@ -4138,14 +4158,19 @@ switch ($action) {
 
     // QUERY STK PUSH STATUS
     case 'stk_push_query':
+        error_log("[API STK QUERY] === STK QUERY REQUEST START ===");
+        error_log("[API STK QUERY] Request input: checkout_request_id=" . ($input['checkout_request_id'] ?? 'N/A'));
+
         if (!isset($input['checkout_request_id'])) {
             respond("error", "Missing checkout_request_id.", null, 400);
         }
 
         $credValidation = validateMpesaCredentialsConfigured();
         if (!$credValidation['valid']) {
+            error_log("[API STK QUERY ERROR] Credentials validation failed: " . $credValidation['error']);
             respond("error", $credValidation['error'], null, 500);
         }
+        error_log("[API STK QUERY] Credentials validation passed");
 
         $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
 
@@ -4169,12 +4194,17 @@ switch ($action) {
 
         $mpesaCreds = getMpesaCredentials();
         if (!$mpesaCreds) {
+            error_log("[API STK QUERY ERROR] Failed to retrieve M-Pesa credentials");
             respond("error", "M-Pesa credentials not configured.", null, 500);
         }
+        error_log("[API STK QUERY] M-Pesa credentials retrieved, environment: " . ($mpesaCreds['environment'] ?? 'sandbox'));
 
+        error_log("[API STK QUERY] Calling querySTKPushStatus() for checkout_request_id=" . $checkoutRequestId);
         $queryResult = querySTKPushStatus($mpesaCreds, $checkoutRequestId);
+        error_log("[API STK QUERY] Query result: success=" . ($queryResult['success'] ? 'true' : 'false') . ", result_code=" . ($queryResult['result_code'] ?? 'N/A'));
 
         if (!$queryResult['success']) {
+            error_log("[API STK QUERY] Query failed, returning cached data");
             logPaymentEvent('stk_push_query_failed', [
                 'checkout_request_id' => $checkoutRequestId,
                 'error' => $queryResult['error']
@@ -4191,6 +4221,7 @@ switch ($action) {
             ]);
         }
 
+        error_log("[API STK QUERY] === STK QUERY REQUEST END - SUCCESS ===");
         respond("success", "STK push status retrieved.", [
             "session_id" => $session['id'],
             "status" => $queryResult['result_code'] === '0' ? 'success' : 'pending',
