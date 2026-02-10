@@ -20,16 +20,16 @@ function getMpesaCredentials() {
         $settings = json_decode($row['value'], true);
         if ($settings && !empty($settings['consumerKey']) && !empty($settings['consumerSecret'])) {
             return [
-                'consumer_key' => $settings['consumerKey'],
-                'consumer_secret' => $settings['consumerSecret'],
-                'shortcode' => $settings['shortcode'] ?? '',
-                'passkey' => $settings['passkey'] ?? '',
-                'environment' => $settings['environment'] ?? 'sandbox',
-                'result_url' => $settings['resultUrl'] ?? '',
-                'initiator_name' => $settings['initiatorName'] ?? '',
-                'security_credential' => $settings['securityCredential'] ?? '',
-                'c2b_callback_url' => $settings['c2bCallbackUrl'] ?? '',
-                'b2c_callback_url' => $settings['b2cCallbackUrl'] ?? '',
+                'consumer_key' => trim($settings['consumerKey']),
+                'consumer_secret' => trim($settings['consumerSecret']),
+                'shortcode' => trim($settings['shortcode'] ?? ''),
+                'passkey' => trim($settings['passkey'] ?? ''),
+                'environment' => trim($settings['environment'] ?? 'sandbox'),
+                'result_url' => trim($settings['resultUrl'] ?? ''),
+                'initiator_name' => trim($settings['initiatorName'] ?? ''),
+                'security_credential' => trim($settings['securityCredential'] ?? ''),
+                'c2b_callback_url' => trim($settings['c2bCallbackUrl'] ?? ''),
+                'b2c_callback_url' => trim($settings['b2cCallbackUrl'] ?? ''),
                 'source' => 'admin_settings'
             ];
         }
@@ -37,16 +37,16 @@ function getMpesaCredentials() {
     
     // Fallback to environment variables
     $envCreds = [
-        'consumer_key' => getenv('MPESA_CONSUMER_KEY'),
-        'consumer_secret' => getenv('MPESA_CONSUMER_SECRET'),
-        'shortcode' => getenv('MPESA_SHORTCODE'),
-        'passkey' => getenv('MPESA_PASSKEY'),
-        'environment' => getenv('MPESA_ENVIRONMENT') ?? 'sandbox',
-        'result_url' => getenv('MPESA_RESULT_URL'),
-        'initiator_name' => getenv('MPESA_INITIATOR_NAME') ?? '',
-        'security_credential' => getenv('MPESA_SECURITY_CREDENTIAL') ?? '',
-        'c2b_callback_url' => getenv('MPESA_C2B_CALLBACK_URL') ?? '',
-        'b2c_callback_url' => getenv('MPESA_B2C_CALLBACK_URL') ?? '',
+        'consumer_key' => trim(getenv('MPESA_CONSUMER_KEY') ?: ''),
+        'consumer_secret' => trim(getenv('MPESA_CONSUMER_SECRET') ?: ''),
+        'shortcode' => trim(getenv('MPESA_SHORTCODE') ?: ''),
+        'passkey' => trim(getenv('MPESA_PASSKEY') ?: ''),
+        'environment' => trim(getenv('MPESA_ENVIRONMENT') ?: 'sandbox'),
+        'result_url' => trim(getenv('MPESA_RESULT_URL') ?: ''),
+        'initiator_name' => trim(getenv('MPESA_INITIATOR_NAME') ?: ''),
+        'security_credential' => trim(getenv('MPESA_SECURITY_CREDENTIAL') ?: ''),
+        'c2b_callback_url' => trim(getenv('MPESA_C2B_CALLBACK_URL') ?: ''),
+        'b2c_callback_url' => trim(getenv('MPESA_B2C_CALLBACK_URL') ?: ''),
         'source' => 'environment'
     ];
     
