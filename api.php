@@ -3227,8 +3227,8 @@ switch ($action) {
                 total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
                 vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
                 client_location_lat, client_location_lng, is_group_training, group_size_tier_name,
-                pricing_model_used, group_rate_per_unit, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pricing_model_used, group_rate_per_unit, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         // For backward compatibility, use the new fee breakdown values
@@ -3236,12 +3236,12 @@ switch ($action) {
         $vatAmountForDb = 0; // No VAT in new calculation
 
         $stmt->bind_param(
-            "sssisiiidddddddsddissddss",
+            "sssisiiisddddddssddiissds",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
             $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
             $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
             $clientLocationLat, $clientLocationLng, $isGroupTraining, $groupSizeTierName,
-            $pricingModelUsed, $groupRatePerUnit, $now, $now
+            $pricingModelUsed, $groupRatePerUnit, $now
         );
 
         if ($stmt->execute()) {
