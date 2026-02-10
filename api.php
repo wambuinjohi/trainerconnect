@@ -3236,7 +3236,7 @@ switch ($action) {
         $vatAmountForDb = 0; // No VAT in new calculation
 
         $stmt->bind_param(
-            "sssisiiidddddddsddissdds",
+            "sssisiiidddddddsddissddss",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
             $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
             $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
