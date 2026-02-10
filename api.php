@@ -5039,8 +5039,6 @@ switch ($action) {
 
     // INITIATE STK PUSH PAYMENT
     case 'mpesa_stk_initiate':
-        require_once __DIR__ . '/mpesa_helper.php';
-
         if (!isset($input['phone']) || !isset($input['amount'])) {
             respond("error", "Missing phone or amount.", null, 400);
         }
@@ -5070,8 +5068,6 @@ switch ($action) {
 
     // QUERY STK PUSH STATUS
     case 'mpesa_stk_query':
-        require_once __DIR__ . '/mpesa_helper.php';
-
         if (!isset($input['checkout_request_id'])) {
             respond("error", "Missing checkout_request_id.", null, 400);
         }

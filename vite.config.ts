@@ -274,6 +274,34 @@ function devApiPlugin() {
               }));
               return;
 
+            // M-Pesa STK Push Initiate
+            case "mpesa_stk_initiate":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "STK push initiated successfully.",
+                data: {
+                  checkout_request_id: "ws_CO_" + Math.random().toString(36).substring(2, 15),
+                  merchant_request_id: "16813-1590513-5 ",
+                  response_code: "0",
+                  response_description: "Success. Request accepted for processing"
+                }
+              }));
+              return;
+
+            // M-Pesa STK Push Query
+            case "mpesa_stk_query":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "STK push status queried successfully.",
+                data: {
+                  result_code: 0,
+                  result_description: "The service request has been processed successfully.",
+                  merchant_request_id: "16813-1590513-5",
+                  checkout_request_id: "ws_CO_" + Math.random().toString(36).substring(2, 15)
+                }
+              }));
+              return;
+
             // Default: return success for any unknown action
             default:
               console.warn(`[Dev API] Unknown action: ${action}`);
