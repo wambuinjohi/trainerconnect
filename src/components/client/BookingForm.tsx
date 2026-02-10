@@ -58,7 +58,7 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
     if (!availability) return
 
     const selectedDate = new Date(date)
-    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'lowercase' })
+    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
     const slots = availability[dayName]
 
     if (!slots || !Array.isArray(slots) || slots.length === 0) {
