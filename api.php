@@ -2925,11 +2925,10 @@ switch ($action) {
                 $values[] = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             }
 
-            $sql .= ", created_at, updated_at) VALUES (";
-            $placeholders = array_fill(0, count($values) + 2, "?");
+            $sql .= ", created_at) VALUES (";
+            $placeholders = array_fill(0, count($values) + 1, "?");
             $sql .= implode(",", $placeholders) . ")";
-            $params .= "ss";
-            $values[] = $now;
+            $params .= "s";
             $values[] = $now;
 
             $stmt = $conn->prepare($sql);
@@ -3252,7 +3251,7 @@ switch ($action) {
                 'trainer_id' => $trainerId,
                 'base_service_amount' => $baseServiceAmount,
                 'transport_fee' => $transportFee,
-                'platform_fee' => $platformFee,
+                'platform_fee' => $platformFeeForDb,
                 'total_amount' => $totalAmount,
                 'trainer_net' => $trainerNetAmount
             ];
