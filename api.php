@@ -5033,6 +5033,70 @@ switch ($action) {
         }
         break;
 
+    // ============================================================================
+    // M-PESA STK PUSH PAYMENT ENDPOINTS
+    // ============================================================================
+
+    // INITIATE STK PUSH PAYMENT
+    case 'mpesa_stk_initiate':
+        require_once __DIR__ . '/mpesa_helper.php';
+
+        if (!isset($input['phone']) || !isset($input['amount'])) {
+            respond("error", "Missing phone or amount.", null, 400);
+        }
+
+        $phone = $conn->real_escape_string($input['phone']);
+        $amount = intval($input['amount']);
+        $accountReference = $conn->real_escape_string($input['account_reference'] ?? 'booking');
+
+        $credentials = getMpesaCredentials();
+        if (!$credentials) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
+
+        if ($result['success']) {
+            respond("success", "STK push initiated successfully.", [
+                "checkout_request_id" => $result['checkout_request_id'],
+                "merchant_request_id" => $result['merchant_request_id'],
+                "response_code" => $result['response_code'],
+                "response_description" => $result['response_description']
+            ]);
+        } else {
+            respond("error", $result['error'] ?? "Failed to initiate STK push.", null, 500);
+        }
+        break;
+
+    // QUERY STK PUSH STATUS
+    case 'mpesa_stk_query':
+        require_once __DIR__ . '/mpesa_helper.php';
+
+        if (!isset($input['checkout_request_id'])) {
+            respond("error", "Missing checkout_request_id.", null, 400);
+        }
+
+        $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
+
+        $credentials = getMpesaCredentials();
+        if (!$credentials) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $result = querySTKPushStatus($credentials, $checkoutRequestId);
+
+        if ($result['success']) {
+            respond("success", "STK push status queried successfully.", [
+                "result_code" => $result['result_code'],
+                "result_description" => $result['result_description'],
+                "merchant_request_id" => $result['merchant_request_id'],
+                "checkout_request_id" => $result['checkout_request_id']
+            ]);
+        } else {
+            respond("error", $result['error'] ?? "Failed to query STK push status.", null, 500);
+        }
+        break;
+
     // UNKNOWN ACTION
     default:
         respond("error", "Invalid action '$action'.", null, 400);
