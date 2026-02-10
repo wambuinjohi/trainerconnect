@@ -4130,7 +4130,10 @@ switch ($action) {
 
         respond("success", "STK push initiated successfully.", [
             "session_id" => $sessionId,
-            "CheckoutRequestID" => $checkoutRequestId,
+            "checkout_request_id" => $checkoutRequestId,
+            "merchant_request_id" => $stkResult['merchant_request_id'] ?? '',
+            "response_code" => $stkResult['response_code'] ?? '',
+            "response_description" => $stkResult['response_description'] ?? '',
             "phone" => $phone,
             "amount" => $amount
         ]);
