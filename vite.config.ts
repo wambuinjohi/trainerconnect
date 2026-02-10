@@ -274,6 +274,17 @@ function devApiPlugin() {
               }));
               return;
 
+            // Pass through M-Pesa actions to real backend
+            case "mpesa_stk_initiate":
+            case "mpesa_stk_query":
+              // Don't handle these in dev - let them go to real backend
+              res.statusCode = 404;
+              res.end(JSON.stringify({
+                status: "error",
+                message: `Action '${action}' not mocked in development - use real backend`
+              }));
+              return;
+
             // Default: return success for any unknown action
             default:
               console.warn(`[Dev API] Unknown action: ${action}`);
@@ -470,7 +481,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    mode === 'development' && devApiPlugin(),
+    // mode === 'development' && devApiPlugin(),  // Disabled - using real backend API instead
     mode === 'development' && adminApiPlugin(),
     mode === 'development' && paymentsApiPlugin(),
     mode === 'development' && componentTagger(),

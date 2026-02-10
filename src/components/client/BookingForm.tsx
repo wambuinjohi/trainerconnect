@@ -58,7 +58,7 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
     if (!availability) return
 
     const selectedDate = new Date(date)
-    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'lowercase' })
+    const dayName = selectedDate.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
     const slots = availability[dayName]
 
     if (!slots || !Array.isArray(slots) || slots.length === 0) {
@@ -218,11 +218,18 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
       if (payMethod === 'mpesa') {
         if (!mpesaPhone.trim()) { toast({ title: 'Phone required', description: 'Enter your M-Pesa phone number (e.g., 2547XXXXXXX)', variant: 'destructive' }); throw new Error('phone required') }
         toast({ title: 'M-Pesa STK', description: 'Check your phone and enter PIN to approve.' })
-        const mpesaSettings = loadSettings().mpesa
-        const initRes = await fetch('/payments/mpesa/stk-initiate', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ phone: mpesaPhone.trim(), amount: clientTotal, booking_id: bookingData?.id, account_reference: bookingData?.id || 'booking', transaction_desc: 'Training session payment', mpesa_creds: mpesaSettings }) })
-        const initJson = await initRes.json().catch(()=>null)
-        if (!initRes.ok || !initJson?.ok) { toast({ title: 'Payment failed', description: initJson?.error || 'Failed to initiate STK push', variant: 'destructive' }); throw new Error(initJson?.error || 'init failed') }
-        const checkoutId = initJson?.result?.CheckoutRequestID || ''
+
+        let initResult: any = null
+        try {
+          initResult = await apiRequest('mpesa_stk_initiate', { phone: mpesaPhone.trim(), amount: clientTotal, account_reference: bookingData?.id || 'booking' }, { headers: withAuth() })
+        } catch (e: any) {
+          console.error('STK initiate error:', e)
+          toast({ title: 'Payment error', description: e.message || 'Failed to initiate STK push', variant: 'destructive' })
+          throw e
+        }
+
+        if (!initResult) { toast({ title: 'Payment error', description: 'No response from payment server', variant: 'destructive' }); throw new Error('no response from init') }
+        const checkoutId = initResult?.checkout_request_id || ''
         if (!checkoutId) { toast({ title: 'Payment error', description: 'Missing CheckoutRequestID', variant: 'destructive' }); throw new Error('no checkout id') }
 
         // Poll for result
@@ -231,14 +238,16 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         let lastResult: any = null
         while (attempts < 20) {
           await new Promise(r => setTimeout(r, 3000))
-          const mpesaSettings = loadSettings().mpesa
-          const qRes = await fetch('/payments/mpesa/stk-query', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ checkout_request_id: checkoutId, mpesa_creds: mpesaSettings }) })
-          const qJson = await qRes.json().catch(()=>null)
-          lastResult = qJson?.result || null
-          const rc = Number((lastResult?.ResultCode ?? lastResult?.ResponseCode) || -1)
-          if (rc === 0) { success = true; break }
-          // Pending codes: 1, 1032 (cancelled), 1037 (timeout) -> continue polling for a short while
-          if (rc === 1032) break
+          try {
+            const qResult = await apiRequest('mpesa_stk_query', { checkout_request_id: checkoutId }, { headers: withAuth() })
+            lastResult = qResult
+            const rc = Number((qResult?.result_code) || -1)
+            if (rc === 0) { success = true; break }
+            // Pending codes: 1, 1032 (cancelled), 1037 (timeout) -> continue polling for a short while
+            if (rc === 1032) break
+          } catch (e) {
+            console.error('STK query error:', e)
+          }
           attempts += 1
         }
 

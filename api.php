@@ -2925,11 +2925,10 @@ switch ($action) {
                 $values[] = isset($notif['action_type']) ? $conn->real_escape_string($notif['action_type']) : null;
             }
 
-            $sql .= ", created_at, updated_at) VALUES (";
-            $placeholders = array_fill(0, count($values) + 2, "?");
+            $sql .= ", created_at) VALUES (";
+            $placeholders = array_fill(0, count($values) + 1, "?");
             $sql .= implode(",", $placeholders) . ")";
-            $params .= "ss";
-            $values[] = $now;
+            $params .= "s";
             $values[] = $now;
 
             $stmt = $conn->prepare($sql);
@@ -3227,8 +3226,8 @@ switch ($action) {
                 total_sessions, status, total_amount, base_service_amount, transport_fee, platform_fee,
                 vat_amount, trainer_net_amount, client_surcharge, notes, client_location_label,
                 client_location_lat, client_location_lng, is_group_training, group_size_tier_name,
-                pricing_model_used, group_rate_per_unit, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                pricing_model_used, group_rate_per_unit, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         // For backward compatibility, use the new fee breakdown values
@@ -3236,12 +3235,12 @@ switch ($action) {
         $vatAmountForDb = 0; // No VAT in new calculation
 
         $stmt->bind_param(
-            "sssisiiidddddddsddissdds",
+            "sssisiiisddddddssddiissds",
             $bookingId, $clientId, $trainerId, $categoryId, $sessionDate, $sessionTime, $durationHours,
             $totalSessions, $status, $totalAmount, $baseServiceAmount, $transportFee, $platformFeeForDb,
             $vatAmountForDb, $trainerNetAmount, $clientSurcharge, $notes, $clientLocationLabel,
             $clientLocationLat, $clientLocationLng, $isGroupTraining, $groupSizeTierName,
-            $pricingModelUsed, $groupRatePerUnit, $now, $now
+            $pricingModelUsed, $groupRatePerUnit, $now
         );
 
         if ($stmt->execute()) {
@@ -3252,7 +3251,7 @@ switch ($action) {
                 'trainer_id' => $trainerId,
                 'base_service_amount' => $baseServiceAmount,
                 'transport_fee' => $transportFee,
-                'platform_fee' => $platformFee,
+                'platform_fee' => $platformFeeForDb,
                 'total_amount' => $totalAmount,
                 'trainer_net' => $trainerNetAmount
             ];
@@ -5031,6 +5030,66 @@ switch ($action) {
         } else {
             logEvent('waitlist_alter_table_failed', ['errors' => $errors]);
             respond("error", "Failed to alter waiting list table.", $errors, 500);
+        }
+        break;
+
+    // ============================================================================
+    // M-PESA STK PUSH PAYMENT ENDPOINTS
+    // ============================================================================
+
+    // INITIATE STK PUSH PAYMENT
+    case 'mpesa_stk_initiate':
+        if (!isset($input['phone']) || !isset($input['amount'])) {
+            respond("error", "Missing phone or amount.", null, 400);
+        }
+
+        $phone = $conn->real_escape_string($input['phone']);
+        $amount = intval($input['amount']);
+        $accountReference = $conn->real_escape_string($input['account_reference'] ?? 'booking');
+
+        $credentials = getMpesaCredentials();
+        if (!$credentials) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
+
+        if ($result['success']) {
+            respond("success", "STK push initiated successfully.", [
+                "checkout_request_id" => $result['checkout_request_id'],
+                "merchant_request_id" => $result['merchant_request_id'],
+                "response_code" => $result['response_code'],
+                "response_description" => $result['response_description']
+            ]);
+        } else {
+            respond("error", $result['error'] ?? "Failed to initiate STK push.", null, 500);
+        }
+        break;
+
+    // QUERY STK PUSH STATUS
+    case 'mpesa_stk_query':
+        if (!isset($input['checkout_request_id'])) {
+            respond("error", "Missing checkout_request_id.", null, 400);
+        }
+
+        $checkoutRequestId = $conn->real_escape_string($input['checkout_request_id']);
+
+        $credentials = getMpesaCredentials();
+        if (!$credentials) {
+            respond("error", "M-Pesa credentials not configured.", null, 500);
+        }
+
+        $result = querySTKPushStatus($credentials, $checkoutRequestId);
+
+        if ($result['success']) {
+            respond("success", "STK push status queried successfully.", [
+                "result_code" => $result['result_code'],
+                "result_description" => $result['result_description'],
+                "merchant_request_id" => $result['merchant_request_id'],
+                "checkout_request_id" => $result['checkout_request_id']
+            ]);
+        } else {
+            respond("error", $result['error'] ?? "Failed to query STK push status.", null, 500);
         }
         break;
 
