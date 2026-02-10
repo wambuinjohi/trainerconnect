@@ -80,38 +80,54 @@ function getMpesaAccessToken($credentials) {
     $consumer_key = $credentials['consumer_key'];
     $consumer_secret = $credentials['consumer_secret'];
     $environment = $credentials['environment'] ?? 'sandbox';
-    
+
     $token_url = ($environment === 'production')
         ? 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
         : 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
-    
+
+    // Log token request details
+    error_log("[MPESA TOKEN REQUEST] Environment: $environment, URL: $token_url, Key: " . substr($consumer_key, 0, 4) . "...");
+
     $auth_string = base64_encode($consumer_key . ':' . $consumer_secret);
-    
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $token_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Basic ' . $auth_string]);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    
+
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
+    // Log response
+    error_log("[MPESA TOKEN RESPONSE] HTTP $http_code, Response: " . substr($response, 0, 500));
+
     if ($http_code !== 200) {
-        error_log("M-Pesa token error: HTTP $http_code - $response");
+        error_log("[MPESA TOKEN ERROR] HTTP $http_code - $response");
         return null;
     }
-    
+
     $token_response = json_decode($response, true);
-    return $token_response['access_token'] ?? null;
+    $access_token = $token_response['access_token'] ?? null;
+
+    if ($access_token) {
+        error_log("[MPESA TOKEN SUCCESS] Token obtained: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+    }
+
+    return $access_token;
 }
 
 // Initiate STK Push payment
 function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
+    error_log("[STK PUSH INIT] Starting STK push initiation");
+    error_log("[STK PUSH INIT] Phone: $phone, Amount: $amount, Reference: $account_reference");
+
     $access_token = getMpesaAccessToken($credentials);
 
     if (!$access_token) {
+        error_log("[STK PUSH ERROR] Failed to obtain access token");
         return [
             'success' => false,
             'error' => 'Failed to obtain M-Pesa access token'
@@ -122,14 +138,20 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     $shortcode = $credentials['shortcode'];
     $passkey = $credentials['passkey'];
 
+    error_log("[STK PUSH INIT] Access token obtained, Shortcode: $shortcode, Environment: $environment");
+
     // Use default C2B callback URL if not provided (for STK Push payments)
     if (empty($callback_url)) {
         $callback_url = 'https://trainercoachconnect.com/c2b_callback.php';
     }
 
+    error_log("[STK PUSH INIT] Callback URL: $callback_url");
+
     $stk_url = ($environment === 'production')
         ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
+
+    error_log("[STK PUSH REQUEST] URL: $stk_url");
 
     $timestamp = date('YmdHis');
     $password = base64_encode($shortcode . $passkey . $timestamp);
@@ -147,7 +169,10 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
         'AccountReference' => $account_reference,
         'TransactionDesc' => 'Payment for service'
     ];
-    
+
+    error_log("[STK PUSH PAYLOAD] " . json_encode($payload));
+    error_log("[STK PUSH AUTH] Using access token: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $stk_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -159,21 +184,25 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     ]);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    
+
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
+    error_log("[STK PUSH RESPONSE] HTTP $http_code, Body: " . substr($response, 0, 1000));
+
     $response_data = json_decode($response, true);
-    
+
     if ($http_code !== 200 || empty($response_data['CheckoutRequestID'])) {
-        error_log("STK Push error: HTTP $http_code - " . json_encode($response_data));
+        error_log("[STK PUSH FAIL] HTTP $http_code - " . json_encode($response_data));
         return [
             'success' => false,
             'error' => $response_data['errorMessage'] ?? 'Failed to initiate STK Push'
         ];
     }
-    
+
+    error_log("[STK PUSH SUCCESS] CheckoutRequestID: " . $response_data['CheckoutRequestID'] . ", MerchantRequestID: " . $response_data['MerchantRequestID'] . ", ResponseCode: " . $response_data['ResponseCode']);
+
     return [
         'success' => true,
         'checkout_request_id' => $response_data['CheckoutRequestID'],
@@ -185,9 +214,12 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
 
 // Query STK Push status
 function querySTKPushStatus($credentials, $checkout_request_id) {
+    error_log("[STK QUERY] Starting query for CheckoutRequestID: $checkout_request_id");
+
     $access_token = getMpesaAccessToken($credentials);
-    
+
     if (!$access_token) {
+        error_log("[STK QUERY ERROR] Failed to obtain access token");
         return [
             'success' => false,
             'error' => 'Failed to obtain M-Pesa access token'
@@ -197,21 +229,26 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     $environment = $credentials['environment'] ?? 'sandbox';
     $shortcode = $credentials['shortcode'];
     $passkey = $credentials['passkey'];
-    
+
     $query_url = ($environment === 'production')
         ? 'https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query'
         : 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query';
-    
+
+    error_log("[STK QUERY REQUEST] URL: $query_url, Environment: $environment");
+
     $timestamp = date('YmdHis');
     $password = base64_encode($shortcode . $passkey . $timestamp);
-    
+
     $payload = [
         'BusinessShortCode' => $shortcode,
         'Password' => $password,
         'Timestamp' => $timestamp,
         'CheckoutRequestID' => $checkout_request_id
     ];
-    
+
+    error_log("[STK QUERY PAYLOAD] " . json_encode($payload));
+    error_log("[STK QUERY AUTH] Using access token: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $query_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -223,21 +260,25 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     ]);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    
+
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
+    error_log("[STK QUERY RESPONSE] HTTP $http_code, Body: " . substr($response, 0, 1000));
+
     $response_data = json_decode($response, true);
-    
+
     if ($http_code !== 200) {
-        error_log("STK Query error: HTTP $http_code - " . json_encode($response_data));
+        error_log("[STK QUERY FAIL] HTTP $http_code - " . json_encode($response_data));
         return [
             'success' => false,
             'error' => 'Failed to query STK Push status'
         ];
     }
-    
+
+    error_log("[STK QUERY SUCCESS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A') . ", ResultDesc: " . ($response_data['ResultDesc'] ?? 'N/A'));
+
     return [
         'success' => true,
         'result_code' => $response_data['ResultCode'],
