@@ -5046,6 +5046,8 @@ switch ($action) {
         $phone = $conn->real_escape_string($input['phone']);
         $amount = intval($input['amount']);
         $accountReference = $conn->real_escape_string($input['account_reference'] ?? 'booking');
+        $clientId = $conn->real_escape_string($input['client_id'] ?? $user['id'] ?? null);
+        $bookingId = $conn->real_escape_string($input['booking_id'] ?? null);
 
         $credentials = getMpesaCredentials();
         if (!$credentials) {
@@ -5055,6 +5057,76 @@ switch ($action) {
         $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
 
         if ($result['success']) {
+            // Store STK session record for callback matching
+            $checkoutRequestId = $result['checkout_request_id'];
+
+            // Ensure table exists first
+            $checkTableSql = "SHOW TABLES LIKE 'stk_push_sessions'";
+            $tableCheck = @$conn->query($checkTableSql);
+
+            if (!$tableCheck || $tableCheck->num_rows === 0) {
+                // Create table if it doesn't exist
+                $createTableSql = "
+                    CREATE TABLE stk_push_sessions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        checkout_request_id VARCHAR(255) UNIQUE NOT NULL,
+                        booking_id VARCHAR(255),
+                        client_id VARCHAR(255),
+                        status VARCHAR(50) DEFAULT 'pending',
+                        result_code VARCHAR(50),
+                        result_description TEXT,
+                        merchant_request_id VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_checkout (checkout_request_id),
+                        INDEX idx_booking (booking_id),
+                        INDEX idx_client (client_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ";
+
+                @$conn->query($createTableSql);
+                error_log("[STK SESSION] Table created");
+            }
+
+            // Insert STK session with booking_id and client_id for callback matching
+            // First, clean up any existing session for this checkout ID
+            // (handles test retries and ensures fresh data)
+            $deleteStmt = $conn->prepare("DELETE FROM stk_push_sessions WHERE checkout_request_id = ?");
+            if ($deleteStmt) {
+                $deleteStmt->bind_param("s", $checkoutRequestId);
+                $deleteStmt->execute();
+                error_log("[STK SESSION DELETE] Cleanup - Rows removed: " . $deleteStmt->affected_rows);
+                $deleteStmt->close();
+            }
+
+            // Now insert the fresh session
+            $insertStmt = $conn->prepare("
+                INSERT INTO stk_push_sessions (checkout_request_id, booking_id, client_id, status)
+                VALUES (?, ?, ?, 'pending')
+            ");
+
+            if ($insertStmt) {
+                $insertStmt->bind_param("sss", $checkoutRequestId, $bookingId, $clientId);
+
+                error_log("[STK SESSION INSERT] Attempting - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
+
+                if ($insertStmt->execute()) {
+                    $affectedRows = $insertStmt->affected_rows;
+                    error_log("[STK SESSION INSERT] Result - Rows affected: $affectedRows, MySQL error: " . ($insertStmt->error ?: "none"));
+
+                    if ($affectedRows > 0) {
+                        error_log("[STK SESSION] Session created successfully");
+                    } else {
+                        error_log("[STK SESSION] WARNING: Insert executed but 0 rows inserted!");
+                    }
+                } else {
+                    error_log("[STK SESSION INSERT] Execute failed - MySQL error: " . $insertStmt->error);
+                }
+                $insertStmt->close();
+            } else {
+                error_log("[STK SESSION] Prepare failed: " . $conn->error);
+            }
+
             respond("success", "STK push initiated successfully.", [
                 "checkout_request_id" => $result['checkout_request_id'],
                 "merchant_request_id" => $result['merchant_request_id'],

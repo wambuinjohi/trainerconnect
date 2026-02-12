@@ -1,10 +1,12 @@
 <?php
 /**
- * M-Pesa Helper Functions
+ * M-Pesa Helper Functions - ENHANCED WITH DETAILED LOGGING
  * 
  * Handles server-side credential management and M-Pesa API integration
  * Credentials are retrieved from admin settings (database), not from client requests
  * Environment variables used only as fallback
+ * 
+ * ENHANCED: Detailed logging of all M-Pesa API calls and responses
  */
 
 // Get M-Pesa credentials from admin settings or environment
@@ -19,7 +21,7 @@ function getMpesaCredentials() {
         $row = $result->fetch_assoc();
         $settings = json_decode($row['value'], true);
         if ($settings && !empty($settings['consumerKey']) && !empty($settings['consumerSecret'])) {
-            return [
+            $creds = [
                 'consumer_key' => trim($settings['consumerKey']),
                 'consumer_secret' => trim($settings['consumerSecret']),
                 'shortcode' => trim($settings['shortcode'] ?? ''),
@@ -32,6 +34,8 @@ function getMpesaCredentials() {
                 'b2c_callback_url' => trim($settings['b2cCallbackUrl'] ?? ''),
                 'source' => 'admin_settings'
             ];
+            error_log("[MPESA CREDS] Loaded from database. Environment: " . $creds['environment'] . ", Source: admin_settings");
+            return $creds;
         }
     }
     
@@ -52,9 +56,11 @@ function getMpesaCredentials() {
     
     // Only return env credentials if all required fields are present
     if (!empty($envCreds['consumer_key']) && !empty($envCreds['consumer_secret'])) {
+        error_log("[MPESA CREDS] Loaded from environment variables. Environment: " . $envCreds['environment']);
         return $envCreds;
     }
     
+    error_log("[MPESA CREDS ERROR] No valid credentials found in database or environment");
     return null;
 }
 
@@ -62,12 +68,14 @@ function getMpesaCredentials() {
 function validateMpesaCredentialsConfigured() {
     $creds = getMpesaCredentials();
     if (!$creds || empty($creds['consumer_key']) || empty($creds['consumer_secret'])) {
+        error_log("[MPESA VALIDATION] FAILED - Credentials not found or incomplete");
         return [
             'valid' => false,
             'error' => 'M-Pesa credentials not configured. Please configure in admin settings.',
             'source' => null
         ];
     }
+    error_log("[MPESA VALIDATION] SUCCESS - Source: " . $creds['source'] . ", Environment: " . $creds['environment']);
     return [
         'valid' => true,
         'source' => $creds['source'],
@@ -85,10 +93,13 @@ function getMpesaAccessToken($credentials) {
         ? 'https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials'
         : 'https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials';
 
-    // Log token request details
-    error_log("[MPESA TOKEN REQUEST] Environment: $environment, URL: $token_url, Key: " . substr($consumer_key, 0, 4) . "...");
+    error_log("[MPESA TOKEN REQUEST] Starting token request");
+    error_log("[MPESA TOKEN REQUEST] Environment: $environment");
+    error_log("[MPESA TOKEN REQUEST] URL: $token_url");
+    error_log("[MPESA TOKEN REQUEST] Consumer Key: " . substr($consumer_key, 0, 10) . "..." . substr($consumer_key, -5));
 
     $auth_string = base64_encode($consumer_key . ':' . $consumer_secret);
+    error_log("[MPESA TOKEN REQUEST] Auth String (base64): " . substr($auth_string, 0, 20) . "...");
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $token_url);
@@ -99,21 +110,50 @@ function getMpesaAccessToken($credentials) {
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
-    // Log response
-    error_log("[MPESA TOKEN RESPONSE] HTTP $http_code, Response: " . substr($response, 0, 500));
+    error_log("[MPESA TOKEN RESPONSE] ========== SAFARICOM TOKEN RESPONSE ==========");
+    error_log("[MPESA TOKEN RESPONSE] HTTP Code: $http_code");
+    error_log("[MPESA TOKEN RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[MPESA TOKEN RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
+    error_log("[MPESA TOKEN RESPONSE] Full Response: " . $response);
+    error_log("[MPESA TOKEN RESPONSE] Response Size: " . strlen($response) . " bytes");
+
+    if ($curl_error) {
+        error_log("[MPESA TOKEN ERROR] CURL Error [$curl_errno]: $curl_error");
+    }
 
     if ($http_code !== 200) {
-        error_log("[MPESA TOKEN ERROR] HTTP $http_code - $response");
+        error_log("[MPESA TOKEN ERROR] Token request failed with HTTP $http_code");
+        error_log("[MPESA TOKEN ERROR] Response Details: " . json_encode(json_decode($response, true), JSON_PRETTY_PRINT));
         return null;
     }
 
     $token_response = json_decode($response, true);
+
+    if (!$token_response) {
+        error_log("[MPESA TOKEN ERROR] Failed to decode JSON response");
+        error_log("[MPESA TOKEN ERROR] Raw response: " . substr($response, 0, 500));
+        return null;
+    }
+
+    error_log("[MPESA TOKEN RESPONSE FIELDS] Keys: " . implode(", ", array_keys($token_response)));
+
     $access_token = $token_response['access_token'] ?? null;
+    $expires_in = $token_response['expires_in'] ?? null;
 
     if ($access_token) {
-        error_log("[MPESA TOKEN SUCCESS] Token obtained: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+        error_log("[MPESA TOKEN SUCCESS] Token obtained successfully");
+        error_log("[MPESA TOKEN SUCCESS] Token: " . substr($access_token, 0, 30) . "..." . substr($access_token, -10));
+        error_log("[MPESA TOKEN SUCCESS] Expires in: $expires_in seconds");
+        error_log("[MPESA TOKEN SUCCESS] Token will be used for: " . ($environment === 'production' ? 'PRODUCTION' : 'SANDBOX'));
+    } else {
+        error_log("[MPESA TOKEN ERROR] No access_token in response. Full response: " . json_encode($token_response, JSON_PRETTY_PRINT));
     }
 
     return $access_token;
@@ -121,8 +161,36 @@ function getMpesaAccessToken($credentials) {
 
 // Initiate STK Push payment
 function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
-    error_log("[STK PUSH INIT] Starting STK push initiation");
-    error_log("[STK PUSH INIT] Phone: $phone, Amount: $amount, Reference: $account_reference");
+    error_log("[STK PUSH INIT] ========== STARTING STK PUSH INITIATION ==========");
+    error_log("[STK PUSH INIT] Raw Phone Input: $phone");
+
+    // Validate phone format (should be 254XXXXXXXXX)
+    $phonePattern = '/^254[0-9]{9}$/';
+    if (!preg_match($phonePattern, $phone)) {
+        error_log("[STK PUSH ERROR] Phone number format invalid: $phone. Expected format: 254XXXXXXXXX (11 digits starting with 254)");
+    } else {
+        error_log("[STK PUSH INIT] Phone format valid: $phone");
+    }
+
+    error_log("[STK PUSH INIT] Amount: $amount");
+    error_log("[STK PUSH INIT] Account Reference: $account_reference");
+
+    // Validate credentials
+    if (!$credentials) {
+        error_log("[STK PUSH ERROR] No credentials provided");
+        return [
+            'success' => false,
+            'error' => 'M-Pesa credentials not available'
+        ];
+    }
+
+    if (empty($credentials['shortcode']) || empty($credentials['passkey'])) {
+        error_log("[STK PUSH ERROR] Missing required fields - Shortcode: " . ($credentials['shortcode'] ?? 'MISSING') . ", Passkey: " . ($credentials['passkey'] ?? 'MISSING'));
+        return [
+            'success' => false,
+            'error' => 'M-Pesa shortcode or passkey not configured'
+        ];
+    }
 
     $access_token = getMpesaAccessToken($credentials);
 
@@ -138,7 +206,9 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     $shortcode = $credentials['shortcode'];
     $passkey = $credentials['passkey'];
 
-    error_log("[STK PUSH INIT] Access token obtained, Shortcode: $shortcode, Environment: $environment");
+    error_log("[STK PUSH INIT] Access token obtained successfully");
+    error_log("[STK PUSH INIT] Shortcode: $shortcode");
+    error_log("[STK PUSH INIT] Environment: $environment");
 
     // Use default C2B callback URL if not provided (for STK Push payments)
     if (empty($callback_url)) {
@@ -151,10 +221,13 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
         ? 'https://api.safaricom.co.ke/mpesa/stkpush/v1/processrequest'
         : 'https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest';
 
-    error_log("[STK PUSH REQUEST] URL: $stk_url");
+    error_log("[STK PUSH REQUEST] STK Push URL: $stk_url");
 
     $timestamp = date('YmdHis');
     $password = base64_encode($shortcode . $passkey . $timestamp);
+
+    error_log("[STK PUSH REQUEST] Timestamp: $timestamp");
+    error_log("[STK PUSH REQUEST] Password (base64): " . substr($password, 0, 20) . "...");
 
     $payload = [
         'BusinessShortCode' => $shortcode,
@@ -170,8 +243,19 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
         'TransactionDesc' => 'Payment for service'
     ];
 
-    error_log("[STK PUSH PAYLOAD] " . json_encode($payload));
-    error_log("[STK PUSH AUTH] Using access token: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+    error_log("[STK PUSH PAYLOAD] " . json_encode($payload, JSON_PRETTY_PRINT));
+
+    // Detailed payload validation logging
+    error_log("[STK PUSH PAYLOAD VALIDATION] ========== PAYLOAD FIELD ANALYSIS ==========");
+    error_log("[STK PUSH PAYLOAD VALIDATION] BusinessShortCode: " . $payload['BusinessShortCode'] . " (length: " . strlen($payload['BusinessShortCode']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] Timestamp: " . $payload['Timestamp'] . " (format: YmdHis)");
+    error_log("[STK PUSH PAYLOAD VALIDATION] Amount: " . $payload['Amount'] . " (type: " . gettype($payload['Amount']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PartyA (Phone): " . $payload['PartyA'] . " (length: " . strlen($payload['PartyA']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PartyB (Shortcode): " . $payload['PartyB'] . " (should match BusinessShortCode: " . ($payload['PartyB'] === $payload['BusinessShortCode'] ? 'YES' : 'NO - MISMATCH!') . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] TransactionType: " . $payload['TransactionType']);
+    error_log("[STK PUSH PAYLOAD VALIDATION] AccountReference: " . $payload['AccountReference'] . " (length: " . strlen($payload['AccountReference']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PhoneNumber (should match PartyA): " . ($payload['PhoneNumber'] === $payload['PartyA'] ? 'YES' : 'NO - MISMATCH!'));
+    error_log("[STK PUSH PAYLOAD VALIDATION] CallBackURL Valid: " . (filter_var($payload['CallBackURL'], FILTER_VALIDATE_URL) ? 'YES' : 'NO - INVALID!'));
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $stk_url);
@@ -187,34 +271,96 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info for debugging
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
-    error_log("[STK PUSH RESPONSE] HTTP $http_code, Body: " . substr($response, 0, 1000));
+    error_log("[STK PUSH RESPONSE] ========== SAFARICOM RESPONSE DETAILS ==========");
+    error_log("[STK PUSH RESPONSE] HTTP Code: $http_code");
+    error_log("[STK PUSH RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[STK PUSH RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
+    error_log("[STK PUSH RESPONSE] Connection Time: " . round($curl_info['connect_time'], 3) . "s");
+    error_log("[STK PUSH RESPONSE] Full Response Body: " . $response);
+    error_log("[STK PUSH RESPONSE] Response Size: " . strlen($response) . " bytes");
+
+    if ($curl_error) {
+        error_log("[STK PUSH CURL ERROR] [$curl_errno]: $curl_error");
+    }
 
     $response_data = json_decode($response, true);
 
-    if ($http_code !== 200 || empty($response_data['CheckoutRequestID'])) {
-        error_log("[STK PUSH FAIL] HTTP $http_code - " . json_encode($response_data));
+    if (!$response_data) {
+        error_log("[STK PUSH ERROR] Failed to decode JSON response");
+        error_log("[STK PUSH ERROR] Raw response was: " . substr($response, 0, 500));
         return [
             'success' => false,
-            'error' => $response_data['errorMessage'] ?? 'Failed to initiate STK Push'
+            'error' => 'Invalid response from M-Pesa API'
         ];
     }
 
-    error_log("[STK PUSH SUCCESS] CheckoutRequestID: " . $response_data['CheckoutRequestID'] . ", MerchantRequestID: " . $response_data['MerchantRequestID'] . ", ResponseCode: " . $response_data['ResponseCode']);
+    error_log("[STK PUSH RESPONSE DATA] " . json_encode($response_data, JSON_PRETTY_PRINT));
+    error_log("[STK PUSH RESPONSE FIELDS] " . "Keys: " . implode(", ", array_keys($response_data)));
+
+    // Log all response fields for debugging
+    foreach ($response_data as $key => $value) {
+        if (is_string($value) && strlen($value) < 100) {
+            error_log("[STK PUSH RESPONSE FIELD] $key: $value");
+        } elseif (!is_array($value)) {
+            error_log("[STK PUSH RESPONSE FIELD] $key: $value");
+        }
+    }
+
+    if ($http_code !== 200) {
+        error_log("[STK PUSH FAIL] HTTP $http_code - M-Pesa API rejected request");
+        error_log("[STK PUSH FAIL] Error Details: " . json_encode($response_data, JSON_PRETTY_PRINT));
+        error_log("[STK PUSH FAIL] Response Code: " . ($response_data['ResponseCode'] ?? 'N/A'));
+        error_log("[STK PUSH FAIL] Response Description: " . ($response_data['ResponseDescription'] ?? 'N/A'));
+        return [
+            'success' => false,
+            'error' => $response_data['errorMessage'] ?? $response_data['message'] ?? 'Failed to initiate STK Push'
+        ];
+    }
+
+    if (empty($response_data['CheckoutRequestID'])) {
+        error_log("[STK PUSH FAIL] HTTP 200 but no CheckoutRequestID in response");
+        error_log("[STK PUSH FAIL] Response: " . json_encode($response_data, JSON_PRETTY_PRINT));
+        return [
+            'success' => false,
+            'error' => 'M-Pesa did not return CheckoutRequestID'
+        ];
+    }
+
+    error_log("[STK PUSH SUCCESS] ========== STK PUSH INITIATED SUCCESSFULLY ==========");
+    error_log("[STK PUSH SUCCESS] CheckoutRequestID: " . $response_data['CheckoutRequestID']);
+    error_log("[STK PUSH SUCCESS] MerchantRequestID: " . ($response_data['MerchantRequestID'] ?? 'N/A'));
+    error_log("[STK PUSH SUCCESS] ResponseCode: " . ($response_data['ResponseCode'] ?? 'N/A'));
+    error_log("[STK PUSH SUCCESS] ResponseDescription: " . ($response_data['ResponseDescription'] ?? 'N/A'));
+    error_log("[STK PUSH SUCCESS] CustomerMessage: " . ($response_data['CustomerMessage'] ?? 'N/A'));
 
     return [
         'success' => true,
         'checkout_request_id' => $response_data['CheckoutRequestID'],
-        'merchant_request_id' => $response_data['MerchantRequestID'],
-        'response_code' => $response_data['ResponseCode'],
-        'response_description' => $response_data['ResponseDescription']
+        'merchant_request_id' => $response_data['MerchantRequestID'] ?? null,
+        'response_code' => $response_data['ResponseCode'] ?? null,
+        'response_description' => $response_data['ResponseDescription'] ?? null
     ];
 }
 
 // Query STK Push status
 function querySTKPushStatus($credentials, $checkout_request_id) {
-    error_log("[STK QUERY] Starting query for CheckoutRequestID: $checkout_request_id");
+    error_log("[STK QUERY] ========== STARTING STK QUERY ==========");
+    error_log("[STK QUERY] CheckoutRequestID: $checkout_request_id");
+
+    if (!$credentials) {
+        error_log("[STK QUERY ERROR] No credentials provided");
+        return [
+            'success' => false,
+            'error' => 'M-Pesa credentials not available'
+        ];
+    }
 
     $access_token = getMpesaAccessToken($credentials);
 
@@ -234,7 +380,8 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
         ? 'https://api.safaricom.co.ke/mpesa/stkpushquery/v1/query'
         : 'https://sandbox.safaricom.co.ke/mpesa/stkpushquery/v1/query';
 
-    error_log("[STK QUERY REQUEST] URL: $query_url, Environment: $environment");
+    error_log("[STK QUERY REQUEST] URL: $query_url");
+    error_log("[STK QUERY REQUEST] Environment: $environment");
 
     $timestamp = date('YmdHis');
     $password = base64_encode($shortcode . $passkey . $timestamp);
@@ -246,8 +393,7 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
         'CheckoutRequestID' => $checkout_request_id
     ];
 
-    error_log("[STK QUERY PAYLOAD] " . json_encode($payload));
-    error_log("[STK QUERY AUTH] Using access token: " . substr($access_token, 0, 20) . "..." . substr($access_token, -10));
+    error_log("[STK QUERY PAYLOAD] " . json_encode($payload, JSON_PRETTY_PRINT));
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $query_url);
@@ -263,36 +409,91 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
+    $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info for debugging
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
-    error_log("[STK QUERY RESPONSE] HTTP $http_code, Body: " . substr($response, 0, 1000));
+    error_log("[STK QUERY RESPONSE] ========== SAFARICOM QUERY RESPONSE DETAILS ==========");
+    error_log("[STK QUERY RESPONSE] HTTP Code: $http_code");
+    error_log("[STK QUERY RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
+    error_log("[STK QUERY RESPONSE] Full Response: " . $response);
+    error_log("[STK QUERY RESPONSE] Response Size: " . strlen($response) . " bytes");
+
+    if ($curl_error) {
+        error_log("[STK QUERY CURL ERROR] [$curl_errno]: $curl_error");
+    }
 
     $response_data = json_decode($response, true);
 
+    if (!$response_data) {
+        error_log("[STK QUERY ERROR] Failed to decode JSON response");
+        error_log("[STK QUERY ERROR] Raw response: " . substr($response, 0, 500));
+        return [
+            'success' => false,
+            'error' => 'Invalid response from M-Pesa API'
+        ];
+    }
+
+    error_log("[STK QUERY RESPONSE DATA] " . json_encode($response_data, JSON_PRETTY_PRINT));
+    error_log("[STK QUERY RESPONSE FIELDS] Keys: " . implode(", ", array_keys($response_data)));
+
+    // Log all response fields for debugging
+    foreach ($response_data as $key => $value) {
+        if (is_string($value) && strlen($value) < 200) {
+            error_log("[STK QUERY RESPONSE FIELD] $key: $value");
+        } elseif (!is_array($value)) {
+            error_log("[STK QUERY RESPONSE FIELD] $key: $value");
+        }
+    }
+
     if ($http_code !== 200) {
-        error_log("[STK QUERY FAIL] HTTP $http_code - " . json_encode($response_data));
+        error_log("[STK QUERY FAIL] HTTP $http_code - " . json_encode($response_data, JSON_PRETTY_PRINT));
         return [
             'success' => false,
             'error' => 'Failed to query STK Push status'
         ];
     }
 
-    error_log("[STK QUERY SUCCESS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A') . ", ResultDesc: " . ($response_data['ResultDesc'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ========== ANALYZING RESULT ==========");
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResponseCode: " . ($response_data['ResponseCode'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResponseDescription: " . ($response_data['ResponseDescription'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResultDesc: " . ($response_data['ResultDesc'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] MerchantRequestID: " . ($response_data['MerchantRequestID'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] CheckoutRequestID: " . ($response_data['CheckoutRequestID'] ?? 'N/A'));
+
+    // Check for error result codes
+    $result_code = $response_data['ResultCode'] ?? null;
+    if ($result_code && $result_code !== '0' && $result_code !== 0) {
+        error_log("[STK QUERY ERROR ANALYSIS] Non-zero ResultCode detected: $result_code");
+        error_log("[STK QUERY ERROR ANALYSIS] Description: " . ($response_data['ResultDesc'] ?? 'No description'));
+        error_log("[STK QUERY ERROR ANALYSIS] This indicates the STK push failed on M-Pesa side");
+    }
+
+    error_log("[STK QUERY SUCCESS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A'));
+    error_log("[STK QUERY SUCCESS] ResultDesc: " . ($response_data['ResultDesc'] ?? 'N/A'));
 
     return [
         'success' => true,
         'result_code' => $response_data['ResultCode'],
         'result_description' => $response_data['ResultDesc'],
-        'merchant_request_id' => $response_data['MerchantRequestID'],
-        'checkout_request_id' => $response_data['CheckoutRequestID']
+        'merchant_request_id' => $response_data['MerchantRequestID'] ?? null,
+        'checkout_request_id' => $response_data['CheckoutRequestID'] ?? null
     ];
 }
 
 // Initiate B2C payment (payout)
 function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $remarks = null, $queue_timeout_url = null, $result_url = null) {
+    error_log("[B2C INIT] Starting B2C payment - Phone: $phone, Amount: $amount");
+    
     $access_token = getMpesaAccessToken($credentials);
 
     if (!$access_token) {
+        error_log("[B2C ERROR] Failed to obtain access token");
         return [
             'success' => false,
             'error' => 'Failed to obtain M-Pesa access token'
@@ -303,6 +504,8 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
     $shortcode = $credentials['shortcode'];
     $initiator_name = $credentials['initiator_name'];
     $security_credential = $credentials['security_credential'];
+
+    error_log("[B2C REQUEST] Environment: $environment, Shortcode: $shortcode, InitiatorName: $initiator_name");
 
     // Use default B2C callback URLs if not provided (for payouts)
     if (empty($queue_timeout_url)) {
@@ -316,6 +519,8 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
         ? 'https://api.safaricom.co.ke/mpesa/b2c/v1/paymentrequest'
         : 'https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest';
 
+    error_log("[B2C REQUEST] URL: $b2c_url");
+
     $payload = [
         'InitiatorName' => $initiator_name,
         'SecurityCredential' => $security_credential,
@@ -327,6 +532,8 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
         'QueueTimeOutURL' => $queue_timeout_url,
         'ResultURL' => $result_url
     ];
+
+    error_log("[B2C PAYLOAD] " . json_encode($payload, JSON_PRETTY_PRINT));
     
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $b2c_url);
@@ -342,17 +549,27 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curl_error = curl_error($ch);
     curl_close($ch);
+    
+    error_log("[B2C RESPONSE] HTTP Code: $http_code");
+    error_log("[B2C RESPONSE] Full Response: " . $response);
+    
+    if ($curl_error) {
+        error_log("[B2C CURL ERROR] $curl_error");
+    }
     
     $response_data = json_decode($response, true);
     
     if ($http_code !== 200 || empty($response_data['ConversationID'])) {
-        error_log("B2C error: HTTP $http_code - " . json_encode($response_data));
+        error_log("[B2C ERROR] HTTP $http_code - " . json_encode($response_data, JSON_PRETTY_PRINT));
         return [
             'success' => false,
             'error' => $response_data['errorMessage'] ?? 'Failed to initiate B2C payment'
         ];
     }
+    
+    error_log("[B2C SUCCESS] ConversationID: " . $response_data['ConversationID']);
     
     return [
         'success' => true,
@@ -367,6 +584,8 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
 function saveMpesaCredentials($credentials) {
     global $conn;
     
+    error_log("[MPESA SAVE] Saving credentials to database");
+    
     // Ensure platform_settings table exists
     $create_table_sql = "
         CREATE TABLE IF NOT EXISTS platform_settings (
@@ -380,11 +599,12 @@ function saveMpesaCredentials($credentials) {
     ";
     
     if (!$conn->query($create_table_sql)) {
-        error_log("Failed to create platform_settings table: " . $conn->error);
+        error_log("[MPESA SAVE ERROR] Failed to create platform_settings table: " . $conn->error);
         return false;
     }
     
     $creds_json = json_encode($credentials);
+    error_log("[MPESA SAVE] Credentials JSON: " . $creds_json);
     
     $sql = "
         INSERT INTO platform_settings (setting_key, value) 
@@ -396,7 +616,7 @@ function saveMpesaCredentials($credentials) {
     
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
-        error_log("Prepare failed: " . $conn->error);
+        error_log("[MPESA SAVE ERROR] Prepare failed: " . $conn->error);
         return false;
     }
     
@@ -405,9 +625,11 @@ function saveMpesaCredentials($credentials) {
     $stmt->close();
     
     if (!$result) {
-        error_log("Execute failed: " . $conn->error);
+        error_log("[MPESA SAVE ERROR] Execute failed: " . $conn->error);
         return false;
     }
+    
+    error_log("[MPESA SAVE SUCCESS] Credentials saved successfully");
     
     // Log credential change
     logEvent('mpesa_credentials_updated', [

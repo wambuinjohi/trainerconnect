@@ -30,6 +30,27 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
   const [selectedGroupTierName, setSelectedGroupTierName] = useState<string>('')
   const [trainerCategoryId, setTrainerCategoryId] = useState<number | null>(null)
 
+  const normalizePhoneNumber = (phoneInput: string): string => {
+    let normalized = phoneInput.trim().replace(/\s+/g, '')
+
+    // Remove leading +
+    if (normalized.startsWith('+')) {
+      normalized = normalized.slice(1)
+    }
+
+    // Convert 07 to 254 (Kenya format)
+    if (normalized.startsWith('07')) {
+      normalized = '254' + normalized.slice(1)
+    }
+
+    // Add country code if not present
+    if (!normalized.startsWith('254') && normalized.startsWith('7')) {
+      normalized = '254' + normalized
+    }
+
+    return normalized
+  }
+
   const computeBaseAmount = () => {
     if (isGroupTraining && selectedGroupTierName && groupTrainingData) {
       const tier = getGroupTierByName(groupTrainingData, selectedGroupTierName)
@@ -221,7 +242,14 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
 
         let initResult: any = null
         try {
-          initResult = await apiRequest('mpesa_stk_initiate', { phone: mpesaPhone.trim(), amount: clientTotal, account_reference: bookingData?.id || 'booking' }, { headers: withAuth() })
+          const normalizedPhone = normalizePhoneNumber(mpesaPhone)
+          initResult = await apiRequest('mpesa_stk_initiate', {
+            phone: normalizedPhone,
+            amount: clientTotal,
+            account_reference: bookingData?.id || 'booking',
+            booking_id: bookingData?.id || null,
+            client_id: user.id || null
+          }, { headers: withAuth() })
           console.log('STK initiate response:', initResult)
         } catch (e: any) {
           console.error('STK initiate error:', e)
@@ -424,8 +452,9 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         </div>
         {payMethod === 'mpesa' && (
           <div>
-            <Label>M-Pesa Phone (2547XXXXXXX)</Label>
-            <Input value={mpesaPhone} onChange={(e)=>setMpesaPhone(e.target.value)} placeholder="2547XXXXXXXX" />
+            <Label>M-Pesa Phone Number</Label>
+            <Input value={mpesaPhone} onChange={(e)=>setMpesaPhone(e.target.value)} placeholder="254712345678 or 0712345678" />
+            <p className="text-xs text-muted-foreground mt-1">Format: 254712345678 (Kenyan number). 07xxxxxxxx format will be converted automatically.</p>
           </div>
         )}
 

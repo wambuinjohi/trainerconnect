@@ -82,6 +82,16 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
   } catch (primaryError) {
     console.error(`[API] ${action} failed with primary URL:`, primaryError, { url: apiUrl })
 
+    // Log detailed error info for debugging
+    const errorMsg = primaryError instanceof Error ? primaryError.message : String(primaryError)
+    if (errorMsg.includes('Failed to fetch')) {
+      console.warn(`[API DEBUG] Network/CORS error detected. API URL: ${apiUrl}`, {
+        isProduction: import.meta.env.PROD,
+        apiUrl,
+        fallbackUrls: FALLBACK_API_URLS,
+      })
+    }
+
     // Try fallback URLs if primary fails
     for (const fallbackUrl of FALLBACK_API_URLS) {
       if (apiUrl === fallbackUrl) continue // Skip if we already tried this
@@ -101,6 +111,7 @@ export async function apiRequest<T = any>(action: string, payload: Record<string
     // All API endpoints failed, try mock data as last resort
     const mockResponse = getMockResponse(action, payload)
     if (mockResponse) {
+      console.log(`[API] ${action} - using mock data (all real endpoints failed)`)
       return (mockResponse.data as T) ?? (mockResponse as unknown as T)
     }
     throw primaryError
