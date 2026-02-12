@@ -131,14 +131,18 @@ try {
     
     // Find the STK Push session
     if ($checkoutRequestId) {
+        error_log("[C2B CALLBACK] Looking for session with CheckoutRequestID: $checkoutRequestId");
+
         $stmt = $conn->prepare("SELECT * FROM stk_push_sessions WHERE checkout_request_id = ? LIMIT 1");
-        
+
         if ($stmt) {
             $stmt->bind_param("s", $checkoutRequestId);
             $stmt->execute();
             $result = $stmt->get_result();
             $stmt->close();
-            
+
+            error_log("[C2B CALLBACK] Query returned " . ($result ? $result->num_rows : 0) . " rows");
+
             if ($result && $result->num_rows > 0) {
                 $session = $result->fetch_assoc();
                 

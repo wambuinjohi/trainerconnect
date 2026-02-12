@@ -5097,10 +5097,13 @@ switch ($action) {
             if ($insertStmt) {
                 $insertStmt->bind_param("sss", $checkoutRequestId, $bookingId, $clientId);
 
+                error_log("[STK SESSION INSERT] Attempting to insert - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
+
                 if ($insertStmt->execute()) {
+                    error_log("[STK SESSION INSERT] Success - Rows affected: " . $insertStmt->affected_rows);
                     error_log("[STK SESSION] Session created - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
                 } else {
-                    error_log("[STK SESSION] Failed to insert session: " . $insertStmt->error);
+                    error_log("[STK SESSION INSERT] Execute failed: " . $insertStmt->error);
                 }
                 $insertStmt->close();
             } else {
