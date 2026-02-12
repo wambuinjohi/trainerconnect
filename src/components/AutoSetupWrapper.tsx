@@ -109,7 +109,7 @@ export function AutoSetupWrapper({ children }: AutoSetupWrapperProps) {
                 Server Configuration:
               </p>
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                Make sure your server at <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">trainer.skatryk.co.ke</code> has:
+                Make sure your server at <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">trainercoachconnect.com</code> has:
               </p>
               <ul className="text-sm text-blue-900 dark:text-blue-100 mt-2 space-y-1 list-disc ml-4">
                 <li>MySQL database created</li>
