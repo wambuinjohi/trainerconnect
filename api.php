@@ -5089,21 +5089,38 @@ switch ($action) {
             }
 
             // Insert STK session with booking_id and client_id for callback matching
+            // First, clean up any existing session for this checkout ID
+            // (handles test retries and ensures fresh data)
+            $deleteStmt = $conn->prepare("DELETE FROM stk_push_sessions WHERE checkout_request_id = ?");
+            if ($deleteStmt) {
+                $deleteStmt->bind_param("s", $checkoutRequestId);
+                $deleteStmt->execute();
+                error_log("[STK SESSION DELETE] Cleanup - Rows removed: " . $deleteStmt->affected_rows);
+                $deleteStmt->close();
+            }
+
+            // Now insert the fresh session
             $insertStmt = $conn->prepare("
-                INSERT IGNORE INTO stk_push_sessions (checkout_request_id, booking_id, client_id, status)
+                INSERT INTO stk_push_sessions (checkout_request_id, booking_id, client_id, status)
                 VALUES (?, ?, ?, 'pending')
             ");
 
             if ($insertStmt) {
                 $insertStmt->bind_param("sss", $checkoutRequestId, $bookingId, $clientId);
 
-                error_log("[STK SESSION INSERT] Attempting to insert - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
+                error_log("[STK SESSION INSERT] Attempting - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
 
                 if ($insertStmt->execute()) {
-                    error_log("[STK SESSION INSERT] Success - Rows affected: " . $insertStmt->affected_rows);
-                    error_log("[STK SESSION] Session created - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
+                    $affectedRows = $insertStmt->affected_rows;
+                    error_log("[STK SESSION INSERT] Result - Rows affected: $affectedRows, MySQL error: " . ($insertStmt->error ?: "none"));
+
+                    if ($affectedRows > 0) {
+                        error_log("[STK SESSION] Session created successfully");
+                    } else {
+                        error_log("[STK SESSION] WARNING: Insert executed but 0 rows inserted!");
+                    }
                 } else {
-                    error_log("[STK SESSION INSERT] Execute failed: " . $insertStmt->error);
+                    error_log("[STK SESSION INSERT] Execute failed - MySQL error: " . $insertStmt->error);
                 }
                 $insertStmt->close();
             } else {
