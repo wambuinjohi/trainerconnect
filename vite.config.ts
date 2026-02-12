@@ -248,6 +248,175 @@ function devApiPlugin() {
               }));
               return;
 
+            case "notifications_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Notifications retrieved",
+                data: []
+              }));
+              return;
+
+            case "get_trainers":
+            case "get_trainer_details":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Trainers retrieved",
+                data: []
+              }));
+              return;
+
+            case "create_booking":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Booking created successfully",
+                data: { booking_id: "booking_" + Math.random().toString(36).substring(7) }
+              }));
+              return;
+
+            case "get_bookings":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Bookings retrieved",
+                data: []
+              }));
+              return;
+
+            case "profile_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Profile retrieved",
+                data: { id: "profile_" + Math.random().toString(36).substring(7) }
+              }));
+              return;
+
+            case "trainer_group_pricing_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Pricing retrieved",
+                data: []
+              }));
+              return;
+
+            case "trainer_group_pricing_delete":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Pricing deleted",
+                data: null
+              }));
+              return;
+
+            case "payout_requests_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Payout requests retrieved",
+                data: []
+              }));
+              return;
+
+            case "b2c_payments_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "B2C payments retrieved",
+                data: []
+              }));
+              return;
+
+            case "announcement_create":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Announcement created",
+                data: { id: "announcement_" + Math.random().toString(36).substring(7) }
+              }));
+              return;
+
+            case "promotion_requests_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Promotion requests retrieved",
+                data: []
+              }));
+              return;
+
+            case "promotion_request_approve":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Promotion request approved",
+                data: null
+              }));
+              return;
+
+            case "promotion_request_reject":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Promotion request rejected",
+                data: null
+              }));
+              return;
+
+            case "payments_get":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Payments retrieved",
+                data: []
+              }));
+              return;
+
+            case "payout_insert":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Payout request created",
+                data: { id: "payout_" + Math.random().toString(36).substring(7) }
+              }));
+              return;
+
+            case "message_insert":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Message sent",
+                data: { id: "message_" + Math.random().toString(36).substring(7) }
+              }));
+              return;
+
+            case "request_password_reset":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Password reset email sent",
+                data: null
+              }));
+              return;
+
+            case "reset_password_with_token":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Password reset successfully",
+                data: null
+              }));
+              return;
+
+            case "waitlist_migration":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Waitlist table created",
+                data: null
+              }));
+              return;
+
+            case "waitlist_alter_table":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Waitlist table altered",
+                data: null
+              }));
+              return;
+
+            case "seed_categories":
+              res.end(JSON.stringify({
+                status: "success",
+                message: "Categories seeded",
+                data: null
+              }));
+              return;
+
             case "migrate":
               res.end(JSON.stringify({
                 status: "success",
