@@ -222,15 +222,32 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
         let initResult: any = null
         try {
           initResult = await apiRequest('mpesa_stk_initiate', { phone: mpesaPhone.trim(), amount: clientTotal, account_reference: bookingData?.id || 'booking' }, { headers: withAuth() })
+          console.log('STK initiate response:', initResult)
         } catch (e: any) {
           console.error('STK initiate error:', e)
-          toast({ title: 'Payment error', description: e.message || 'Failed to initiate STK push', variant: 'destructive' })
+          const errorMsg = e.message || 'Failed to initiate STK push'
+          toast({ title: 'Payment error', description: errorMsg, variant: 'destructive' })
           throw e
         }
 
-        if (!initResult) { toast({ title: 'Payment error', description: 'No response from payment server', variant: 'destructive' }); throw new Error('no response from init') }
+        if (!initResult) {
+          const msg = 'No response from payment server';
+          console.error(msg, { initResult })
+          toast({ title: 'Payment error', description: msg, variant: 'destructive' });
+          throw new Error(msg)
+        }
+
         const checkoutId = initResult?.checkout_request_id || ''
-        if (!checkoutId) { toast({ title: 'Payment error', description: 'Missing CheckoutRequestID', variant: 'destructive' }); throw new Error('no checkout id') }
+        if (!checkoutId) {
+          const debugMsg = `Missing CheckoutRequestID. Response: ${JSON.stringify(initResult).substring(0, 200)}`
+          console.error(debugMsg)
+          toast({
+            title: 'Payment error',
+            description: 'M-Pesa credentials may not be configured. Please contact support.',
+            variant: 'destructive'
+          });
+          throw new Error('no checkout id')
+        }
 
         // Poll for result
         let success = false

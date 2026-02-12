@@ -278,6 +278,7 @@ function devApiPlugin() {
             case "mpesa_stk_initiate":
               if (!body.phone || !body.amount) {
                 res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json; charset=utf-8");
                 res.end(JSON.stringify({
                   status: "error",
                   message: "Missing phone or amount"
@@ -287,8 +288,7 @@ function devApiPlugin() {
               // Mock successful STK push initiation
               const mockCheckoutId = "WEB" + Date.now() + Math.random().toString(36).substring(7);
               const mockMerchantId = "MER" + Math.random().toString(36).substring(7);
-              console.log(`[Dev API] Mock STK push initiated for ${body.phone} with amount ${body.amount}`);
-              res.end(JSON.stringify({
+              const mockResponse = {
                 status: "success",
                 message: "STK push initiated successfully",
                 data: {
@@ -297,13 +297,17 @@ function devApiPlugin() {
                   response_code: "0",
                   response_description: "The service request has been accepted successfully."
                 }
-              }));
+              };
+              console.log(`[Dev API] Mock STK push initiated for ${body.phone} with amount ${body.amount}`, mockResponse);
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify(mockResponse));
               return;
 
             // M-Pesa STK Push Query (mock for development)
             case "mpesa_stk_query":
               if (!body.checkout_request_id) {
                 res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json; charset=utf-8");
                 res.end(JSON.stringify({
                   status: "error",
                   message: "Missing checkout_request_id"
@@ -311,8 +315,7 @@ function devApiPlugin() {
                 return;
               }
               // Mock successful payment (return code 0 = success)
-              console.log(`[Dev API] Mock STK query for checkout ID ${body.checkout_request_id}`);
-              res.end(JSON.stringify({
+              const queryResponse = {
                 status: "success",
                 message: "STK push status queried successfully",
                 data: {
@@ -321,7 +324,10 @@ function devApiPlugin() {
                   merchant_request_id: "MER" + Math.random().toString(36).substring(7),
                   checkout_request_id: body.checkout_request_id
                 }
-              }));
+              };
+              console.log(`[Dev API] Mock STK query for checkout ID ${body.checkout_request_id}`, queryResponse);
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify(queryResponse));
               return;
 
             // Default: return success for any unknown action
