@@ -274,14 +274,53 @@ function devApiPlugin() {
               }));
               return;
 
-            // Pass through M-Pesa actions to real backend
+            // M-Pesa STK Push Initiation (mock for development)
             case "mpesa_stk_initiate":
-            case "mpesa_stk_query":
-              // Don't handle these in dev - let them go to real backend
-              res.statusCode = 404;
+              if (!body.phone || !body.amount) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({
+                  status: "error",
+                  message: "Missing phone or amount"
+                }));
+                return;
+              }
+              // Mock successful STK push initiation
+              const mockCheckoutId = "WEB" + Date.now() + Math.random().toString(36).substring(7);
+              const mockMerchantId = "MER" + Math.random().toString(36).substring(7);
+              console.log(`[Dev API] Mock STK push initiated for ${body.phone} with amount ${body.amount}`);
               res.end(JSON.stringify({
-                status: "error",
-                message: `Action '${action}' not mocked in development - use real backend`
+                status: "success",
+                message: "STK push initiated successfully",
+                data: {
+                  checkout_request_id: mockCheckoutId,
+                  merchant_request_id: mockMerchantId,
+                  response_code: "0",
+                  response_description: "The service request has been accepted successfully."
+                }
+              }));
+              return;
+
+            // M-Pesa STK Push Query (mock for development)
+            case "mpesa_stk_query":
+              if (!body.checkout_request_id) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({
+                  status: "error",
+                  message: "Missing checkout_request_id"
+                }));
+                return;
+              }
+              // Mock successful payment (return code 0 = success)
+              console.log(`[Dev API] Mock STK query for checkout ID ${body.checkout_request_id}`);
+              res.end(JSON.stringify({
+                status: "success",
+                message: "STK push status queried successfully",
+                data: {
+                  result_code: "0",
+                  result_description: "The service request has been accepted successfully.",
+                  merchant_request_id: "MER" + Math.random().toString(36).substring(7),
+                  checkout_request_id: body.checkout_request_id
+                }
               }));
               return;
 
@@ -481,7 +520,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
-    // mode === 'development' && devApiPlugin(),  // Disabled - using real backend API instead
+    mode === 'development' && devApiPlugin(),  // Enabled - provides mock API responses for development
     mode === 'development' && adminApiPlugin(),
     mode === 'development' && paymentsApiPlugin(),
     mode === 'development' && componentTagger(),
