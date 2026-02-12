@@ -112,11 +112,18 @@ function getMpesaAccessToken($credentials) {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
+    error_log("[MPESA TOKEN RESPONSE] ========== SAFARICOM TOKEN RESPONSE ==========");
     error_log("[MPESA TOKEN RESPONSE] HTTP Code: $http_code");
+    error_log("[MPESA TOKEN RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[MPESA TOKEN RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
     error_log("[MPESA TOKEN RESPONSE] Full Response: " . $response);
-    
+    error_log("[MPESA TOKEN RESPONSE] Response Size: " . strlen($response) . " bytes");
+
     if ($curl_error) {
         error_log("[MPESA TOKEN ERROR] CURL Error [$curl_errno]: $curl_error");
     }
@@ -128,12 +135,15 @@ function getMpesaAccessToken($credentials) {
     }
 
     $token_response = json_decode($response, true);
-    
+
     if (!$token_response) {
         error_log("[MPESA TOKEN ERROR] Failed to decode JSON response");
+        error_log("[MPESA TOKEN ERROR] Raw response: " . substr($response, 0, 500));
         return null;
     }
-    
+
+    error_log("[MPESA TOKEN RESPONSE FIELDS] Keys: " . implode(", ", array_keys($token_response)));
+
     $access_token = $token_response['access_token'] ?? null;
     $expires_in = $token_response['expires_in'] ?? null;
 
@@ -141,6 +151,7 @@ function getMpesaAccessToken($credentials) {
         error_log("[MPESA TOKEN SUCCESS] Token obtained successfully");
         error_log("[MPESA TOKEN SUCCESS] Token: " . substr($access_token, 0, 30) . "..." . substr($access_token, -10));
         error_log("[MPESA TOKEN SUCCESS] Expires in: $expires_in seconds");
+        error_log("[MPESA TOKEN SUCCESS] Token will be used for: " . ($environment === 'production' ? 'PRODUCTION' : 'SANDBOX'));
     } else {
         error_log("[MPESA TOKEN ERROR] No access_token in response. Full response: " . json_encode($token_response, JSON_PRETTY_PRINT));
     }
@@ -234,6 +245,18 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
 
     error_log("[STK PUSH PAYLOAD] " . json_encode($payload, JSON_PRETTY_PRINT));
 
+    // Detailed payload validation logging
+    error_log("[STK PUSH PAYLOAD VALIDATION] ========== PAYLOAD FIELD ANALYSIS ==========");
+    error_log("[STK PUSH PAYLOAD VALIDATION] BusinessShortCode: " . $payload['BusinessShortCode'] . " (length: " . strlen($payload['BusinessShortCode']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] Timestamp: " . $payload['Timestamp'] . " (format: YmdHis)");
+    error_log("[STK PUSH PAYLOAD VALIDATION] Amount: " . $payload['Amount'] . " (type: " . gettype($payload['Amount']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PartyA (Phone): " . $payload['PartyA'] . " (length: " . strlen($payload['PartyA']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PartyB (Shortcode): " . $payload['PartyB'] . " (should match BusinessShortCode: " . ($payload['PartyB'] === $payload['BusinessShortCode'] ? 'YES' : 'NO - MISMATCH!') . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] TransactionType: " . $payload['TransactionType']);
+    error_log("[STK PUSH PAYLOAD VALIDATION] AccountReference: " . $payload['AccountReference'] . " (length: " . strlen($payload['AccountReference']) . ")");
+    error_log("[STK PUSH PAYLOAD VALIDATION] PhoneNumber (should match PartyA): " . ($payload['PhoneNumber'] === $payload['PartyA'] ? 'YES' : 'NO - MISMATCH!'));
+    error_log("[STK PUSH PAYLOAD VALIDATION] CallBackURL Valid: " . (filter_var($payload['CallBackURL'], FILTER_VALIDATE_URL) ? 'YES' : 'NO - INVALID!'));
+
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $stk_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -250,11 +273,19 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info for debugging
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
+    error_log("[STK PUSH RESPONSE] ========== SAFARICOM RESPONSE DETAILS ==========");
     error_log("[STK PUSH RESPONSE] HTTP Code: $http_code");
+    error_log("[STK PUSH RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[STK PUSH RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
+    error_log("[STK PUSH RESPONSE] Connection Time: " . round($curl_info['connect_time'], 3) . "s");
     error_log("[STK PUSH RESPONSE] Full Response Body: " . $response);
-    
+    error_log("[STK PUSH RESPONSE] Response Size: " . strlen($response) . " bytes");
+
     if ($curl_error) {
         error_log("[STK PUSH CURL ERROR] [$curl_errno]: $curl_error");
     }
@@ -263,6 +294,7 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
 
     if (!$response_data) {
         error_log("[STK PUSH ERROR] Failed to decode JSON response");
+        error_log("[STK PUSH ERROR] Raw response was: " . substr($response, 0, 500));
         return [
             'success' => false,
             'error' => 'Invalid response from M-Pesa API'
@@ -270,10 +302,22 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     }
 
     error_log("[STK PUSH RESPONSE DATA] " . json_encode($response_data, JSON_PRETTY_PRINT));
+    error_log("[STK PUSH RESPONSE FIELDS] " . "Keys: " . implode(", ", array_keys($response_data)));
+
+    // Log all response fields for debugging
+    foreach ($response_data as $key => $value) {
+        if (is_string($value) && strlen($value) < 100) {
+            error_log("[STK PUSH RESPONSE FIELD] $key: $value");
+        } elseif (!is_array($value)) {
+            error_log("[STK PUSH RESPONSE FIELD] $key: $value");
+        }
+    }
 
     if ($http_code !== 200) {
         error_log("[STK PUSH FAIL] HTTP $http_code - M-Pesa API rejected request");
         error_log("[STK PUSH FAIL] Error Details: " . json_encode($response_data, JSON_PRETTY_PRINT));
+        error_log("[STK PUSH FAIL] Response Code: " . ($response_data['ResponseCode'] ?? 'N/A'));
+        error_log("[STK PUSH FAIL] Response Description: " . ($response_data['ResponseDescription'] ?? 'N/A'));
         return [
             'success' => false,
             'error' => $response_data['errorMessage'] ?? $response_data['message'] ?? 'Failed to initiate STK Push'
@@ -294,6 +338,7 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     error_log("[STK PUSH SUCCESS] MerchantRequestID: " . ($response_data['MerchantRequestID'] ?? 'N/A'));
     error_log("[STK PUSH SUCCESS] ResponseCode: " . ($response_data['ResponseCode'] ?? 'N/A'));
     error_log("[STK PUSH SUCCESS] ResponseDescription: " . ($response_data['ResponseDescription'] ?? 'N/A'));
+    error_log("[STK PUSH SUCCESS] CustomerMessage: " . ($response_data['CustomerMessage'] ?? 'N/A'));
 
     return [
         'success' => true,
@@ -366,11 +411,18 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curl_error = curl_error($ch);
     $curl_errno = curl_errno($ch);
+
+    // Capture detailed curl info for debugging
+    $curl_info = curl_getinfo($ch);
     curl_close($ch);
 
+    error_log("[STK QUERY RESPONSE] ========== SAFARICOM QUERY RESPONSE DETAILS ==========");
     error_log("[STK QUERY RESPONSE] HTTP Code: $http_code");
+    error_log("[STK QUERY RESPONSE] Content Type: " . ($curl_info['content_type'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE] Response Time: " . round($curl_info['total_time'], 3) . "s");
     error_log("[STK QUERY RESPONSE] Full Response: " . $response);
-    
+    error_log("[STK QUERY RESPONSE] Response Size: " . strlen($response) . " bytes");
+
     if ($curl_error) {
         error_log("[STK QUERY CURL ERROR] [$curl_errno]: $curl_error");
     }
@@ -379,6 +431,7 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
 
     if (!$response_data) {
         error_log("[STK QUERY ERROR] Failed to decode JSON response");
+        error_log("[STK QUERY ERROR] Raw response: " . substr($response, 0, 500));
         return [
             'success' => false,
             'error' => 'Invalid response from M-Pesa API'
@@ -386,6 +439,16 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     }
 
     error_log("[STK QUERY RESPONSE DATA] " . json_encode($response_data, JSON_PRETTY_PRINT));
+    error_log("[STK QUERY RESPONSE FIELDS] Keys: " . implode(", ", array_keys($response_data)));
+
+    // Log all response fields for debugging
+    foreach ($response_data as $key => $value) {
+        if (is_string($value) && strlen($value) < 200) {
+            error_log("[STK QUERY RESPONSE FIELD] $key: $value");
+        } elseif (!is_array($value)) {
+            error_log("[STK QUERY RESPONSE FIELD] $key: $value");
+        }
+    }
 
     if ($http_code !== 200) {
         error_log("[STK QUERY FAIL] HTTP $http_code - " . json_encode($response_data, JSON_PRETTY_PRINT));
@@ -393,6 +456,22 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
             'success' => false,
             'error' => 'Failed to query STK Push status'
         ];
+    }
+
+    error_log("[STK QUERY RESPONSE ANALYSIS] ========== ANALYZING RESULT ==========");
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResponseCode: " . ($response_data['ResponseCode'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResponseDescription: " . ($response_data['ResponseDescription'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] ResultDesc: " . ($response_data['ResultDesc'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] MerchantRequestID: " . ($response_data['MerchantRequestID'] ?? 'N/A'));
+    error_log("[STK QUERY RESPONSE ANALYSIS] CheckoutRequestID: " . ($response_data['CheckoutRequestID'] ?? 'N/A'));
+
+    // Check for error result codes
+    $result_code = $response_data['ResultCode'] ?? null;
+    if ($result_code && $result_code !== '0' && $result_code !== 0) {
+        error_log("[STK QUERY ERROR ANALYSIS] Non-zero ResultCode detected: $result_code");
+        error_log("[STK QUERY ERROR ANALYSIS] Description: " . ($response_data['ResultDesc'] ?? 'No description'));
+        error_log("[STK QUERY ERROR ANALYSIS] This indicates the STK push failed on M-Pesa side");
     }
 
     error_log("[STK QUERY SUCCESS] ResultCode: " . ($response_data['ResultCode'] ?? 'N/A'));
