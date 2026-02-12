@@ -267,8 +267,18 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     error_log("[STK PUSH REQUEST] STK Push URL: $stk_url");
 
     $timestamp = date('YmdHis');
-    $password = base64_encode($shortcode . $passkey . $timestamp);
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Format: YmdHis");
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Generated: $timestamp (length: " . strlen($timestamp) . ")");
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Validation: " . (strlen($timestamp) === 14 ? 'VALID (14 chars)' : 'INVALID (expected 14 chars, got ' . strlen($timestamp) . ')'));
+    error_log("[STK PUSH PASSWORD GEN] Shortcode: $shortcode (length: " . strlen($shortcode) . ")");
+    error_log("[STK PUSH PASSWORD GEN] Passkey: " . substr($passkey, 0, 10) . "..." . substr($passkey, -5) . " (length: " . strlen($passkey) . ")");
 
+    $preEncodedPassword = $shortcode . $passkey . $timestamp;
+    error_log("[STK PUSH PASSWORD GEN] Pre-encoded String: $shortcode + [passkey] + $timestamp");
+    error_log("[STK PUSH PASSWORD GEN] Pre-encoded Length: " . strlen($preEncodedPassword) . " chars");
+
+    $password = base64_encode($preEncodedPassword);
+    error_log("[STK PUSH PASSWORD GEN] Post-encoded (Base64) Length: " . strlen($password) . " chars");
     error_log("[STK PUSH REQUEST] Timestamp: $timestamp");
     error_log("[STK PUSH REQUEST] Password (base64): " . substr($password, 0, 20) . "...");
 
@@ -427,7 +437,15 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     error_log("[STK QUERY REQUEST] Environment: $environment");
 
     $timestamp = date('YmdHis');
-    $password = base64_encode($shortcode . $passkey . $timestamp);
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Format: YmdHis");
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Generated: $timestamp (length: " . strlen($timestamp) . ")");
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Validation: " . (strlen($timestamp) === 14 ? 'VALID (14 chars)' : 'INVALID (expected 14 chars)'));
+
+    $preEncodedPassword = $shortcode . $passkey . $timestamp;
+    error_log("[STK QUERY PASSWORD GEN] Pre-encoded String Length: " . strlen($preEncodedPassword) . " chars");
+
+    $password = base64_encode($preEncodedPassword);
+    error_log("[STK QUERY PASSWORD GEN] Post-encoded (Base64) Length: " . strlen($password) . " chars");
 
     $payload = [
         'BusinessShortCode' => $shortcode,
