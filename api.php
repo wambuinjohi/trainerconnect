@@ -5057,48 +5057,53 @@ switch ($action) {
         $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
 
         if ($result['success']) {
-            // Create stk_push_sessions table if it doesn't exist
-            $createTableSql = "
-                CREATE TABLE IF NOT EXISTS stk_push_sessions (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    checkout_request_id VARCHAR(255) UNIQUE NOT NULL,
-                    merchant_request_id VARCHAR(255),
-                    booking_id VARCHAR(255),
-                    client_id VARCHAR(255),
-                    phone VARCHAR(20),
-                    amount DECIMAL(10, 2),
-                    status VARCHAR(50) DEFAULT 'pending',
-                    result_code VARCHAR(50),
-                    result_description TEXT,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    INDEX idx_checkout (checkout_request_id),
-                    INDEX idx_booking (booking_id),
-                    INDEX idx_client (client_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            ";
+            // Ensure stk_push_sessions table exists with required columns
+            $tableExistsSql = "SHOW COLUMNS FROM stk_push_sessions WHERE Field = 'checkout_request_id'";
+            $tableCheckResult = @$conn->query($tableExistsSql);
 
-            if (!$conn->query($createTableSql)) {
-                error_log("[STK SESSION] Failed to create stk_push_sessions table: " . $conn->error);
+            if (!$tableCheckResult || $tableCheckResult->num_rows === 0) {
+                // Table doesn't exist or is missing columns, create it
+                $createTableSql = "
+                    CREATE TABLE IF NOT EXISTS stk_push_sessions (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        checkout_request_id VARCHAR(255) UNIQUE NOT NULL,
+                        booking_id VARCHAR(255),
+                        client_id VARCHAR(255),
+                        phone VARCHAR(20),
+                        amount DECIMAL(10, 2),
+                        status VARCHAR(50) DEFAULT 'pending',
+                        result_code VARCHAR(50),
+                        result_description TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_checkout (checkout_request_id),
+                        INDEX idx_booking (booking_id),
+                        INDEX idx_client (client_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                ";
+
+                if (!$conn->query($createTableSql)) {
+                    error_log("[STK SESSION] Failed to create stk_push_sessions table: " . $conn->error);
+                } else {
+                    error_log("[STK SESSION] Table created successfully");
+                }
             }
 
             // Insert STK session record for callback matching
-            $sessionId = 'session_' . uniqid();
-            $merchantRequestId = $result['merchant_request_id'] ?? null;
             $checkoutRequestId = $result['checkout_request_id'];
             $now = date('Y-m-d H:i:s');
 
+            // First, try to insert into stk_push_sessions table
             $insertStmt = $conn->prepare("
                 INSERT INTO stk_push_sessions (
-                    checkout_request_id, merchant_request_id, booking_id, client_id, phone, amount, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+                    checkout_request_id, booking_id, client_id, phone, amount, status, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
             ");
 
             if ($insertStmt) {
                 $insertStmt->bind_param(
-                    "sssssdss",
+                    "ssssdss",
                     $checkoutRequestId,
-                    $merchantRequestId,
                     $bookingId,
                     $clientId,
                     $phone,
