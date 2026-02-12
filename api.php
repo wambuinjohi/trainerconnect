@@ -5057,65 +5057,46 @@ switch ($action) {
         $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
 
         if ($result['success']) {
-            // Ensure stk_push_sessions table exists with required columns
-            $tableExistsSql = "SHOW COLUMNS FROM stk_push_sessions WHERE Field = 'checkout_request_id'";
-            $tableCheckResult = @$conn->query($tableExistsSql);
+            // Store STK session record for callback matching
+            $checkoutRequestId = $result['checkout_request_id'];
 
-            if (!$tableCheckResult || $tableCheckResult->num_rows === 0) {
-                // Table doesn't exist or is missing columns, create it
+            // Ensure table exists first
+            $checkTableSql = "SHOW TABLES LIKE 'stk_push_sessions'";
+            $tableCheck = @$conn->query($checkTableSql);
+
+            if (!$tableCheck || $tableCheck->num_rows === 0) {
+                // Create table if it doesn't exist
                 $createTableSql = "
-                    CREATE TABLE IF NOT EXISTS stk_push_sessions (
+                    CREATE TABLE stk_push_sessions (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         checkout_request_id VARCHAR(255) UNIQUE NOT NULL,
-                        booking_id VARCHAR(255),
-                        client_id VARCHAR(255),
-                        phone VARCHAR(20),
-                        amount DECIMAL(10, 2),
                         status VARCHAR(50) DEFAULT 'pending',
                         result_code VARCHAR(50),
                         result_description TEXT,
+                        merchant_request_id VARCHAR(255),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        INDEX idx_checkout (checkout_request_id),
-                        INDEX idx_booking (booking_id),
-                        INDEX idx_client (client_id)
+                        INDEX idx_checkout (checkout_request_id)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 ";
 
-                if (!$conn->query($createTableSql)) {
-                    error_log("[STK SESSION] Failed to create stk_push_sessions table: " . $conn->error);
-                } else {
-                    error_log("[STK SESSION] Table created successfully");
-                }
+                @$conn->query($createTableSql);
+                error_log("[STK SESSION] Table created");
             }
 
-            // Insert STK session record for callback matching
-            $checkoutRequestId = $result['checkout_request_id'];
-            $now = date('Y-m-d H:i:s');
-
-            // First, try to insert into stk_push_sessions table
+            // Insert only checkout_request_id - the callback handler will update the rest
             $insertStmt = $conn->prepare("
-                INSERT INTO stk_push_sessions (
-                    checkout_request_id, booking_id, client_id, phone, amount, status, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)
+                INSERT IGNORE INTO stk_push_sessions (checkout_request_id, status)
+                VALUES (?, 'pending')
             ");
 
             if ($insertStmt) {
-                $insertStmt->bind_param(
-                    "ssssdss",
-                    $checkoutRequestId,
-                    $bookingId,
-                    $clientId,
-                    $phone,
-                    $amount,
-                    $now,
-                    $now
-                );
+                $insertStmt->bind_param("s", $checkoutRequestId);
 
                 if ($insertStmt->execute()) {
-                    error_log("[STK SESSION] Session stored - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
+                    error_log("[STK SESSION] Session created - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
                 } else {
-                    error_log("[STK SESSION] Failed to store session: " . $insertStmt->error);
+                    error_log("[STK SESSION] Failed to insert session: " . $insertStmt->error);
                 }
                 $insertStmt->close();
             } else {
