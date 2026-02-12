@@ -221,7 +221,13 @@ export const BookingForm: React.FC<{ trainer: any, trainerProfile?: any, onDone?
 
         let initResult: any = null
         try {
-          initResult = await apiRequest('mpesa_stk_initiate', { phone: mpesaPhone.trim(), amount: clientTotal, account_reference: bookingData?.id || 'booking' }, { headers: withAuth() })
+          initResult = await apiRequest('mpesa_stk_initiate', {
+            phone: mpesaPhone.trim(),
+            amount: clientTotal,
+            account_reference: bookingData?.id || 'booking',
+            booking_id: bookingData?.id || null,
+            client_id: user.id || null
+          }, { headers: withAuth() })
           console.log('STK initiate response:', initResult)
         } catch (e: any) {
           console.error('STK initiate error:', e)
