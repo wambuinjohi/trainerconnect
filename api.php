@@ -5070,13 +5070,17 @@ switch ($action) {
                     CREATE TABLE stk_push_sessions (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         checkout_request_id VARCHAR(255) UNIQUE NOT NULL,
+                        booking_id VARCHAR(255),
+                        client_id VARCHAR(255),
                         status VARCHAR(50) DEFAULT 'pending',
                         result_code VARCHAR(50),
                         result_description TEXT,
                         merchant_request_id VARCHAR(255),
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                        INDEX idx_checkout (checkout_request_id)
+                        INDEX idx_checkout (checkout_request_id),
+                        INDEX idx_booking (booking_id),
+                        INDEX idx_client (client_id)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
                 ";
 
@@ -5084,14 +5088,14 @@ switch ($action) {
                 error_log("[STK SESSION] Table created");
             }
 
-            // Insert only checkout_request_id - the callback handler will update the rest
+            // Insert STK session with booking_id and client_id for callback matching
             $insertStmt = $conn->prepare("
-                INSERT IGNORE INTO stk_push_sessions (checkout_request_id, status)
-                VALUES (?, 'pending')
+                INSERT IGNORE INTO stk_push_sessions (checkout_request_id, booking_id, client_id, status)
+                VALUES (?, ?, ?, 'pending')
             ");
 
             if ($insertStmt) {
-                $insertStmt->bind_param("s", $checkoutRequestId);
+                $insertStmt->bind_param("sss", $checkoutRequestId, $bookingId, $clientId);
 
                 if ($insertStmt->execute()) {
                     error_log("[STK SESSION] Session created - CheckoutRequestID: $checkoutRequestId, BookingID: $bookingId, ClientID: $clientId");
