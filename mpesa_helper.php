@@ -151,7 +151,16 @@ function getMpesaAccessToken($credentials) {
 // Initiate STK Push payment
 function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
     error_log("[STK PUSH INIT] ========== STARTING STK PUSH INITIATION ==========");
-    error_log("[STK PUSH INIT] Phone: $phone");
+    error_log("[STK PUSH INIT] Raw Phone Input: $phone");
+
+    // Validate phone format (should be 254XXXXXXXXX)
+    $phonePattern = '/^254[0-9]{9}$/';
+    if (!preg_match($phonePattern, $phone)) {
+        error_log("[STK PUSH ERROR] Phone number format invalid: $phone. Expected format: 254XXXXXXXXX (11 digits starting with 254)");
+    } else {
+        error_log("[STK PUSH INIT] Phone format valid: $phone");
+    }
+
     error_log("[STK PUSH INIT] Amount: $amount");
     error_log("[STK PUSH INIT] Account Reference: $account_reference");
 
