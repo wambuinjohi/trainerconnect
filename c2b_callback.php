@@ -155,12 +155,12 @@ try {
                 // Update the STK session
                 $updateStmt = $conn->prepare("
                     UPDATE stk_push_sessions
-                    SET status = ?, result_code = ?, result_description = ?, merchant_request_id = ?, updated_at = NOW()
+                    SET status = ?, result_code = ?, result_description = ?, updated_at = NOW()
                     WHERE checkout_request_id = ?
                 ");
 
                 if ($updateStmt) {
-                    $updateStmt->bind_param("sssss", $status, $resultCode, $resultDesc, $merchantRequestId, $checkoutRequestId);
+                    $updateStmt->bind_param("ssss", $status, $resultCode, $resultDesc, $checkoutRequestId);
                     $updateStmt->execute();
                     $updateStmt->close();
                     
