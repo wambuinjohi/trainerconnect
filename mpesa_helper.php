@@ -64,6 +64,45 @@ function getMpesaCredentials() {
     return null;
 }
 
+// Format phone number to start with 254 (Kenya country code)
+// Converts: 0712345678 -> 254712345678, 07123... -> 254712..., +254... -> 254...
+function formatPhoneNumberTo254($phone) {
+    if (empty($phone)) {
+        return '';
+    }
+
+    // Convert to string and trim
+    $phone = trim(strval($phone));
+
+    // Remove any spaces
+    $phone = str_replace(' ', '', $phone);
+
+    // Remove leading plus sign if present
+    if (substr($phone, 0, 1) === '+') {
+        $phone = substr($phone, 1);
+    }
+
+    // If starts with 0, replace with 254
+    if (substr($phone, 0, 1) === '0') {
+        $phone = '254' . substr($phone, 1);
+    }
+    // If starts with just 7 (e.g., 712345678), add 254
+    elseif (substr($phone, 0, 1) === '7' && strlen($phone) === 9) {
+        $phone = '254' . $phone;
+    }
+    // If starts with single digit and not 2, assume it's missing country code
+    elseif (substr($phone, 0, 1) >= '1' && substr($phone, 0, 1) <= '9' && substr($phone, 0, 3) !== '254') {
+        // Only add if it looks like a 9-digit number
+        if (strlen($phone) === 9) {
+            $phone = '254' . $phone;
+        }
+    }
+
+    error_log("[PHONE FORMAT] Formatted phone number (last 9 digits shown): " . substr($phone, -9));
+
+    return $phone;
+}
+
 // Validate that M-Pesa credentials are configured
 function validateMpesaCredentialsConfigured() {
     $creds = getMpesaCredentials();
@@ -163,6 +202,10 @@ function getMpesaAccessToken($credentials) {
 function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
     error_log("[STK PUSH INIT] ========== STARTING STK PUSH INITIATION ==========");
     error_log("[STK PUSH INIT] Raw Phone Input: $phone");
+
+    // Format phone number to start with 254
+    $phone = formatPhoneNumberTo254($phone);
+    error_log("[STK PUSH INIT] Formatted Phone: " . substr($phone, -9));
 
     // Validate phone format (should be 254XXXXXXXXX)
     $phonePattern = '/^254[0-9]{9}$/';
@@ -489,6 +532,10 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
 // Initiate B2C payment (payout)
 function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $remarks = null, $queue_timeout_url = null, $result_url = null) {
     error_log("[B2C INIT] Starting B2C payment - Phone: $phone, Amount: $amount");
+
+    // Format phone number to start with 254
+    $phone = formatPhoneNumberTo254($phone);
+    error_log("[B2C INIT] Formatted Phone: " . substr($phone, -9));
     
     $access_token = getMpesaAccessToken($credentials);
 

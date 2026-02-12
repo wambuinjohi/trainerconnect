@@ -3863,13 +3863,11 @@ switch ($action) {
         $phoneNumber = $conn->real_escape_string($input['phone_number']);
         $amount = floatval($input['amount']);
 
-        $phoneNumber = str_replace(['+', ' ', '-'], '', $phoneNumber);
-        if (substr($phoneNumber, 0, 1) !== '2') {
-            $phoneNumber = '254' . substr($phoneNumber, -9);
-        }
+        // Format phone number to start with 254
+        $phoneNumber = formatPhoneNumberTo254($phoneNumber);
 
         if (strlen($phoneNumber) !== 12 || !is_numeric($phoneNumber)) {
-            respond("error", "Invalid phone number format.", null, 400);
+            respond("error", "Invalid phone number format. Expected format: 254XXXXXXXXX", null, 400);
         }
 
         $refQuery = $conn->query("SELECT reference_id FROM b2c_payments WHERE id = '$b2cPaymentId'");

@@ -78,14 +78,20 @@ try {
     // Get raw request body
     $rawRequest = file_get_contents('php://input');
     $requestData = json_decode($rawRequest, true);
-    
-    if (!$requestData) {
-        logC2BEvent('invalid_json', ['raw' => substr($rawRequest, 0, 500)]);
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Invalid JSON']);
+
+    // M-Pesa sends empty requests to validate the callback URL
+    // We must return HTTP 200 for validation to pass
+    if (!$requestData || empty($rawRequest)) {
+        logC2BEvent('validation_probe', [
+            'raw_length' => strlen($rawRequest),
+            'decoded' => $requestData
+        ]);
+        // Always return 200 OK for M-Pesa validation probes
+        http_response_code(200);
+        echo json_encode(['success' => true, 'message' => 'C2B callback validation acknowledged']);
         exit;
     }
-    
+
     // Log the incoming request
     logC2BEvent('received', ['request_keys' => array_keys($requestData)]);
     
