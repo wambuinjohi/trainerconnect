@@ -2,17 +2,17 @@
 /**
  * M-Pesa Settings Verification Script
  * Use this to check if M-Pesa credentials are saved in the database
+ *
+ * Access this file via: https://yourserver.com/verify_mpesa_settings.php
  */
 
 header("Content-Type: application/json; charset=utf-8");
 
 $verification = [
     "timestamp" => date('Y-m-d H:i:s'),
-    "database" => [
-        "host" => "localhost",
-        "username" => "skatrykc_trainer",
-        "database" => "skatrykc_trainer"
-    ],
+    "environment" => $_SERVER['SERVER_NAME'] ?? 'unknown',
+    "php_version" => phpversion(),
+    "database_connection" => "pending",
     "table_exists" => false,
     "mpesa_data_exists" => false,
     "mpesa_credentials" => null,
@@ -21,14 +21,22 @@ $verification = [
 ];
 
 try {
-    // Connect to database
-    $conn = @new mysqli('localhost', 'skatrykc_trainer', 'Sirgeorge.12', 'skatrykc_trainer');
-    
-    if ($conn->connect_error) {
-        $verification["errors"][] = "Database connection failed: " . $conn->connect_error;
+    // Use the shared connection.php for consistency
+    include_once(__DIR__ . '/connection.php');
+
+    if (!isset($conn) || !$conn) {
+        $verification["database_connection"] = "failed";
+        $verification["errors"][] = "Database connection not available. Check connection.php configuration.";
         http_response_code(500);
         echo json_encode($verification, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         exit;
+    }
+
+    $verification["database_connection"] = "success";
+
+    // Get DB info for reference (masked)
+    if ($conn && method_exists($conn, 'get_server_info')) {
+        $verification["mysql_server"] = substr($conn->get_server_info(), 0, 20) . "...";
     }
     
     $conn->set_charset("utf8mb4");
@@ -80,19 +88,35 @@ try {
             ];
             
             // Check if all required fields are present
-            $required = ['consumerKey', 'consumerSecret', 'shortcode', 'passkey'];
+            $required = ['consumerKey', 'consumerSecret', 'shortcode', 'passkey', 'environment'];
             $missing = [];
+            $empty_fields = [];
+
             foreach ($required as $field) {
-                if (empty($parsed[$field])) {
+                if (!isset($parsed[$field])) {
                     $missing[] = $field;
+                } elseif (empty($parsed[$field])) {
+                    $empty_fields[] = $field;
                 }
             }
-            
-            if (empty($missing)) {
+
+            $validation_errors = array_merge($missing, $empty_fields);
+
+            if (empty($validation_errors)) {
                 $verification["status"] = "✅ VALID - All required M-Pesa credentials are present and saved";
+                $verification["environment"] = $parsed['environment'] ?? 'not set';
+                $verification["callback_urls"] = [
+                    "c2b_callback" => $parsed['c2bCallbackUrl'] ?? "not configured",
+                    "b2c_callback" => $parsed['b2cCallbackUrl'] ?? "not configured"
+                ];
             } else {
-                $verification["status"] = "⚠️ INCOMPLETE - Missing fields: " . implode(", ", $missing);
-                $verification["errors"][] = "Missing required fields: " . implode(", ", $missing);
+                $verification["status"] = "⚠️ INCOMPLETE - Issues detected";
+                if (!empty($missing)) {
+                    $verification["errors"][] = "Missing required fields: " . implode(", ", $missing);
+                }
+                if (!empty($empty_fields)) {
+                    $verification["errors"][] = "Empty required fields: " . implode(", ", $empty_fields);
+                }
             }
         } else {
             $verification["errors"][] = "JSON parsing failed for M-Pesa credentials";

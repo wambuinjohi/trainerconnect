@@ -5037,7 +5037,10 @@ switch ($action) {
 
     // INITIATE STK PUSH PAYMENT
     case 'mpesa_stk_initiate':
+        error_log("[MPESA STK INITIATE] ========== REQUEST START ==========");
+
         if (!isset($input['phone']) || !isset($input['amount'])) {
+            error_log("[MPESA STK INITIATE ERROR] Missing phone or amount - phone: " . (isset($input['phone']) ? 'SET' : 'MISSING') . ", amount: " . (isset($input['amount']) ? 'SET' : 'MISSING'));
             respond("error", "Missing phone or amount.", null, 400);
         }
 
@@ -5047,16 +5050,42 @@ switch ($action) {
         $clientId = $conn->real_escape_string($input['client_id'] ?? $user['id'] ?? null);
         $bookingId = $conn->real_escape_string($input['booking_id'] ?? null);
 
+        error_log("[MPESA STK INITIATE] Input validated - Phone: " . substr($phone, -9) . ", Amount: $amount, Account: $accountReference, BookingID: $bookingId");
+
         $credentials = getMpesaCredentials();
+        error_log("[MPESA STK INITIATE] Credentials check - " . ($credentials ? "LOADED (source: " . ($credentials['source'] ?? 'unknown') . ")" : "FAILED"));
+
         if (!$credentials) {
-            respond("error", "M-Pesa credentials not configured.", null, 500);
+            error_log("[MPESA STK INITIATE ERROR] M-Pesa credentials not configured in database or environment");
+            respond("error", "M-Pesa credentials not configured. Please configure in admin settings.", null, 500);
         }
 
+        if (empty($credentials['consumer_key']) || empty($credentials['consumer_secret'])) {
+            error_log("[MPESA STK INITIATE ERROR] Incomplete credentials - ConsumerKey: " . (empty($credentials['consumer_key']) ? 'EMPTY' : 'SET') . ", ConsumerSecret: " . (empty($credentials['consumer_secret']) ? 'EMPTY' : 'SET'));
+            respond("error", "M-Pesa credentials incomplete. Consumer key or secret missing.", null, 500);
+        }
+
+        if (empty($credentials['shortcode']) || empty($credentials['passkey'])) {
+            error_log("[MPESA STK INITIATE ERROR] Missing transaction credentials - Shortcode: " . (empty($credentials['shortcode']) ? 'EMPTY' : 'SET') . ", Passkey: " . (empty($credentials['passkey']) ? 'EMPTY' : 'SET'));
+            respond("error", "M-Pesa transaction credentials incomplete. Shortcode or passkey missing.", null, 500);
+        }
+
+        error_log("[MPESA STK INITIATE] Calling initiateSTKPush with validated credentials");
         $result = initiateSTKPush($credentials, $phone, $amount, $accountReference);
+        error_log("[MPESA STK INITIATE] initiateSTKPush response - Success: " . ($result['success'] ? 'TRUE' : 'FALSE') . ", Error: " . ($result['error'] ?? 'NONE'));
 
         if ($result['success']) {
+            error_log("[MPESA STK INITIATE SUCCESS] STK push initiated by M-Pesa");
+
+            // Validate response contains required data
+            if (empty($result['checkout_request_id'])) {
+                error_log("[MPESA STK INITIATE ERROR] M-Pesa returned success but missing CheckoutRequestID");
+                respond("error", "M-Pesa returned incomplete response. Missing CheckoutRequestID.", null, 500);
+            }
+
             // Store STK session record for callback matching
             $checkoutRequestId = $result['checkout_request_id'];
+            error_log("[MPESA STK INITIATE] CheckoutRequestID: $checkoutRequestId, MerchantRequestID: " . ($result['merchant_request_id'] ?? 'N/A'));
 
             // Ensure table exists first
             $checkTableSql = "SHOW TABLES LIKE 'stk_push_sessions'";
@@ -5125,13 +5154,17 @@ switch ($action) {
                 error_log("[STK SESSION] Prepare failed: " . $conn->error);
             }
 
-            respond("success", "STK push initiated successfully.", [
+            $responseData = [
                 "checkout_request_id" => $result['checkout_request_id'],
-                "merchant_request_id" => $result['merchant_request_id'],
-                "response_code" => $result['response_code'],
-                "response_description" => $result['response_description']
-            ]);
+                "merchant_request_id" => $result['merchant_request_id'] ?? null,
+                "response_code" => $result['response_code'] ?? null,
+                "response_description" => $result['response_description'] ?? null
+            ];
+
+            error_log("[MPESA STK INITIATE] Sending response: " . json_encode($responseData));
+            respond("success", "STK push initiated successfully.", $responseData);
         } else {
+            error_log("[MPESA STK INITIATE FAILURE] " . ($result['error'] ?? "Unknown error"));
             respond("error", $result['error'] ?? "Failed to initiate STK push.", null, 500);
         }
         break;
