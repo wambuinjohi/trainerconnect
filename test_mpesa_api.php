@@ -29,12 +29,15 @@ $test_result = [
 ];
 
 try {
+    // Get request body (handle both POST and GET)
+    $test_type = $_REQUEST['test'] ?? 'credentials';
+
     // Step 1: Load dependencies
     $test_result["steps"][] = [
         "name" => "Loading dependencies",
         "status" => "pending"
     ];
-    
+
     include_once(__DIR__ . '/connection.php');
     if (!isset($conn) || !$conn) {
         throw new Exception("Database connection failed");
