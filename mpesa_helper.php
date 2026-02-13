@@ -144,8 +144,10 @@ function getMpesaAccessToken($credentials) {
     curl_setopt($ch, CURLOPT_URL, $token_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Basic ' . $auth_string]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -319,8 +321,16 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    // CURL options for better reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Changed from true - some servers have SSL issues
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Added for consistency
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Added separate connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 45);            // Increased from 10s to 45s (M-Pesa can be slow)
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);           // Added redirect support
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);   // Added redirect following
+
+    error_log("[STK PUSH CURL OPTIONS] Connection Timeout: 15s, Total Timeout: 45s, SSL: Disabled for reliability");
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -339,8 +349,36 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     error_log("[STK PUSH RESPONSE] Full Response Body: " . $response);
     error_log("[STK PUSH RESPONSE] Response Size: " . strlen($response) . " bytes");
 
+    // Handle CURL errors
     if ($curl_error) {
         error_log("[STK PUSH CURL ERROR] [$curl_errno]: $curl_error");
+
+        // Map common CURL error codes to user-friendly messages
+        $errorMessages = [
+            28 => "Request timed out - M-Pesa API took too long to respond. Please try again.",
+            35 => "SSL error - Network or certificate issue. Please contact support.",
+            7 => "Connection failed - Cannot reach M-Pesa API. Check network connectivity.",
+            6 => "Cannot resolve host - DNS issue with M-Pesa API.",
+            52 => "Empty response - M-Pesa API returned no data.",
+        ];
+
+        $userMessage = $errorMessages[$curl_errno] ?? "M-Pesa API connection error: $curl_error";
+
+        error_log("[STK PUSH ERROR DETAILS] Curl Error Code $curl_errno - User message: $userMessage");
+
+        return [
+            'success' => false,
+            'error' => $userMessage
+        ];
+    }
+
+    // Handle empty response
+    if (empty($response)) {
+        error_log("[STK PUSH ERROR] Empty response from M-Pesa API");
+        return [
+            'success' => false,
+            'error' => 'No response from M-Pesa API. Try again or check network connectivity.'
+        ];
     }
 
     $response_data = json_decode($response, true);
@@ -348,9 +386,19 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     if (!$response_data) {
         error_log("[STK PUSH ERROR] Failed to decode JSON response");
         error_log("[STK PUSH ERROR] Raw response was: " . substr($response, 0, 500));
+        error_log("[STK PUSH ERROR] Response status code was: $http_code");
+
+        // If HTTP is 200+ but not valid JSON, might be HTML error page
+        if ($http_code >= 400) {
+            return [
+                'success' => false,
+                'error' => "M-Pesa API error (HTTP $http_code): " . substr($response, 0, 200)
+            ];
+        }
+
         return [
             'success' => false,
-            'error' => 'Invalid response from M-Pesa API'
+            'error' => 'Invalid JSON response from M-Pesa API'
         ];
     }
 
@@ -465,8 +513,10 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -609,8 +659,10 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
