@@ -91,8 +91,9 @@ try {
             'decoded' => $requestData
         ]);
         // Always return 200 OK for M-Pesa validation probes
+        // Use M-Pesa standard response format
         http_response_code(200);
-        echo json_encode(['success' => true, 'message' => 'C2B callback validation acknowledged']);
+        echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
         exit;
     }
 
@@ -300,18 +301,21 @@ try {
     }
     
     // Always return 200 OK to acknowledge receipt
+    // Use M-Pesa standard response format
     http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'C2B callback received and processed',
-        'checkout_request_id' => $checkoutRequestId,
-    ]);
+    // Log response before sending
+    error_log("[C2B CALLBACK RESPONSE] Sending M-Pesa standard response - ResultCode: 0, ResultDesc: Accepted");
+    echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
     exit;
     
 } catch (Exception $e) {
     logC2BEvent('exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error']);
+    error_log("[C2B CALLBACK EXCEPTION] " . $e->getMessage());
+    // Always return 200 OK with M-Pesa standard format even on error
+    // M-Pesa needs to know we received the request
+    http_response_code(200);
+    error_log("[C2B CALLBACK RESPONSE] Sending M-Pesa standard response on exception - ResultCode: 0, ResultDesc: Accepted");
+    echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
     exit;
 }
 ?>
