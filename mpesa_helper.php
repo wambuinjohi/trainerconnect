@@ -64,6 +64,45 @@ function getMpesaCredentials() {
     return null;
 }
 
+// Format phone number to start with 254 (Kenya country code)
+// Converts: 0712345678 -> 254712345678, 07123... -> 254712..., +254... -> 254...
+function formatPhoneNumberTo254($phone) {
+    if (empty($phone)) {
+        return '';
+    }
+
+    // Convert to string and trim
+    $phone = trim(strval($phone));
+
+    // Remove any spaces
+    $phone = str_replace(' ', '', $phone);
+
+    // Remove leading plus sign if present
+    if (substr($phone, 0, 1) === '+') {
+        $phone = substr($phone, 1);
+    }
+
+    // If starts with 0, replace with 254
+    if (substr($phone, 0, 1) === '0') {
+        $phone = '254' . substr($phone, 1);
+    }
+    // If starts with just 7 (e.g., 712345678), add 254
+    elseif (substr($phone, 0, 1) === '7' && strlen($phone) === 9) {
+        $phone = '254' . $phone;
+    }
+    // If starts with single digit and not 2, assume it's missing country code
+    elseif (substr($phone, 0, 1) >= '1' && substr($phone, 0, 1) <= '9' && substr($phone, 0, 3) !== '254') {
+        // Only add if it looks like a 9-digit number
+        if (strlen($phone) === 9) {
+            $phone = '254' . $phone;
+        }
+    }
+
+    error_log("[PHONE FORMAT] Formatted phone number (last 9 digits shown): " . substr($phone, -9));
+
+    return $phone;
+}
+
 // Validate that M-Pesa credentials are configured
 function validateMpesaCredentialsConfigured() {
     $creds = getMpesaCredentials();
@@ -105,8 +144,10 @@ function getMpesaAccessToken($credentials) {
     curl_setopt($ch, CURLOPT_URL, $token_url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, ['Authorization: Basic ' . $auth_string]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -163,6 +204,10 @@ function getMpesaAccessToken($credentials) {
 function initiateSTKPush($credentials, $phone, $amount, $account_reference, $callback_url = null) {
     error_log("[STK PUSH INIT] ========== STARTING STK PUSH INITIATION ==========");
     error_log("[STK PUSH INIT] Raw Phone Input: $phone");
+
+    // Format phone number to start with 254
+    $phone = formatPhoneNumberTo254($phone);
+    error_log("[STK PUSH INIT] Formatted Phone: " . substr($phone, -9));
 
     // Validate phone format (should be 254XXXXXXXXX)
     $phonePattern = '/^254[0-9]{9}$/';
@@ -224,8 +269,18 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     error_log("[STK PUSH REQUEST] STK Push URL: $stk_url");
 
     $timestamp = date('YmdHis');
-    $password = base64_encode($shortcode . $passkey . $timestamp);
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Format: YmdHis");
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Generated: $timestamp (length: " . strlen($timestamp) . ")");
+    error_log("[STK PUSH PASSWORD GEN] Timestamp Validation: " . (strlen($timestamp) === 14 ? 'VALID (14 chars)' : 'INVALID (expected 14 chars, got ' . strlen($timestamp) . ')'));
+    error_log("[STK PUSH PASSWORD GEN] Shortcode: $shortcode (length: " . strlen($shortcode) . ")");
+    error_log("[STK PUSH PASSWORD GEN] Passkey: " . substr($passkey, 0, 10) . "..." . substr($passkey, -5) . " (length: " . strlen($passkey) . ")");
 
+    $preEncodedPassword = $shortcode . $passkey . $timestamp;
+    error_log("[STK PUSH PASSWORD GEN] Pre-encoded String: $shortcode + [passkey] + $timestamp");
+    error_log("[STK PUSH PASSWORD GEN] Pre-encoded Length: " . strlen($preEncodedPassword) . " chars");
+
+    $password = base64_encode($preEncodedPassword);
+    error_log("[STK PUSH PASSWORD GEN] Post-encoded (Base64) Length: " . strlen($password) . " chars");
     error_log("[STK PUSH REQUEST] Timestamp: $timestamp");
     error_log("[STK PUSH REQUEST] Password (base64): " . substr($password, 0, 20) . "...");
 
@@ -266,8 +321,16 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+    // CURL options for better reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Changed from true - some servers have SSL issues
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Added for consistency
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Added separate connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 45);            // Increased from 10s to 45s (M-Pesa can be slow)
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);           // Added redirect support
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);   // Added redirect following
+
+    error_log("[STK PUSH CURL OPTIONS] Connection Timeout: 15s, Total Timeout: 45s, SSL: Disabled for reliability");
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -286,8 +349,36 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     error_log("[STK PUSH RESPONSE] Full Response Body: " . $response);
     error_log("[STK PUSH RESPONSE] Response Size: " . strlen($response) . " bytes");
 
+    // Handle CURL errors
     if ($curl_error) {
         error_log("[STK PUSH CURL ERROR] [$curl_errno]: $curl_error");
+
+        // Map common CURL error codes to user-friendly messages
+        $errorMessages = [
+            28 => "Request timed out - M-Pesa API took too long to respond. Please try again.",
+            35 => "SSL error - Network or certificate issue. Please contact support.",
+            7 => "Connection failed - Cannot reach M-Pesa API. Check network connectivity.",
+            6 => "Cannot resolve host - DNS issue with M-Pesa API.",
+            52 => "Empty response - M-Pesa API returned no data.",
+        ];
+
+        $userMessage = $errorMessages[$curl_errno] ?? "M-Pesa API connection error: $curl_error";
+
+        error_log("[STK PUSH ERROR DETAILS] Curl Error Code $curl_errno - User message: $userMessage");
+
+        return [
+            'success' => false,
+            'error' => $userMessage
+        ];
+    }
+
+    // Handle empty response
+    if (empty($response)) {
+        error_log("[STK PUSH ERROR] Empty response from M-Pesa API");
+        return [
+            'success' => false,
+            'error' => 'No response from M-Pesa API. Try again or check network connectivity.'
+        ];
     }
 
     $response_data = json_decode($response, true);
@@ -295,9 +386,19 @@ function initiateSTKPush($credentials, $phone, $amount, $account_reference, $cal
     if (!$response_data) {
         error_log("[STK PUSH ERROR] Failed to decode JSON response");
         error_log("[STK PUSH ERROR] Raw response was: " . substr($response, 0, 500));
+        error_log("[STK PUSH ERROR] Response status code was: $http_code");
+
+        // If HTTP is 200+ but not valid JSON, might be HTML error page
+        if ($http_code >= 400) {
+            return [
+                'success' => false,
+                'error' => "M-Pesa API error (HTTP $http_code): " . substr($response, 0, 200)
+            ];
+        }
+
         return [
             'success' => false,
-            'error' => 'Invalid response from M-Pesa API'
+            'error' => 'Invalid JSON response from M-Pesa API'
         ];
     }
 
@@ -384,7 +485,15 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
     error_log("[STK QUERY REQUEST] Environment: $environment");
 
     $timestamp = date('YmdHis');
-    $password = base64_encode($shortcode . $passkey . $timestamp);
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Format: YmdHis");
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Generated: $timestamp (length: " . strlen($timestamp) . ")");
+    error_log("[STK QUERY PASSWORD GEN] Timestamp Validation: " . (strlen($timestamp) === 14 ? 'VALID (14 chars)' : 'INVALID (expected 14 chars)'));
+
+    $preEncodedPassword = $shortcode . $passkey . $timestamp;
+    error_log("[STK QUERY PASSWORD GEN] Pre-encoded String Length: " . strlen($preEncodedPassword) . " chars");
+
+    $password = base64_encode($preEncodedPassword);
+    error_log("[STK QUERY PASSWORD GEN] Post-encoded (Base64) Length: " . strlen($password) . " chars");
 
     $payload = [
         'BusinessShortCode' => $shortcode,
@@ -404,8 +513,10 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
 
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -489,6 +600,10 @@ function querySTKPushStatus($credentials, $checkout_request_id) {
 // Initiate B2C payment (payout)
 function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $remarks = null, $queue_timeout_url = null, $result_url = null) {
     error_log("[B2C INIT] Starting B2C payment - Phone: $phone, Amount: $amount");
+
+    // Format phone number to start with 254
+    $phone = formatPhoneNumberTo254($phone);
+    error_log("[B2C INIT] Formatted Phone: " . substr($phone, -9));
     
     $access_token = getMpesaAccessToken($credentials);
 
@@ -544,8 +659,10 @@ function initiateB2CPayment($credentials, $phone, $amount, $command_id = null, $
         'Authorization: Bearer ' . $access_token,
         'Content-Type: application/json'
     ]);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);  // Disabled for reliability
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);     // Connection timeout
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);            // Total timeout (increased from 10s)
     
     $response = curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

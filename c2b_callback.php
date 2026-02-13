@@ -77,46 +77,71 @@ function logC2BEvent($type, $details = []) {
 try {
     // Get raw request body
     $rawRequest = file_get_contents('php://input');
+
+    // Log raw request for debugging
+    file_put_contents('mpesa_callback_raw.txt', "[" . date('Y-m-d H:i:s') . "] Raw request (" . strlen($rawRequest) . " bytes): " . substr($rawRequest, 0, 500) . "\n", FILE_APPEND | LOCK_EX);
+
     $requestData = json_decode($rawRequest, true);
-    
-    if (!$requestData) {
-        logC2BEvent('invalid_json', ['raw' => substr($rawRequest, 0, 500)]);
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Invalid JSON']);
+
+    // M-Pesa sends empty requests to validate the callback URL
+    // We must return HTTP 200 for validation to pass
+    if (!$requestData || empty($rawRequest)) {
+        logC2BEvent('validation_probe', [
+            'raw_length' => strlen($rawRequest),
+            'decoded' => $requestData
+        ]);
+        // Always return 200 OK for M-Pesa validation probes
+        // Use M-Pesa standard response format
+        http_response_code(200);
+        echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
         exit;
     }
-    
+
     // Log the incoming request
     logC2BEvent('received', ['request_keys' => array_keys($requestData)]);
-    
+
     // Extract STK callback data
     $body = $requestData['Body'] ?? null;
     $stkCallback = $body['stkCallback'] ?? null;
-    
+
     if (!$stkCallback) {
         logC2BEvent('missing_stkcallback', ['request' => $requestData]);
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Missing stkCallback object']);
         exit;
     }
-    
+
+    // Log full callback structure for debugging
+    error_log("[C2B CALLBACK DEBUG] STK Callback Full Data: " . json_encode($stkCallback, JSON_PRETTY_PRINT));
+
     $resultCode = intval($stkCallback['ResultCode'] ?? 1);
     $resultDesc = $stkCallback['ResultDesc'] ?? 'Unknown error';
     $checkoutRequestId = $stkCallback['CheckoutRequestID'] ?? null;
     $merchantCheckoutId = $stkCallback['MerchantCheckoutID'] ?? null;
     $merchantRequestId = $stkCallback['MerchantRequestID'] ?? null;
+
+    error_log("[C2B CALLBACK DEBUG] Parsed Values - ResultCode: $resultCode, ResultDesc: $resultDesc, CheckoutRequestID: $checkoutRequestId");
     
     // Parse callback metadata
     $amount = null;
     $mpesaReceiptNumber = null;
     $transactionDate = null;
     $phoneNumber = null;
-    
+
+    // Debug: Check if CallbackMetadata exists
+    if (!isset($stkCallback['CallbackMetadata'])) {
+        error_log("[C2B CALLBACK DEBUG] No CallbackMetadata found in callback (expected for failed transactions)");
+    } else {
+        error_log("[C2B CALLBACK DEBUG] CallbackMetadata exists: " . json_encode($stkCallback['CallbackMetadata'], JSON_PRETTY_PRINT));
+    }
+
     if (isset($stkCallback['CallbackMetadata']['Item'])) {
+        error_log("[C2B CALLBACK DEBUG] Found " . count($stkCallback['CallbackMetadata']['Item']) . " items in CallbackMetadata");
         foreach ($stkCallback['CallbackMetadata']['Item'] as $item) {
             $name = $item['Name'] ?? '';
             $value = $item['Value'] ?? '';
-            
+            error_log("[C2B CALLBACK DEBUG] Metadata Item - Name: $name, Value: $value (type: " . gettype($value) . ")");
+
             if ($name === 'Amount') {
                 $amount = floatval($value);
             } elseif ($name === 'MpesaReceiptNumber') {
@@ -127,6 +152,8 @@ try {
                 $phoneNumber = strval($value);
             }
         }
+    } else {
+        error_log("[C2B CALLBACK DEBUG] No Item array found in CallbackMetadata");
     }
     
     // Find the STK Push session
@@ -274,18 +301,21 @@ try {
     }
     
     // Always return 200 OK to acknowledge receipt
+    // Use M-Pesa standard response format
     http_response_code(200);
-    echo json_encode([
-        'success' => true,
-        'message' => 'C2B callback received and processed',
-        'checkout_request_id' => $checkoutRequestId,
-    ]);
+    // Log response before sending
+    error_log("[C2B CALLBACK RESPONSE] Sending M-Pesa standard response - ResultCode: 0, ResultDesc: Accepted");
+    echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
     exit;
     
 } catch (Exception $e) {
     logC2BEvent('exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-    http_response_code(500);
-    echo json_encode(['success' => false, 'message' => 'Server error']);
+    error_log("[C2B CALLBACK EXCEPTION] " . $e->getMessage());
+    // Always return 200 OK with M-Pesa standard format even on error
+    // M-Pesa needs to know we received the request
+    http_response_code(200);
+    error_log("[C2B CALLBACK RESPONSE] Sending M-Pesa standard response on exception - ResultCode: 0, ResultDesc: Accepted");
+    echo json_encode(['ResultCode' => 0, 'ResultDesc' => 'Accepted']);
     exit;
 }
 ?>

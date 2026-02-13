@@ -580,7 +580,26 @@ function paymentsApiPlugin() {
           if (!accessToken) throw new Error("Failed to obtain access token");
 
           if (url.startsWith("/payments/mpesa/stk-initiate")) {
-            const phone = String(body.phone || "").trim();
+            // Format phone number to start with 254 (Kenya country code)
+            let phone = String(body.phone || "").trim();
+
+            // Remove spaces
+            phone = phone.replace(/\s+/g, '');
+
+            // Remove leading plus sign
+            if (phone.startsWith('+')) {
+              phone = phone.substring(1);
+            }
+
+            // Convert 0 to 254
+            if (phone.startsWith('0')) {
+              phone = '254' + phone.substring(1);
+            }
+            // If starts with 7 and is 9 digits, add 254
+            else if (phone.startsWith('7') && phone.length === 9) {
+              phone = '254' + phone;
+            }
+
             const amount = Math.round(Number(body.amount || 0));
             const shortcode = creds.shortcode!;
             const passkey = creds.passkey!;
